@@ -70,6 +70,8 @@ public class SetupActivity extends Activity {
     // GeneralsX @feature Android port 06/09/2026 Optional folder holding the
     // BASE Generals archives, for copies that keep them somewhere the engine
     // will not find on its own.
+    static final String PREF_MOD_PATH = "mod_path";
+    private static final int REQUEST_PICK_MOD = 1004;
     static final String PREF_BASE_GENERALS_PATH = "base_generals_path";
 
     // TheSuperHackers @bugfix Android port 07/07/2026 SharedPreferences and
