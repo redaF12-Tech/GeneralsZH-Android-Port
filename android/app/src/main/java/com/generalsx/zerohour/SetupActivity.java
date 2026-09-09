@@ -48,7 +48,6 @@ import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
 import android.widget.EditText;
-import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -1254,12 +1253,12 @@ public class SetupActivity extends Activity {
         modStatusView.setTextIsSelectable(true);
         content.addView(modStatusView);
 
-        addButton(content, getString(R.string.setup_button_select_mod_folder), new View.OnClickListener() {
-            @Override public void onClick(View v) { onSelectModFolder(); }
+        addButton(content, getString(R.string.setup_button_select_mod_folder), new Runnable() {
+            @Override public void run() { onSelectModFolder(); }
         });
         if (getModPath() != null) {
-            addButton(content, getString(R.string.setup_button_clear_mod_folder), new View.OnClickListener() {
-                @Override public void onClick(View v) { onClearModFolder(); }
+            addButton(content, getString(R.string.setup_button_clear_mod_folder), new Runnable() {
+                @Override public void run() { onClearModFolder(); }
             });
         }
 
