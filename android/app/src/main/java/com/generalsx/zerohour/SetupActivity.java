@@ -70,8 +70,12 @@ public class SetupActivity extends Activity {
     // GeneralsX @feature Android port 06/09/2026 Optional folder holding the
     // BASE Generals archives, for copies that keep them somewhere the engine
     // will not find on its own.
+    // GeneralsX @feature Android port 09/09/2026 Optional folder holding MOD
+    // archives with highest priority, overriding both Zero Hour and base
+    // Generals files. Load order: Mod Files > Zero Hour Files > Generals Base Files.
     static final String PREF_MOD_PATH = "mod_path";
     private static final int REQUEST_PICK_MOD = 1004;
+
     static final String PREF_BASE_GENERALS_PATH = "base_generals_path";
 
     // TheSuperHackers @bugfix Android port 07/07/2026 SharedPreferences and
@@ -159,6 +163,7 @@ public class SetupActivity extends Activity {
         refreshGeneralsOnlineStatus();
         loadDxvkConfigIntoEditor();
         refreshDiagnosticsSwitches();
+        refreshModStatus();
     }
 
     // GeneralsX @feature Android port 08/07/2026 Material redesign: each
@@ -209,6 +214,7 @@ public class SetupActivity extends Activity {
         // picking their game folder, not buried under advanced settings most
         // players never touch.
         buildGeneralsOnlineSection(root);
+        buildModManagerSection(root);
 
         buildLanguageSection(root);
         buildUiScaleSection(root);
@@ -1235,6 +1241,69 @@ public class SetupActivity extends Activity {
             : getString(R.string.setup_online_signed_out));
     }
 
+    // GeneralsX @feature Android port 09/09/2026 Mod Manager card:
+    // optional folder with highest priority mod files, loaded before ZH files.
+    private TextView modStatusView;
+
+    private void buildModManagerSection(LinearLayout root) {
+        LinearLayout content = startCard(root, getString(R.string.setup_card_mod_manager));
+
+        modStatusView = new TextView(this);
+        content.addView(modStatusView);
+
+        addButton(content, getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
+        if (getModPath() != null) {
+            addButton(content, getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
+        }
+
+        TextView help = new TextView(this);
+        help.setAlpha(0.8f);
+        help.setText(R.string.setup_mod_manager_help);
+        help.setPadding(0, dp(8), 0, 0);
+        content.addView(help);
+    }
+
+    private void refreshModStatus() {
+        if (modStatusView == null) {
+            return;
+        }
+        String modPath = getModPath();
+        if (modPath == null) {
+            modStatusView.setText(getString(R.string.setup_mod_status_not_set));
+        } else {
+            modStatusView.setText(getString(R.string.setup_mod_status_set, modPath));
+        }
+    }
+
+    private void onSelectModFolder() {
+        startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD);
+    }
+
+    private void onClearModFolder() {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_MOD_PATH).apply();
+        new File(getFilesDir(), "mod_path.txt").delete();
+        Toast.makeText(this, R.string.setup_toast_mod_cleared, Toast.LENGTH_LONG).show();
+        recreate();
+    }
+
+    String getModPath() {
+        return getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_MOD_PATH, null);
+    }
+
+    private void saveModPath(String path) {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .putString(PREF_MOD_PATH, path)
+            .apply();
+        // Native code reads this marker on next launch and sets CNC_MOD_PATH
+        File marker = new File(getFilesDir(), "mod_path.txt");
+        try (java.io.FileWriter w = new java.io.FileWriter(marker, false)) {
+            w.write(path);
+            w.write("\n");
+        } catch (java.io.IOException e) {
+            Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
     private File optionsIniFile() {
         return new File(getFilesDir(), ".local/share/GeneralsX/GeneralsZH/Options.ini");
     }
@@ -1926,6 +1995,37 @@ public class SetupActivity extends Activity {
                     recreate();
                 }
             }
+        } else if (requestCode == REQUEST_PICK_MOD && resultCode == Activity.RESULT_OK && data != null) {
+            String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
+            if (path != null) {
+                File picked = new File(path);
+                // Allow empty folders for mods (unlike game folder)
+                // Check if folder is readable
+                if (!picked.isDirectory() || !picked.canRead()) {
+                    showFolderProblemDialog(getString(R.string.setup_mod_folder_not_readable, path));
+                    return;
+                }
+                // If empty, offer to skip
+                File[] children = picked.listFiles();
+                if (children == null || children.length == 0) {
+                    new android.app.AlertDialog.Builder(this)
+                        .setTitle(R.string.setup_mod_folder_empty_title)
+                        .setMessage(R.string.setup_mod_folder_empty_message)
+                        .setPositiveButton(R.string.setup_button_set_empty_mod, (d, w) -> {
+                            saveModPath(path);
+                            refreshModStatus();
+                            Toast.makeText(this, R.string.setup_toast_mod_saved, Toast.LENGTH_LONG).show();
+                            recreate();
+                        })
+                        .setNegativeButton(R.string.common_cancel, null)
+                        .show();
+                    return;
+                }
+                // Non-empty folder: save it
+                saveModPath(path);
+                refreshModStatus();
+                Toast.makeText(this, R.string.setup_toast_mod_saved, Toast.LENGTH_LONG).show();
+                recreate();
         } else if (requestCode == REQUEST_IMPORT_DRIVER && resultCode == Activity.RESULT_OK && data != null) {
             Uri uri = data.getData();
             if (uri != null) {
