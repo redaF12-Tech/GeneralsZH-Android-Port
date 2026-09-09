@@ -70,13 +70,12 @@ public class SetupActivity extends Activity {
     // GeneralsX @feature Android port 06/09/2026 Optional folder holding the
     // BASE Generals archives, for copies that keep them somewhere the engine
     // will not find on its own.
+    static final String PREF_BASE_GENERALS_PATH = "base_generals_path";
     // GeneralsX @feature Android port 09/09/2026 Optional folder holding MOD
     // archives with highest priority, overriding both Zero Hour and base
     // Generals files. Load order: Mod Files > Zero Hour Files > Generals Base Files.
     static final String PREF_MOD_PATH = "mod_path";
     private static final int REQUEST_PICK_MOD = 1004;
-
-    static final String PREF_BASE_GENERALS_PATH = "base_generals_path";
 
     // TheSuperHackers @bugfix Android port 07/07/2026 SharedPreferences and
     // getFilesDir() both live under /data/data/<pkg>/ and are wiped the
@@ -1246,14 +1245,21 @@ public class SetupActivity extends Activity {
     private TextView modStatusView;
 
     private void buildModManagerSection(LinearLayout root) {
+        // startCard() creates a MaterialCardView, so this appears as a real
+        // CardView consistent with the rest of SetupActivity.
         LinearLayout content = startCard(root, getString(R.string.setup_card_mod_manager));
 
         modStatusView = new TextView(this);
+        modStatusView.setTextIsSelectable(true);
         content.addView(modStatusView);
 
-        addButton(content, getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
+        addButton(content, getString(R.string.setup_button_select_mod_folder), new View.OnClickListener() {
+            @Override public void onClick(View v) { onSelectModFolder(); }
+        });
         if (getModPath() != null) {
-            addButton(content, getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
+            addButton(content, getString(R.string.setup_button_clear_mod_folder), new View.OnClickListener() {
+                @Override public void onClick(View v) { onClearModFolder(); }
+            });
         }
 
         TextView help = new TextView(this);
@@ -1261,6 +1267,8 @@ public class SetupActivity extends Activity {
         help.setText(R.string.setup_mod_manager_help);
         help.setPadding(0, dp(8), 0, 0);
         content.addView(help);
+
+        refreshModStatus();
     }
 
     private void refreshModStatus() {
@@ -1268,7 +1276,7 @@ public class SetupActivity extends Activity {
             return;
         }
         String modPath = getModPath();
-        if (modPath == null) {
+        if (modPath == null || modPath.trim().isEmpty()) {
             modStatusView.setText(getString(R.string.setup_mod_status_not_set));
         } else {
             modStatusView.setText(getString(R.string.setup_mod_status_set, modPath));
@@ -1294,7 +1302,7 @@ public class SetupActivity extends Activity {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
             .putString(PREF_MOD_PATH, path)
             .apply();
-        // Native code reads this marker on next launch and sets CNC_MOD_PATH
+        // Native code can read this marker on next launch and set the mod path.
         File marker = new File(getFilesDir(), "mod_path.txt");
         try (java.io.FileWriter w = new java.io.FileWriter(marker, false)) {
             w.write(path);
@@ -1999,33 +2007,37 @@ public class SetupActivity extends Activity {
             String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
             if (path != null) {
                 File picked = new File(path);
-                // Allow empty folders for mods (unlike game folder)
-                // Check if folder is readable
+                // Mod folders are intentionally allowed to be empty.
                 if (!picked.isDirectory() || !picked.canRead()) {
                     showFolderProblemDialog(getString(R.string.setup_mod_folder_not_readable, path));
                     return;
                 }
-                // If empty, offer to skip
+
                 File[] children = picked.listFiles();
-                if (children == null || children.length == 0) {
+                if (children == null) {
+                    showFolderProblemDialog(getString(R.string.setup_mod_folder_not_readable, path));
+                    return;
+                }
+
+                if (children.length == 0) {
                     new android.app.AlertDialog.Builder(this)
                         .setTitle(R.string.setup_mod_folder_empty_title)
                         .setMessage(R.string.setup_mod_folder_empty_message)
-                        .setPositiveButton(R.string.setup_button_set_empty_mod, (d, w) -> {
-                            saveModPath(path);
-                            refreshModStatus();
-                            Toast.makeText(this, R.string.setup_toast_mod_saved, Toast.LENGTH_LONG).show();
-                            recreate();
+                        .setPositiveButton(R.string.setup_button_set_empty_mod, new android.content.DialogInterface.OnClickListener() {
+                            @Override public void onClick(android.content.DialogInterface d, int w) {
+                                saveModPath(path);
+                                Toast.makeText(SetupActivity.this, R.string.setup_toast_mod_saved, Toast.LENGTH_LONG).show();
+                                recreate();
+                            }
                         })
                         .setNegativeButton(R.string.common_cancel, null)
                         .show();
-                    return;
+                } else {
+                    saveModPath(path);
+                    Toast.makeText(this, R.string.setup_toast_mod_saved, Toast.LENGTH_LONG).show();
+                    recreate();
                 }
-                // Non-empty folder: save it
-                saveModPath(path);
-                refreshModStatus();
-                Toast.makeText(this, R.string.setup_toast_mod_saved, Toast.LENGTH_LONG).show();
-                recreate();
+            }
         } else if (requestCode == REQUEST_IMPORT_DRIVER && resultCode == Activity.RESULT_OK && data != null) {
             Uri uri = data.getData();
             if (uri != null) {
