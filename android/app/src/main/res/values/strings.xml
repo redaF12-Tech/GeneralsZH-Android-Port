@@ -187,4 +187,17 @@
     <string name="setup_toast_base_generals_cleared">Base Generals folder cleared</string>
     <string name="setup_base_generals_not_here">No base Generals archives in %1$s — pick the folder that holds Terrain.big, Textures.big and W3D.big.</string>
     <string name="setup_status_base_generals_line">Base Generals: %1$s\n</string>
+    <!-- SetupActivity: Mod Manager card -->
+    <string name="setup_card_mod_manager">Mod Manager</string>
+    <string name="setup_button_select_mod_folder">Select Mod Folder</string>
+    <string name="setup_button_clear_mod_folder">Clear Mod Folder</string>
+    <string name="setup_button_set_empty_mod">Set Empty Mod Folder</string>
+    <string name="setup_mod_status_not_set">Mod folder: not set (optional).</string>
+    <string name="setup_mod_status_set">Mod folder: %1$s</string>
+    <string name="setup_mod_manager_help">Optional mod folder with highest priority. Load order: Mod Files &gt; Zero Hour Files &gt; Generals Base Files. You can leave this empty.</string>
+    <string name="setup_mod_folder_empty_title">Empty Mod Folder</string>
+    <string name="setup_mod_folder_empty_message">This folder is empty. You can still use it as your mod folder placeholder, or cancel to pick a different one.</string>
+    <string name="setup_mod_folder_not_readable">Cannot read folder: %1$s — check permissions and try again.</string>
+    <string name="setup_toast_mod_saved">Mod folder saved.</string>
+    <string name="setup_toast_mod_cleared">Mod folder cleared.</string>
 </resources>
