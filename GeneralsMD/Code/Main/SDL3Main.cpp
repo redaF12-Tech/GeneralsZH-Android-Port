@@ -875,8 +875,8 @@ int main(int argc, char* argv[])
                 char modPath[900] = {0};
                 if (fgets(modPath, sizeof(modPath), modMarker) != nullptr) {
                     size_t len = strlen(modPath);
-                    while (len > 0 && (modPath[len - 1] == '\\n' || modPath[len - 1] == '\\r')) {
-                        modPath[--len] = '\\0';
+                    while (len > 0 && (modPath[len - 1] == '\n' || modPath[len - 1] == '\r')) {
+                        modPath[--len] = '\0';
                     }
                     if (len > 0 && access(modPath, R_OK) == 0) {
                         setenv("GENERALSX_MOD_PATH", modPath, 1);
