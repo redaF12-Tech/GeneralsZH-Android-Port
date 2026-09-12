@@ -82,6 +82,8 @@ public class SetupActivity extends Activity {
     // BASE Generals archives, for copies that keep them somewhere the engine
     // will not find on its own.
     static final String PREF_BASE_GENERALS_PATH = "base_generals_path";
+    // GeneralsX @feature Android port Mod Manager - optional highest-priority BIG folder.
+    static final String PREF_MOD_PATH = "mod_path";
 
     // TheSuperHackers @bugfix Android port 07/07/2026 SharedPreferences and
     // getFilesDir() both live under /data/data/<pkg>/ and are wiped the
@@ -409,6 +411,23 @@ public class SetupActivity extends Activity {
         // settings -- signing into GeneralsOnline is a primary action most
         // people want right after picking their game folder, not something to
         // bury under settings most players never touch.
+        // GeneralsX @feature Android port Mod Manager - the selected mod folder
+        // is stored separately from the game folder and is consumed by native BIG
+        // loading on the next game launch. Mod BIG archives are mounted last with
+        // overwrite=true, giving them highest virtual-file priority.
+        LinearLayout mod = UiKit.card(page);
+        UiKit.sectionHeader(mod, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_card_mod_folder), false);
+        TextView modStatus = UiKit.body(mod, getModStatusText());
+        modStatus.setTextIsSelectable(true);
+        UiKit.button(mod, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
+            getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
+        if (getModPath() != null) {
+            UiKit.button(mod, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
+                getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
+        }
+        UiKit.helpText(mod, getString(R.string.setup_mod_folder_help));
+
         buildGeneralsOnlineSection(page);
     }
 
@@ -1026,6 +1045,8 @@ public class SetupActivity extends Activity {
     private static final String DEFAULT_DRIVER_ASSET_DIR = "default_driver";
     private static final int REQUEST_IMPORT_DRIVER = 1002;
     private static final int REQUEST_PICK_BASE_GENERALS = 1003;
+    private static final int REQUEST_PICK_MOD = 1004;
+    private int pendingStoragePickerRequest = 1001;
 
     private TextView customDriverStatusView;
 
@@ -2514,6 +2535,7 @@ public class SetupActivity extends Activity {
     private static final int REQUEST_LEGACY_STORAGE_PERMISSION = 1003;
 
     private void onSelectGameFolder() {
+        pendingStoragePickerRequest = 1001;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
                 Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
@@ -2537,7 +2559,65 @@ public class SetupActivity extends Activity {
                 REQUEST_LEGACY_STORAGE_PERMISSION);
             return;
         }
-        startActivityForResult(new Intent(this, FolderPickerActivity.class), 1001);
+        startActivityForResult(new Intent(this, FolderPickerActivity.class), pendingStoragePickerRequest);
+    }
+
+    private String getModPath() {
+        String path = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_MOD_PATH, null);
+        if (path == null || path.trim().isEmpty()) return null;
+        File dir = new File(path);
+        return (dir.isDirectory() && dir.canRead()) ? dir.getAbsolutePath() : null;
+    }
+
+    private String getModStatusText() {
+        String path = getModPath();
+        if (path == null) return getString(R.string.setup_mod_status_not_set);
+        File dir = new File(path);
+        File[] bigs = dir.listFiles((d, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big"));
+        int count = bigs == null ? 0 : bigs.length;
+        return getString(R.string.setup_mod_status_set, path, count);
+    }
+
+    private void onSelectModFolder() {
+        pendingStoragePickerRequest = REQUEST_PICK_MOD;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
+                try {
+                    Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                }
+                return;
+            }
+        } else if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                new String[] { Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE },
+                REQUEST_LEGACY_STORAGE_PERMISSION);
+            return;
+        }
+        startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD);
+    }
+
+    private void saveModPath(String path) {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString(PREF_MOD_PATH, path).apply();
+        File marker = new File(getFilesDir(), "mod_path.txt");
+        try (java.io.FileWriter w = new java.io.FileWriter(marker, false)) {
+            w.write(path);
+            w.write("\\n");
+        } catch (java.io.IOException e) {
+            Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void onClearModFolder() {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_MOD_PATH).apply();
+        new File(getFilesDir(), "mod_path.txt").delete();
+        Toast.makeText(this, R.string.setup_toast_mod_cleared, Toast.LENGTH_SHORT).show();
+        showTab(TAB_HOME);
     }
 
     // GeneralsX @feature Android port 06/09/2026 Second picker, same browser,
@@ -2585,7 +2665,7 @@ public class SetupActivity extends Activity {
         if (requestCode == REQUEST_LEGACY_STORAGE_PERMISSION) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted) {
-                startActivityForResult(new Intent(this, FolderPickerActivity.class), 1001);
+                startActivityForResult(new Intent(this, FolderPickerActivity.class), pendingStoragePickerRequest);
             } else {
                 Toast.makeText(this, R.string.setup_toast_storage_permission_denied, Toast.LENGTH_LONG).show();
             }
@@ -2620,6 +2700,21 @@ public class SetupActivity extends Activity {
                     } else {
                         Toast.makeText(this, R.string.setup_toast_folder_saved, Toast.LENGTH_LONG).show();
                     }
+                }
+            }
+        } else if (requestCode == REQUEST_PICK_MOD && resultCode == Activity.RESULT_OK && data != null) {
+            String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
+            if (path != null) {
+                File dir = new File(path);
+                File[] bigs = dir.isDirectory() ? dir.listFiles((d, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
+                if (!dir.isDirectory() || !dir.canRead()) {
+                    Toast.makeText(this, R.string.setup_mod_folder_invalid, Toast.LENGTH_LONG).show();
+                } else if (bigs == null || bigs.length == 0) {
+                    Toast.makeText(this, R.string.setup_mod_folder_no_big, Toast.LENGTH_LONG).show();
+                } else {
+                    saveModPath(dir.getAbsolutePath());
+                    Toast.makeText(this, getString(R.string.setup_toast_mod_saved, dir.getAbsolutePath(), bigs.length), Toast.LENGTH_LONG).show();
+                    showTab(TAB_HOME);
                 }
             }
         } else if (requestCode == REQUEST_PICK_BASE_GENERALS && resultCode == Activity.RESULT_OK && data != null) {
