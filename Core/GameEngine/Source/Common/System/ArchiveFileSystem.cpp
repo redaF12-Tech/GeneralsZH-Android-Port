@@ -214,17 +214,17 @@ void ArchiveFileSystem::loadIntoDirectoryTree(ArchiveFile *archiveFile, Bool ove
 void ArchiveFileSystem::loadMods()
 {
 #if defined(__ANDROID__)
-    // GeneralsX @bugfix Android mod path handling 12/09/2026
-    // SetupActivity persists the selected directory in an environment bridge before GameMain().
-    // Populate the engine's existing m_modDir so the normal mod-loading path is used.
+    // GeneralsX @feature Android Mod Manager - SetupActivity persists the
+    // selected directory in an environment bridge before GameMain(). Do not
+    // write m_modDir here: in this build TheGlobalData is exposed as const.
+    // Load the selected directory directly with overwrite=TRUE so its BIG
+    // entries receive the same highest archive priority as normal mod BIGs.
     const char *androidModPath = std::getenv("GENERALSX_MOD_PATH");
     if (androidModPath != nullptr && androidModPath[0] != '\0')
     {
-        // Use the writable global instance when mutating global data.
-        AsciiString modPath = androidModPath;
-        if (!modPath.endsWith("\\") && !modPath.endsWith("/"))
-            modPath.concat('\\');
-        TheWritableGlobalData->m_modDir = modPath;
+        MAYBE_UNUSED Bool ret = loadBigFilesFromDirectory(AsciiString(androidModPath), "*.big", TRUE);
+        (void)ret;
+        DEBUG_ASSERTLOG(ret, ("loadBigFilesFromDirectory(%s) returned FALSE!", androidModPath));
         DEBUG_LOG(("ArchiveFileSystem::loadMods - Android Mod Manager directory: %s", androidModPath));
     }
 #endif
