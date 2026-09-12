@@ -215,4 +215,14 @@
     <string name="setup_render_backend_gles_short">GLES</string>
     <string name="setup_render_backend_gles_angle_short">ANGLE</string>
     <string name="setup_render_backend_vulkan_short">Vulkan</string>
+    <string name="setup_card_mod_folder">إدارة المودات</string>
+    <string name="setup_button_select_mod_folder">اختيار مجلد المود…</string>
+    <string name="setup_button_clear_mod_folder">مسح مجلد المود</string>
+    <string name="setup_mod_status_not_set">لم يتم اختيار مجلد مود.</string>
+    <string name="setup_mod_status_set">مجلد المود: %1$s\nأرشيفات BIG: %2$d</string>
+    <string name="setup_mod_folder_help">يتم تحميل أرشيفات ‎.big الخاصة بالمود بعد Zero Hour وGenerals الأساسية، لذلك تكون أولوية المود هي الأعلى: المود > GeneralsZH > Generals الأساسية.</string>
+    <string name="setup_mod_folder_invalid">مجلد المود المحدد غير قابل للقراءة.</string>
+    <string name="setup_mod_folder_no_big">لم يتم العثور على أي أرشيف ‎.big مباشرة داخل مجلد المود المحدد.</string>
+    <string name="setup_toast_mod_saved">تم حفظ مجلد المود: %1$s (%2$d من أرشيفات BIG).</string>
+    <string name="setup_toast_mod_cleared">تم مسح مجلد المود.</string>
 </resources>
