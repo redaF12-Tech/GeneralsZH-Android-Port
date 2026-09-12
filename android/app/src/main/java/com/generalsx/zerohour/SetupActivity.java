@@ -2607,7 +2607,7 @@ public class SetupActivity extends Activity {
         File marker = new File(getFilesDir(), "mod_path.txt");
         try (java.io.FileWriter w = new java.io.FileWriter(marker, false)) {
             w.write(path);
-            w.write("\\n");
+            w.write("\n");
         } catch (java.io.IOException e) {
             Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
         }
