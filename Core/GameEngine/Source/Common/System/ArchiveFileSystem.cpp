@@ -50,6 +50,7 @@
 #include "Common/ArchiveFileSystem.h"
 #include "Common/AsciiString.h"
 #include "Common/PerfTimer.h"
+#include <cstdlib>
 
 
 //----------------------------------------------------------------------------
@@ -212,6 +213,18 @@ void ArchiveFileSystem::loadIntoDirectoryTree(ArchiveFile *archiveFile, Bool ove
 
 void ArchiveFileSystem::loadMods()
 {
+#if defined(__ANDROID__)
+    // GeneralsX @feature Android Mod Manager - SetupActivity persists the
+    // selected directory in an environment bridge before GameMain(). Populate
+    // the engine's existing m_modDir so the normal mod-loading path is used.
+    const char *androidModPath = std::getenv("GENERALSX_MOD_PATH");
+    if (androidModPath != nullptr && androidModPath[0] != '\\0')
+    {
+        TheGlobalData->m_modDir = AsciiString(androidModPath);
+        DEBUG_LOG(("ArchiveFileSystem::loadMods - Android Mod Manager directory: %s", androidModPath));
+    }
+#endif
+
 	if (TheGlobalData->m_modBIG.isNotEmpty())
 	{
 		ArchiveFile *archiveFile = openArchiveFile(TheGlobalData->m_modBIG.str());
