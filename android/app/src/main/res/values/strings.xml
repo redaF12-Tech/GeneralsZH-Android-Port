@@ -220,4 +220,14 @@
     <string name="setup_render_backend_gles_short">GLES</string>
     <string name="setup_render_backend_gles_angle_short">ANGLE</string>
     <string name="setup_render_backend_vulkan_short">Vulkan</string>
+    <string name="setup_card_mod_folder">Mod Manager</string>
+    <string name="setup_button_select_mod_folder">Select Mod Folder…</string>
+    <string name="setup_button_clear_mod_folder">Clear Mod Folder</string>
+    <string name="setup_mod_status_not_set">No mod folder selected.</string>
+    <string name="setup_mod_status_set">Mod folder: %1$s\nBIG archives: %2$d</string>
+    <string name="setup_mod_folder_help">Mod *.big archives are loaded after Zero Hour and Base Generals, so the Mod has the highest priority: Mod > GeneralsZH > Base Generals.</string>
+    <string name="setup_mod_folder_invalid">The selected mod folder is not readable.</string>
+    <string name="setup_mod_folder_no_big">No .big archives were found directly in the selected mod folder.</string>
+    <string name="setup_toast_mod_saved">Mod folder saved: %1$s (%2$d BIG archives).</string>
+    <string name="setup_toast_mod_cleared">Mod folder cleared.</string>
 </resources>
