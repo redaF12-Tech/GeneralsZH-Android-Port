@@ -30,6 +30,13 @@
     <string name="setup_status_logs_note">충돌/엔진 로그는 이 앱의 전용 저장소에 보관되며 위의 \"로그 보기\"를 통해서만 접근할 수 있습니다 — Android는 이를 일반 파일 관리자로부터 의도적으로 숨깁니다 (이는 이 앱만의 특징이 아니라 Android의 표준 샌드박스 동작입니다).</string>
 
     <!-- SetupActivity: Language card -->
+    <!-- SetupActivity: Appearance card (Daylight/Darkmode) -->
+    <string name="setup_card_appearance">테마</string>
+    <string name="setup_appearance_status">테마: %1$s</string>
+    <string name="setup_appearance_mode_system">시스템</string>
+    <string name="setup_appearance_mode_daylight">라이트</string>
+    <string name="setup_appearance_mode_darkmode">다크</string>
+    <string name="setup_appearance_help">이 설정 앱, 로그 뷰어, 폴더 브라우저, 계정 화면의 색상을 변경합니다. ‘시스템’은 휴대폰의 화면 모드와 절전 모드를 따릅니다. 게임 자체의 화면은 별도이며 절대 바뀌지 않습니다.</string>
     <string name="setup_card_language">언어</string>
     <string name="setup_language_help">이 설정 앱과 로그 뷰어, 폴더 탐색기의 언어를 바꿉니다. 게임 자체의 텍스트는 아래의 별도 설정입니다 — 게임 폴더에 실제로 있는 언어 중에서 고르거나 내려받으세요. “시스템 기본값”은 휴대전화 언어를 따르며, 목록에 없으면 영어를 사용합니다.</string>
     <string name="setup_language_status">언어: %1$s</string>

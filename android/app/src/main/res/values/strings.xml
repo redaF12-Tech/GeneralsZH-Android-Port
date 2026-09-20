@@ -30,6 +30,15 @@
     <string name="setup_status_logs_note">Crash/engine logs live in this app\'s private storage and are only reachable through \"View Logs\" above — Android hides them from normal file managers by design (this is standard Android sandboxing, not specific to this app).</string>
 
     <!-- SetupActivity: Language card -->
+    <!-- SetupActivity: Appearance card (Daylight/Darkmode) -->
+    <string name="setup_card_appearance">Theme</string>
+    <string name="setup_appearance_status">Theme: %1$s</string>
+    <string name="setup_appearance_mode_system">System</string>
+    <string name="setup_appearance_mode_daylight">Daylight</string>
+    <string name="setup_appearance_mode_darkmode">Darkmode</string>
+    <string name="setup_appearance_help">Changes the colours of this Settings app, the log viewer, the folder browser and the account screen. “System” follows your phone\'s appearance and battery saver. The game\'s own rendering is a separate thing and never changes.</string>
+
+    <!-- SetupActivity: Language card -->
     <string name="setup_card_language">Language</string>
     <string name="setup_language_help">Changes the language of this Settings app, the log viewer and the folder browser. The game\'s own text is a separate setting below — pick it from the languages actually present in your game folder, or download one. “System default” follows your phone\'s language, falling back to English if it is not one of the languages listed.</string>
     <string name="setup_language_status">Language: %1$s</string>

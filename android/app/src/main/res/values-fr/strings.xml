@@ -30,6 +30,13 @@
     <string name="setup_status_logs_note">Les journaux de plantage/du moteur sont stockés dans le stockage privé de cette application et ne sont accessibles que via « Afficher les journaux » ci-dessus — Android les masque intentionnellement des gestionnaires de fichiers classiques (c\'est le fonctionnement standard du bac à sable Android, pas une particularité de cette application).</string>
 
     <!-- SetupActivity: Language card -->
+    <!-- SetupActivity: Appearance card (Daylight/Darkmode) -->
+    <string name="setup_card_appearance">Thème</string>
+    <string name="setup_appearance_status">Thème : %1$s</string>
+    <string name="setup_appearance_mode_system">Système</string>
+    <string name="setup_appearance_mode_daylight">Clair</string>
+    <string name="setup_appearance_mode_darkmode">Sombre</string>
+    <string name="setup_appearance_help">Change les couleurs de cette application de réglages, du lecteur de journaux, de l\'explorateur de dossiers et de l\'écran de compte. « Système » suit l\'apparence du téléphone et l\'économiseur de batterie. L\'affichage du jeu lui-même reste inchangé.</string>
     <string name="setup_card_language">Langue</string>
     <string name="setup_language_help">Change la langue de cette application de réglages, du visionneur de journaux et du navigateur de dossiers. Les textes du jeu sont un réglage distinct ci-dessous : choisissez parmi les langues réellement présentes dans votre dossier de jeu, ou téléchargez-en une. « Par défaut du système » suit la langue du téléphone, avec repli sur l\'anglais si elle ne figure pas dans la liste.</string>
     <string name="setup_language_status">Langue : %1$s</string>

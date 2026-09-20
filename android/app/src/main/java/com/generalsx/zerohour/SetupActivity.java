@@ -101,7 +101,7 @@ public class SetupActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(LocaleHelper.wrap(newBase));
+        super.attachBaseContext(ThemeHelper.wrap(LocaleHelper.wrap(newBase)));
     }
 
     @Override
@@ -344,6 +344,7 @@ public class SetupActivity extends Activity {
                 }
                 break;
             case TAB_INTERFACE:
+                buildAppearanceSection(page);
                 buildLanguageSection(page);
                 buildUiScaleSection(page);
                 break;
@@ -478,6 +479,58 @@ public class SetupActivity extends Activity {
             getString(R.string.setup_button_download_langpack), this::onDownloadLanguagePack);
 
         UiKit.helpText(content, getString(R.string.setup_language_help));
+    }
+
+    // GeneralsX @feature Android port daylight-darkmode 20/09/2026 In-app
+    // Daylight/Darkmode choice for every launcher screen (Setup, folder
+    // picker, log viewer, GeneralsOnline account), mirroring the language
+    // card's pattern: the current answer is the header value, the control is
+    // a segmented row, and applying it is recreate() -- every Activity
+    // re-wraps its base context in attachBaseContext(), so a recreate is the
+    // whole switch. The game surface never sees any of this.
+    private void buildAppearanceSection(LinearLayout root) {
+        LinearLayout content = UiKit.card(root);
+        TextView value = UiKit.sectionHeader(content, R.drawable.ic_gzh_daynight,
+            getString(R.string.setup_card_appearance), true);
+        value.setText(appearanceDisplayName(ThemeHelper.getSavedUiMode(this)));
+        // The full "Theme: X" sentence is still what a screen reader hears.
+        content.setContentDescription(getString(R.string.setup_appearance_status,
+            appearanceDisplayName(ThemeHelper.getSavedUiMode(this))));
+
+        CharSequence[] labels = new CharSequence[] {
+            getString(R.string.setup_appearance_mode_system),
+            getString(R.string.setup_appearance_mode_daylight),
+            getString(R.string.setup_appearance_mode_darkmode),
+        };
+        final int initial = ThemeHelper.getSavedUiMode(this);
+        com.google.android.material.button.MaterialButtonToggleGroup group =
+            UiKit.segmented(content, labels, initial, index -> {
+            // Segmented index and ThemeHelper mode share one order:
+            // 0=system, 1=daylight, 2=darkmode.
+            if (index == initial) {
+                return;  // programmatic/no-op selection: nothing to save
+            }
+            ThemeHelper.setSavedUiMode(this, index);
+            recreate();
+        });
+        // Keeps the picker's own (translated) prompt as what a screen reader
+        // announces for the row of three choices.
+        group.setContentDescription(getString(R.string.setup_card_appearance));
+
+        UiKit.supporting(content, getString(R.string.setup_appearance_status,
+            appearanceDisplayName(initial)));
+        UiKit.helpText(content, getString(R.string.setup_appearance_help));
+    }
+
+    private String appearanceDisplayName(int mode) {
+        switch (mode) {
+            case ThemeHelper.MODE_DAYLIGHT:
+                return getString(R.string.setup_appearance_mode_daylight);
+            case ThemeHelper.MODE_DARK:
+                return getString(R.string.setup_appearance_mode_darkmode);
+            default:
+                return getString(R.string.setup_appearance_mode_system);
+        }
     }
 
     // GeneralsX @feature Android port 13/07/2026 GitHub issue #4 follow-up:

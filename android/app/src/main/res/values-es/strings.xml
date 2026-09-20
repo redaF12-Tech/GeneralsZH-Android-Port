@@ -30,6 +30,13 @@
     <string name="setup_status_logs_note">Los registros de fallos y del motor se guardan en el almacenamiento privado de la app y solo son accesibles mediante \"Ver registros\" — Android los oculta intencionadamente de los gestores de archivos normales (esto es el aislamiento estándar de Android, no algo específico de esta app).</string>
 
     <!-- SetupActivity: Language card -->
+    <!-- SetupActivity: Appearance card (Daylight/Darkmode) -->
+    <string name="setup_card_appearance">Tema</string>
+    <string name="setup_appearance_status">Tema: %1$s</string>
+    <string name="setup_appearance_mode_system">Sistema</string>
+    <string name="setup_appearance_mode_daylight">Diurno</string>
+    <string name="setup_appearance_mode_darkmode">Nocturno</string>
+    <string name="setup_appearance_help">Cambia los colores de esta app de ajustes, del visor de registros, del explorador de carpetas y de la pantalla de cuenta. «Sistema» sigue la apariencia del teléfono y el ahorro de batería. El renderizado del juego es algo aparte y nunca cambia.</string>
     <string name="setup_card_language">Idioma</string>
     <string name="setup_language_help">Cambia el idioma de esta app de ajustes, del visor de registros y del explorador de carpetas. El texto del juego es un ajuste aparte, más abajo: elígelo entre los idiomas que realmente están en tu carpeta del juego, o descarga uno. «Predeterminado del sistema» sigue el idioma del teléfono y recurre al inglés si no está en la lista.</string>
     <string name="setup_language_status">Idioma: %1$s</string>
