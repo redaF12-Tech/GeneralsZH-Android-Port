@@ -73,28 +73,13 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">@bool/gzh_light_system_bars</item>
 
-        <!-- Material's own dialogs follow the same (accented) palette.
-             GeneralsX @bugfix Android port accent-tinted-surfaces 21/09/2026
-             The hand-rolled Theme.GeneralsZH.AlertDialog light/dark pair and
-             its theme wiring were deleted: every launcher dialog builds
-             through MaterialAlertDialogBuilder now (the plain framework
-             builder does NOT inherit an activity's theme overlay), so the
-             Material dialog theme resolves the palette — accented or not —
-             on its own. -->
+        <!-- Material dialogs use the activity's already-accented palette.
+             Keep only the dialog-specific text colours here; do not hard-code
+             colorPrimary/colorSurface, otherwise this overlay would reset the
+             selected accent back to the base violet palette. -->
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.GeneralsZH.Dialog</item>
     </style>
 
-    <!-- GeneralsX @bugfix Android port accent-mode-dialog 21/09/2026 This
-         dialog theme carries NO palette pins: re-pointing colorSurface/
-         colorPrimary at the DEFAULT palette resources here overrode every
-         accent overlay the activity had folded in (an overlay applies over
-         the activity theme, but this one re-declared those slots after it),
-         so with an accent picked the dialogs were the only surface in the
-         app still wearing the default violet — loudest right after a
-         Daylight/Darkmode switch. The Material dialog theme inherits all
-         colour roles through the overlaid activity theme instead; only the
-         neutral framework text pins remain, and those resolve correctly in
-         both modes through values-night. -->
     <style name="ThemeOverlay.GeneralsZH.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="android:textColorPrimary">@color/gzh_on_surface</item>
         <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
