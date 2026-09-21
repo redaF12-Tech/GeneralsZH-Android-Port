@@ -58,7 +58,6 @@
     <color name="gzh_on_surface_disabled">#61ECEBF2</color>
     <color name="gzh_container_disabled">#1FECEBF2</color>
     <color name="gzh_ripple_light">#1FECEBF2</color>
-    <color name="gzh_ripple_primary">#33B9AEEA</color>
 
     <!-- GeneralsX @feature Android port game-folder-integrity-check 07/09/2026
          Semantic status colours for the game-folder validity line (see

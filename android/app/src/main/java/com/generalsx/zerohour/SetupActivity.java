@@ -47,6 +47,7 @@ import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
+import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.Menu;
 import android.view.View;
@@ -106,6 +107,12 @@ public class SetupActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // GeneralsX @feature Android port accent-colors 21/09/2026 The saved
+        // accent rides on this activity's theme before any view, dialog or
+        // colour read happens; see ThemeHelper.applyAccentTheme() for why it
+        // is an applyStyle rather than a context wrap.
+        ThemeHelper.applyAccentTheme(this);
+
         // GeneralsX @bugfix Android port 31/07/2026 No longer forced to
         // landscape here -- see the matching AndroidManifest.xml comment.
         // This screen now starts portrait-first like every other non-game
@@ -276,15 +283,17 @@ public class SetupActivity extends Activity {
         nav.setLabelVisibilityMode(NavigationBarView.LABEL_VISIBILITY_LABELED);
         nav.setItemIconSize(UiKit.dp(this, 22));
         // Checked/unchecked pair: the selected item is the one sitting in the
-        // active-indicator pill, so it takes the on-container colour.
+        // active-indicator pill, so it takes the on-container colour. Both
+        // colours read through the theme so the pill follows the accent
+        // picked on the Interface tab (accent-colors 21/09/2026).
         android.content.res.ColorStateList itemTint = new android.content.res.ColorStateList(
             new int[][] { new int[] { android.R.attr.state_checked }, new int[0] },
-            new int[] { UiKit.color(this, R.color.gzh_on_primary_container),
+            new int[] { UiKit.accentOnContainer(this),
                         UiKit.color(this, R.color.gzh_on_surface_faint) });
         nav.setItemIconTintList(itemTint);
         nav.setItemTextColor(itemTint);
-        nav.setItemActiveIndicatorColor(UiKit.tint(this, R.color.gzh_primary_container));
-        nav.setItemRippleColor(UiKit.tint(this, R.color.gzh_ripple_primary));
+        nav.setItemActiveIndicatorColor(UiKit.accentContainerTint(this));
+        nav.setItemRippleColor(UiKit.accentRippleTint(this));
 
         Menu menu = nav.getMenu();
         menu.add(Menu.NONE, TAB_HOME, 0, R.string.nav_tab_home).setIcon(R.drawable.ic_gzh_home);
@@ -420,8 +429,9 @@ public class SetupActivity extends Activity {
         UiKit.sectionHeader(about, R.drawable.ic_gzh_info,
             getString(R.string.setup_window_title), false);
         UiKit.supporting(about, getString(R.string.setup_subtitle));
-        UiKit.chip(about, R.drawable.ic_gzh_check, versionLabel(),
-            R.color.gzh_primary, R.color.gzh_surface_container_high);
+        // 0/0 = chip() resolves text through the theme accent on the neutral
+        // surface tint, so the version badge follows the picked accent too.
+        UiKit.chip(about, R.drawable.ic_gzh_check, versionLabel(), 0, 0);
 
         LinearLayout help = UiKit.card(page);
         UiKit.sectionHeader(help, R.drawable.ic_gzh_doc,
@@ -520,6 +530,146 @@ public class SetupActivity extends Activity {
         UiKit.supporting(content, getString(R.string.setup_appearance_status,
             appearanceDisplayName(initial)));
         UiKit.helpText(content, getString(R.string.setup_appearance_help));
+
+        buildAccentSection(content);  // second half of the same card
+    }
+
+    // GeneralsX @feature Android port accent-colors 21/09/2026 The second
+    // half of the Theme card: six accent colours. Each choice is a 32dp dot
+    // showing the accent as BOTH modes render it (daylight half on top,
+    // darkmode half below), the label underneath, and a check mark on the
+    // picked one. Selection applies by folding the accent's ThemeOverlay into
+    // every launcher activity's theme (ThemeHelper.applyAccentTheme) and
+    // recreating -- the same apply-by-recreate flow as the mode row above;
+    // unlike the mode row there is no "system" option because an accent is a
+    // pure look choice with no system equivalent.
+    private void buildAccentSection(LinearLayout cardContent) {
+        UiKit.divider(cardContent);
+
+        TextView accentHeader = new TextView(this);
+        accentHeader.setText(getString(R.string.setup_card_accent));
+        accentHeader.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+            UiKit.dim(this, R.dimen.gzh_text_title));
+        accentHeader.setTypeface(Typeface.DEFAULT_BOLD);
+        accentHeader.setTextColor(UiKit.color(this, R.color.gzh_on_surface));
+        cardContent.addView(accentHeader, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        // The translated help line, styled like UiKit.supporting() (kept
+        // inline rather than via UiKit so this stays inside the same card).
+        TextView accentHelp = new TextView(this);
+        accentHelp.setText(getString(R.string.setup_accent_help));
+        accentHelp.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+            UiKit.dim(this, R.dimen.gzh_text_body));
+        accentHelp.setTextColor(UiKit.color(this, R.color.gzh_on_surface_variant));
+        accentHelp.setLineSpacing(0f, 1.25f);
+        cardContent.addView(accentHelp, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        final int initial = ThemeHelper.getSavedAccent(this);
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        row.setBaselineAligned(false);
+        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowLp.topMargin = UiKit.dim(this, R.dimen.gzh_item_gap);
+        cardContent.addView(row, rowLp);
+
+        for (int i = 0; i < ThemeHelper.ACCENT_COUNT; i++) {
+            row.addView(buildAccentSwatch(i, i == initial),
+                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        }
+        row.setContentDescription(getString(R.string.setup_accent_picker));
+    }
+
+    /** One column of the accent strip: dot (both modes), label, check. */
+    private View buildAccentSwatch(int index, boolean selected) {
+        LinearLayout cell = new LinearLayout(this);
+        cell.setOrientation(LinearLayout.VERTICAL);
+        cell.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        cell.setClickable(true);
+        cell.setFocusable(true);
+        cell.setPadding(UiKit.dp(this, 2), UiKit.dp(this, 2), UiKit.dp(this, 2), UiKit.dp(this, 2));
+        cell.setContentDescription(getString(R.string.setup_accent_option,
+            accentDisplayName(index)));
+        cell.setSelected(selected);
+        if (selected) {
+            android.graphics.drawable.GradientDrawable selection =
+                new android.graphics.drawable.GradientDrawable();
+            selection.setCornerRadius(UiKit.dp(this, 10));
+            selection.setStroke(Math.max(1, UiKit.dp(this, 1)), UiKit.accentColor(this));
+            cell.setBackground(selection);
+        }
+
+        View dot = new View(this);
+        android.graphics.drawable.GradientDrawable dotShape =
+            new android.graphics.drawable.GradientDrawable();
+        dotShape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        dotShape.setColor(ThemeHelper.previewColor(this, index));
+        dotShape.setStroke(Math.max(1, UiKit.dp(this, 1)),
+            UiKit.color(this, R.color.gzh_outline_variant));
+        dot.setBackground(dotShape);
+        LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(
+            UiKit.dp(this, 30), UiKit.dp(this, 30));
+        dotLp.topMargin = UiKit.dp(this, 2);
+        cell.addView(dot, dotLp);
+
+        View half = new View(this);
+        android.graphics.drawable.GradientDrawable halfShape =
+            new android.graphics.drawable.GradientDrawable();
+        halfShape.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
+        halfShape.setCornerRadii(new float[] {
+            0f, 0f, 0f, 0f, UiKit.dp(this, 7), UiKit.dp(this, 7), UiKit.dp(this, 7), UiKit.dp(this, 7)});
+        halfShape.setColor(ThemeHelper.previewColorOtherMode(this, index));
+        half.setBackground(halfShape);
+        LinearLayout.LayoutParams halfLp = new LinearLayout.LayoutParams(
+            UiKit.dp(this, 30), UiKit.dp(this, 7));
+        halfLp.topMargin = -UiKit.dp(this, 4);  // overlaps the dot's bottom
+        cell.addView(half, halfLp);
+
+        TextView label = new TextView(this);
+        label.setText(accentDisplayName(index));
+        label.setTextSize(TypedValue.COMPLEX_UNIT_PX, UiKit.dim(this, R.dimen.gzh_text_caption));
+        label.setTextColor(UiKit.color(this, selected
+            ? R.color.gzh_on_surface : R.color.gzh_on_surface_variant));
+        label.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        label.setMaxLines(2);
+        label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        label.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+        label.setPadding(UiKit.dp(this, 2), UiKit.dp(this, 4), UiKit.dp(this, 2), 0);
+        cell.addView(label, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        if (selected) {
+            android.widget.ImageView check = new android.widget.ImageView(this);
+            check.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_gzh_check));
+            check.setImageTintList(UiKit.accentTint(this));
+            LinearLayout.LayoutParams checkLp = new LinearLayout.LayoutParams(
+                UiKit.dp(this, 14), UiKit.dp(this, 14));
+            checkLp.topMargin = UiKit.dp(this, 2);
+            cell.addView(check, checkLp);
+        }
+
+        cell.setOnClickListener(v -> {
+            if (ThemeHelper.getSavedAccent(this) == index) {
+                return;  // already the current accent: nothing to apply
+            }
+            ThemeHelper.setSavedAccent(this, index);
+            recreate();
+        });
+        return cell;
+    }
+
+    private String accentDisplayName(int accent) {
+        switch (accent) {
+            case ThemeHelper.ACCENT_BLUE:   return getString(R.string.setup_accent_name_blue);
+            case ThemeHelper.ACCENT_GREEN:  return getString(R.string.setup_accent_name_green);
+            case ThemeHelper.ACCENT_TEAL:   return getString(R.string.setup_accent_name_teal);
+            case ThemeHelper.ACCENT_ORANGE: return getString(R.string.setup_accent_name_orange);
+            case ThemeHelper.ACCENT_RED:    return getString(R.string.setup_accent_name_red);
+            default:                        return getString(R.string.setup_accent_name_default);
+        }
     }
 
     private String appearanceDisplayName(int mode) {
@@ -801,10 +951,10 @@ public class SetupActivity extends Activity {
         // The floating bubble would show a bare untranslated number on top of
         // the value the header already spells out properly.
         uiScaleSlider.setLabelBehavior(LabelFormatter.LABEL_GONE);
-        uiScaleSlider.setTrackActiveTintList(UiKit.tint(this, R.color.gzh_primary));
+        uiScaleSlider.setTrackActiveTintList(UiKit.accentTint(this));
         uiScaleSlider.setTrackInactiveTintList(UiKit.tint(this, R.color.gzh_surface_container_highest));
-        uiScaleSlider.setThumbTintList(UiKit.tint(this, R.color.gzh_primary));
-        uiScaleSlider.setHaloTintList(UiKit.tint(this, R.color.gzh_ripple_primary));
+        uiScaleSlider.setThumbTintList(UiKit.accentTint(this));
+        uiScaleSlider.setHaloTintList(UiKit.accentRippleTint(this));
         updateUiScaleLabel(startPercent);
         uiScaleSlider.addOnChangeListener((slider, value, fromUser) -> updateUiScaleLabel((int) value));
         LinearLayout.LayoutParams sliderLp = new LinearLayout.LayoutParams(
@@ -1432,7 +1582,7 @@ public class SetupActivity extends Activity {
             new ContextThemeWrapper(this, R.style.ThemeOverlay_GeneralsZH_OutlinedField);
         TextInputLayout field = new TextInputLayout(fieldContext);
         field.setHint(R.string.setup_card_dxvk_config);
-        field.setBoxStrokeColor(UiKit.color(this, R.color.gzh_primary));
+        field.setBoxStrokeColor(UiKit.accentColor(this));
         field.setHintTextColor(UiKit.tint(this, R.color.gzh_on_surface_variant));
         // Keep the label in its floated position even when the box is empty:
         // loadDxvkConfigIntoEditor() puts the "select a game folder first"

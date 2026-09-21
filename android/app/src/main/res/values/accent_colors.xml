@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GeneralsX @feature Android port accent-colors 21/09/2026 The DAYLIGHT
+         halves of the five alternate accent palettes offered by the launcher's
+         Interface → Accent picker (ThemeHelper). The default — violet, these
+         same roles as gzh_primary/gzh_accent in values/colors.xml — is NOT
+         here: it needs no overlay, the base theme already resolves to it.
+
+         Each palette is five roles: the accent itself (primary), the text/icon
+         colour that sits on it (on_primary), the soft tinted variant used by
+         the nav indicator and text highlights (container), the colour that
+         sits on that (on_container), and the primary at Material's 0x33 ripple
+         alpha (ripple). values-night/accent_colors.xml carries the darkmode
+         halves of exactly these names — keep the two lists in sync. Every
+         palette is tonal-Material-derived so contrast stays legible in both
+         modes; on_primary is always white in daylight, the container is the
+         pastel wash, matching how the default violet palette behaves. -->
+
+    <!-- Blue -->
+    <color name="gzh_accent_blue_primary">#1565C0</color>
+    <color name="gzh_accent_blue_on_primary">#FFFFFF</color>
+    <color name="gzh_accent_blue_container">#D3E4FF</color>
+    <color name="gzh_accent_blue_on_container">#001C38</color>
+    <color name="gzh_accent_blue_ripple">#331565C0</color>
+
+    <!-- Green -->
+    <color name="gzh_accent_green_primary">#386A20</color>
+    <color name="gzh_accent_green_on_primary">#FFFFFF</color>
+    <color name="gzh_accent_green_container">#B7F397</color>
+    <color name="gzh_accent_green_on_container">#072100</color>
+    <color name="gzh_accent_green_ripple">#33386A20</color>
+
+    <!-- Teal -->
+    <color name="gzh_accent_teal_primary">#006A60</color>
+    <color name="gzh_accent_teal_on_primary">#FFFFFF</color>
+    <color name="gzh_accent_teal_container">#9CF2E5</color>
+    <color name="gzh_accent_teal_on_container">#00201C</color>
+    <color name="gzh_accent_teal_ripple">#33006A60</color>
+
+    <!-- Orange -->
+    <color name="gzh_accent_orange_primary">#8B5000</color>
+    <color name="gzh_accent_orange_on_primary">#FFFFFF</color>
+    <color name="gzh_accent_orange_container">#FFDCC2</color>
+    <color name="gzh_accent_orange_on_container">#2E1500</color>
+    <color name="gzh_accent_orange_ripple">#338B5000</color>
+
+    <!-- Red -->
+    <color name="gzh_accent_red_primary">#B3261E</color>
+    <color name="gzh_accent_red_on_primary">#FFFFFF</color>
+    <color name="gzh_accent_red_container">#FFDAD6</color>
+    <color name="gzh_accent_red_on_container">#410002</color>
+    <color name="gzh_accent_red_ripple">#33B3261E</color>
+</resources>

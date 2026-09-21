@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GeneralsX @feature Android port accent-colors 21/09/2026 Per-accent
+         theme overlays for the launcher's Interface -> Accent picker
+         (ThemeHelper.getTheme()/applyThemeOverlay()). Each overlay re-points
+         the Material 3 primary (and the framework legacy slots) at one of the
+         alternate palettes in accent_colors.xml; the night halves of those
+         colours resolve through values-night, so one overlay per accent
+         covers BOTH daylight and darkmode. The default violet needs no
+         overlay — the base Theme.GeneralsZHSettings already resolves to it.
+
+         Every role follows the base theme's own mapping (see values/
+         themes.xml) so an overlayed activity looks like the base theme with
+         a different accent, never like a different theme: colourPrimary /
+         colorOnPrimary / colorPrimaryContainer / colorOnPrimaryContainer get
+         the M3 slots the widgets actually read, the framework's legacy
+         colorAccent/colorPrimaryDark and text highlight follow along, and
+         the two dialog overlays re-declare their primary so dialogs opened
+         from an accented activity match. Ripples do not need an overlay:
+         they are the accent at 0x33 alpha and the code that sets them reads
+         the theme attribute after the overlay is applied. -->
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Blue" parent="">
+        <item name="colorPrimary">@color/gzh_accent_blue_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_blue_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_blue_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_blue_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_blue_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_blue_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_blue_container</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Green" parent="">
+        <item name="colorPrimary">@color/gzh_accent_green_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_green_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_green_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_green_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_green_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_green_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_green_container</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Teal" parent="">
+        <item name="colorPrimary">@color/gzh_accent_teal_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_teal_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_teal_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_teal_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_teal_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_teal_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_teal_container</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Orange" parent="">
+        <item name="colorPrimary">@color/gzh_accent_orange_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_orange_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_orange_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_orange_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_orange_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_orange_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_orange_container</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Red" parent="">
+        <item name="colorPrimary">@color/gzh_accent_red_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_red_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_red_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_red_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_red_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_red_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_red_container</item>
+    </style>
+</resources>

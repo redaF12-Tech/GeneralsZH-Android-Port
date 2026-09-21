@@ -37,6 +37,17 @@
     <string name="setup_appearance_mode_daylight">Светлая</string>
     <string name="setup_appearance_mode_darkmode">Тёмная</string>
     <string name="setup_appearance_help">Меняет цвета этого приложения настроек, просмотрщика логов, обозревателя папок и экрана аккаунта. «Системная» следует оформлению телефона и режиму энергосбережения. Сама игра этого не касается и не меняется никогда.</string>
+    <!-- SetupActivity: Accent picker (second half of the Theme card) -->
+    <string name="setup_card_accent">Цвет акцента</string>
+    <string name="setup_accent_help">Задаёт цвет акцента в этом приложении настроек, просмотрщике журналов, проводнике папок и на экране аккаунта. Работает с любой из тем выше.</string>
+    <string name="setup_accent_picker">Цвет акцента</string>
+    <string name="setup_accent_option">Акцент: %1$s</string>
+    <string name="setup_accent_name_default">Фиолетовый</string>
+    <string name="setup_accent_name_blue">Синий</string>
+    <string name="setup_accent_name_green">Зелёный</string>
+    <string name="setup_accent_name_teal">Бирюзовый</string>
+    <string name="setup_accent_name_orange">Оранжевый</string>
+    <string name="setup_accent_name_red">Красный</string>
     <string name="setup_card_language">Язык</string>
     <string name="setup_language_help">Меняет язык этого приложения настроек, просмотра логов и выбора папки. Текст самой игры — отдельная настройка ниже: выбирается из языков, которые действительно есть в папке игры, либо скачивается. «Как в системе» следует языку телефона, а если его нет в списке — используется английский.</string>
     <string name="setup_language_status">Язык: %1$s</string>

@@ -37,6 +37,17 @@
     <string name="setup_appearance_mode_daylight">Jasny</string>
     <string name="setup_appearance_mode_darkmode">Ciemny</string>
     <string name="setup_appearance_help">Zmienia kolory tej aplikacji ustawień, przeglądarki logów, przeglądarki folderów i ekranu konta. Opcja „Systemowy” uwzględnia motyw telefonu i oszczędzanie baterii. Wygląd samej gry pozostaje bez zmian.</string>
+    <!-- SetupActivity: Accent picker (second half of the Theme card) -->
+    <string name="setup_card_accent">Kolor akcentu</string>
+    <string name="setup_accent_help">Wybiera kolor akcentu w tej aplikacji ustawień, przeglądarce logów, przeglądarce folderów i ekranie konta. Działa z oboma motywami powyżej.</string>
+    <string name="setup_accent_picker">Kolor akcentu</string>
+    <string name="setup_accent_option">Akcent: %1$s</string>
+    <string name="setup_accent_name_default">Fioletowy</string>
+    <string name="setup_accent_name_blue">Niebieski</string>
+    <string name="setup_accent_name_green">Zielony</string>
+    <string name="setup_accent_name_teal">Morski</string>
+    <string name="setup_accent_name_orange">Pomarańczowy</string>
+    <string name="setup_accent_name_red">Czerwony</string>
     <string name="setup_card_language">Język</string>
     <string name="setup_language_help">Zmienia język tej aplikacji ustawień, podglądu dziennika i przeglądarki folderów. Tekst samej gry to osobne ustawienie poniżej — wybierz spośród języków faktycznie obecnych w folderze gry albo pobierz jeden. „Domyślny systemu” podąża za językiem telefonu, a przy braku na liście wraca do angielskiego.</string>
     <string name="setup_language_status">Język: %1$s</string>

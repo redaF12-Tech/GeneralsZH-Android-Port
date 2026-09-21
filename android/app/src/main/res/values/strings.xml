@@ -38,6 +38,18 @@
     <string name="setup_appearance_mode_darkmode">Darkmode</string>
     <string name="setup_appearance_help">Changes the colours of this Settings app, the log viewer, the folder browser and the account screen. “System” follows your phone\'s appearance and battery saver. The game\'s own rendering is a separate thing and never changes.</string>
 
+    <!-- SetupActivity: Accent picker (second half of the Theme card) -->
+    <string name="setup_card_accent">Accent</string>
+    <string name="setup_accent_help">Picks the highlight colour used across this Settings app, the log viewer, the folder browser and the account screen. Works with either theme above.</string>
+    <string name="setup_accent_picker">Accent colour</string>
+    <string name="setup_accent_option">Accent: %1$s</string>
+    <string name="setup_accent_name_default">Violet</string>
+    <string name="setup_accent_name_blue">Blue</string>
+    <string name="setup_accent_name_green">Green</string>
+    <string name="setup_accent_name_teal">Teal</string>
+    <string name="setup_accent_name_orange">Orange</string>
+    <string name="setup_accent_name_red">Red</string>
+
     <!-- SetupActivity: Language card -->
     <string name="setup_card_language">Language</string>
     <string name="setup_language_help">Changes the language of this Settings app, the log viewer and the folder browser. The game\'s own text is a separate setting below — pick it from the languages actually present in your game folder, or download one. “System default” follows your phone\'s language, falling back to English if it is not one of the languages listed.</string>

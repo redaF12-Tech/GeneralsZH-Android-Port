@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GeneralsX @feature Android port accent-colors 21/09/2026 The DARKMODE
+         halves of the five alternate accent palettes offered by the launcher's
+         Interface -> Accent picker (ThemeHelper). The default violet lives in
+         the base values-night/colors.xml and needs no overlay. Names mirror
+         values/accent_colors.xml exactly — keep the two lists in sync.
+
+         Dark roles follow the M3 dark-scheme derivation the default violet
+         palette already uses: primary is the P80 tone (light), on_primary the
+         P10/P20 tone (dark), container the P30, on_container the P90. White
+         would be unreadable on the light primaries in darkmode. -->
+
+    <!-- Blue -->
+    <color name="gzh_accent_blue_primary">#A8C8FF</color>
+    <color name="gzh_accent_blue_on_primary">#00315C</color>
+    <color name="gzh_accent_blue_container">#1E4787</color>
+    <color name="gzh_accent_blue_on_container">#D3E4FF</color>
+    <color name="gzh_accent_blue_ripple">#33A8C8FF</color>
+
+    <!-- Green -->
+    <color name="gzh_accent_green_primary">#9CD67D</color>
+    <color name="gzh_accent_green_on_primary">#0E3900</color>
+    <color name="gzh_accent_green_container">#235104</color>
+    <color name="gzh_accent_green_on_container">#B7F397</color>
+    <color name="gzh_accent_green_ripple">#339CD67D</color>
+
+    <!-- Teal -->
+    <color name="gzh_accent_teal_primary">#80D5C7</color>
+    <color name="gzh_accent_teal_on_primary">#00382F</color>
+    <color name="gzh_accent_teal_container">#005048</color>
+    <color name="gzh_accent_teal_on_container">#9CF2E5</color>
+    <color name="gzh_accent_teal_ripple">#3380D5C7</color>
+
+    <!-- Orange -->
+    <color name="gzh_accent_orange_primary">#FFB86B</color>
+    <color name="gzh_accent_orange_on_primary">#4A2800</color>
+    <color name="gzh_accent_orange_container">#6B3C00</color>
+    <color name="gzh_accent_orange_on_container">#FFDCC2</color>
+    <color name="gzh_accent_orange_ripple">#33FFB86B</color>
+
+    <!-- Red -->
+    <color name="gzh_accent_red_primary">#FFB4AB</color>
+    <color name="gzh_accent_red_on_primary">#690005</color>
+    <color name="gzh_accent_red_container">#93000A</color>
+    <color name="gzh_accent_red_on_container">#FFDAD6</color>
+    <color name="gzh_accent_red_ripple">#33FFB4AB</color>
+</resources>

@@ -97,6 +97,9 @@ public class LogViewerActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // GeneralsX @feature Android port accent-colors 21/09/2026 Accent
+        // before views -- same reasoning as SetupActivity.onCreate().
+        ThemeHelper.applyAccentTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.logviewer_title);
 

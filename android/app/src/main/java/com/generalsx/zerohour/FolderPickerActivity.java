@@ -67,6 +67,9 @@ public class FolderPickerActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // GeneralsX @feature Android port accent-colors 21/09/2026 Accent
+        // before views -- same reasoning as SetupActivity.onCreate().
+        ThemeHelper.applyAccentTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.folderpicker_title);
 
@@ -197,7 +200,7 @@ public class FolderPickerActivity extends Activity {
                 if (icon != null) {
                     int s = UiKit.dim(FolderPickerActivity.this, R.dimen.gzh_icon);
                     icon.setBounds(0, 0, s, s);
-                    icon.setTint(UiKit.color(FolderPickerActivity.this, R.color.gzh_primary));
+                    icon.setTint(UiKit.accentColor(FolderPickerActivity.this));
                     row.setCompoundDrawablesRelative(icon, null, null, null);
                 }
                 return row;
