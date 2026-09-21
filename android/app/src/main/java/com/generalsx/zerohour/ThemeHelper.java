@@ -212,21 +212,23 @@ final class ThemeHelper {
         return UiKit.color(ctx, R.color.gzh_primary);
     }
 
-    /** Swatch dot colour for the picker: the accent as seen in BOTH modes. */
-    static int previewColor(Context ctx, int accent) {
-        boolean night = (ctx.getResources().getConfiguration().uiMode
-            & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        return (night ? ACCENT_PREVIEW_DARK : ACCENT_PREVIEW_DAYLIGHT)[clampAccent(accent)];
+    /**
+     * Swatch dot colour for the picker: the DAYLIGHT half, always.
+     *
+     * GeneralsX @bugfix Android port accent-mode-dialog 21/09/2026 Both
+     * helpers used to key off the CURRENT activity's mode, so the swatch
+     * strip flipped every time Daylight/Darkmode was switched -- each accent
+     * lost its stable identity and the flip read as "the accent did not
+     * survive the theme switch". The picker now shows one fixed pair per
+     * accent (daylight dot, darkmode strip) in both modes, exactly as the
+     * Interface-tab design describes it.
+     */
+    static int previewColor(int accent) {
+        return ACCENT_PREVIEW_DAYLIGHT[clampAccent(accent)];
     }
 
-    /**
-     * Same, but for the mode the current activity is NOT in -- the swatch
-     * strip shows both halves of each accent so the choice is informed no
-     * matter which mode the picker is being read in.
-     */
-    static int previewColorOtherMode(Context ctx, int accent) {
-        boolean night = (ctx.getResources().getConfiguration().uiMode
-            & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-        return (night ? ACCENT_PREVIEW_DAYLIGHT : ACCENT_PREVIEW_DARK)[clampAccent(accent)];
+    /** The DARKMODE half of the swatch pair -- the strip under the dot. */
+    static int previewColorOtherMode(int accent) {
+        return ACCENT_PREVIEW_DARK[clampAccent(accent)];
     }
 }

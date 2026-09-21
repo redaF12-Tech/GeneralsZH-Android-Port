@@ -625,7 +625,7 @@ public class SetupActivity extends Activity {
         android.graphics.drawable.GradientDrawable dotShape =
             new android.graphics.drawable.GradientDrawable();
         dotShape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        dotShape.setColor(ThemeHelper.previewColor(this, index));
+        dotShape.setColor(ThemeHelper.previewColor(index));
         dotShape.setStroke(Math.max(1, UiKit.dp(this, 1)),
             UiKit.outlineVariantColor(this));
         dot.setBackground(dotShape);
@@ -640,7 +640,7 @@ public class SetupActivity extends Activity {
         halfShape.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
         halfShape.setCornerRadii(new float[] {
             0f, 0f, 0f, 0f, UiKit.dp(this, 7), UiKit.dp(this, 7), UiKit.dp(this, 7), UiKit.dp(this, 7)});
-        halfShape.setColor(ThemeHelper.previewColorOtherMode(this, index));
+        halfShape.setColor(ThemeHelper.previewColorOtherMode(index));
         half.setBackground(halfShape);
         LinearLayout.LayoutParams halfLp = new LinearLayout.LayoutParams(
             UiKit.dp(this, 30), UiKit.dp(this, 7));

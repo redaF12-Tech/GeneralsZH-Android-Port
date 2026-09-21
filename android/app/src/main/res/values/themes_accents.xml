@@ -37,6 +37,7 @@
         <item name="colorAccent">@color/gzh_accent_blue_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_blue_on_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_blue_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_blue_container</item>
         <item name="colorSecondary">@color/gzh_accent_blue_secondary</item>
         <item name="colorOnSecondary">@color/gzh_accent_blue_on_secondary</item>
         <item name="colorSecondaryContainer">@color/gzh_accent_blue_secondary_container</item>
@@ -60,6 +61,7 @@
         <item name="colorOnPrimaryContainer">@color/gzh_accent_green_on_container</item>
         <item name="colorAccent">@color/gzh_accent_green_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_green_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_green_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_green_container</item>
         <item name="colorSecondary">@color/gzh_accent_green_secondary</item>
         <item name="colorOnSecondary">@color/gzh_accent_green_on_secondary</item>
@@ -85,6 +87,7 @@
         <item name="colorAccent">@color/gzh_accent_teal_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_teal_on_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_teal_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_teal_container</item>
         <item name="colorSecondary">@color/gzh_accent_teal_secondary</item>
         <item name="colorOnSecondary">@color/gzh_accent_teal_on_secondary</item>
         <item name="colorSecondaryContainer">@color/gzh_accent_teal_secondary_container</item>
@@ -109,6 +112,7 @@
         <item name="colorAccent">@color/gzh_accent_orange_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_orange_on_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_orange_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_orange_container</item>
         <item name="colorSecondary">@color/gzh_accent_orange_secondary</item>
         <item name="colorOnSecondary">@color/gzh_accent_orange_on_secondary</item>
         <item name="colorSecondaryContainer">@color/gzh_accent_orange_secondary_container</item>
@@ -132,6 +136,7 @@
         <item name="colorOnPrimaryContainer">@color/gzh_accent_red_on_container</item>
         <item name="colorAccent">@color/gzh_accent_red_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_red_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_red_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_red_container</item>
         <item name="colorSecondary">@color/gzh_accent_red_secondary</item>
         <item name="colorOnSecondary">@color/gzh_accent_red_on_secondary</item>
