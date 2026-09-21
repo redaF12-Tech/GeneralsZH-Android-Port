@@ -44,7 +44,7 @@
 package com.generalsx.zerohour;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
@@ -111,7 +111,7 @@ public class LogViewerActivity extends Activity {
         // the app having failed to draw anything.
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(UiKit.color(this, R.color.gzh_background));
+        root.setBackgroundColor(UiKit.backgroundColor(this));
 
         UiKit.appBar(root, getString(R.string.setup_window_title),
             getString(R.string.logviewer_title), 0, null, null);
@@ -146,7 +146,7 @@ public class LogViewerActivity extends Activity {
         MaterialCardView logCard = new MaterialCardView(this);
         logCard.setRadius(UiKit.dim(this, R.dimen.gzh_radius_card));
         logCard.setCardElevation(0f);
-        logCard.setCardBackgroundColor(UiKit.color(this, R.color.gzh_surface_container));
+        logCard.setCardBackgroundColor(UiKit.surfaceContainerColor(this));
         logCard.setStrokeWidth(0);
         logCard.setUseCompatPadding(false);
         logCard.setPreventCornerOverlap(false);
@@ -213,7 +213,7 @@ public class LogViewerActivity extends Activity {
     }
 
     private void confirmClearLogs() {
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
             .setTitle(R.string.logviewer_dialog_clear_title)
             .setMessage(R.string.logviewer_dialog_clear_message)
             .setPositiveButton(R.string.logviewer_dialog_clear_confirm, (dialog, which) -> clearLogs())

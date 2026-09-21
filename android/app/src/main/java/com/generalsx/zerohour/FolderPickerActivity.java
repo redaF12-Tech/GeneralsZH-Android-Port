@@ -82,7 +82,7 @@ public class FolderPickerActivity extends Activity {
         // M3 actions at the bottom where a thumb reaches them.
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(UiKit.color(this, R.color.gzh_background));
+        root.setBackgroundColor(UiKit.backgroundColor(this));
 
         UiKit.appBar(root, getString(R.string.setup_window_title),
             getString(R.string.folderpicker_title), 0, null, null);
@@ -106,7 +106,7 @@ public class FolderPickerActivity extends Activity {
 
         listView = new ListView(this);
         listView.setDivider(new android.graphics.drawable.ColorDrawable(
-            UiKit.color(this, R.color.gzh_outline_variant)));
+            UiKit.outlineVariantColor(this)));
         listView.setDividerHeight(Math.max(1, UiKit.dp(this, 1)));
         listView.setPadding(UiKit.dim(this, R.dimen.gzh_item_gap_tight), 0,
             UiKit.dim(this, R.dimen.gzh_item_gap_tight), 0);

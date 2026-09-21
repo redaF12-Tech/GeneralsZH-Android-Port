@@ -42,6 +42,11 @@
         <item name="colorSurfaceVariant">@color/gzh_surface_container_high</item>
         <item name="colorOnSurfaceVariant">@color/gzh_on_surface_variant</item>
         <item name="colorOutline">@color/gzh_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_outline_variant</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_surface_container_highest</item>
         <item name="android:colorBackground">@color/gzh_background</item>
         <item name="colorOnBackground">@color/gzh_on_surface</item>
 
@@ -68,9 +73,15 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">@bool/gzh_light_system_bars</item>
 
-        <!-- Material's own dialogs/alerts follow the same palette. -->
+        <!-- Material's own dialogs follow the same (accented) palette.
+             GeneralsX @bugfix Android port accent-tinted-surfaces 21/09/2026
+             The hand-rolled Theme.GeneralsZH.AlertDialog light/dark pair and
+             its theme wiring were deleted: every launcher dialog builds
+             through MaterialAlertDialogBuilder now (the plain framework
+             builder does NOT inherit an activity's theme overlay), so the
+             Material dialog theme resolves the palette — accented or not —
+             on its own. -->
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.GeneralsZH.Dialog</item>
-        <item name="android:alertDialogTheme">@style/Theme.GeneralsZH.AlertDialog</item>
     </style>
 
     <style name="ThemeOverlay.GeneralsZH.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
@@ -78,22 +89,6 @@
         <item name="colorPrimary">@color/gzh_primary</item>
         <item name="android:textColorPrimary">@color/gzh_on_surface</item>
         <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
-    </style>
-
-    <!-- SetupActivity/LogViewerActivity still build a couple of plain
-         android.app.AlertDialogs (single-choice language / render-backend
-         pickers, "clear logs?"). Give those the same ground and text
-         colours so they don't flash a wrong-contrast Holo box. The DAYLIGHT
-         variant is the default here; values-night/themes.xml re-declares
-         this style with the dark parent (the framework's light and dark
-         alert parents cannot be swapped through an attribute, and the two
-         differ only in that parent). -->
-    <style name="Theme.GeneralsZH.AlertDialog" parent="android:Theme.Material.Light.Dialog.Alert">
-        <item name="android:windowBackground">@drawable/gzh_dialog_background</item>
-        <item name="android:colorAccent">@color/gzh_primary</item>
-        <item name="android:textColorPrimary">@color/gzh_on_surface</item>
-        <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
-        <item name="android:textColorAlertDialogListItem">@color/gzh_on_surface</item>
     </style>
 
     <!-- Applied with a ContextThemeWrapper where an outlined text field is

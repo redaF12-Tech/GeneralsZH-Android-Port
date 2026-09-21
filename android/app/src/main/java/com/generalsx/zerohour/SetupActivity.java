@@ -241,7 +241,7 @@ public class SetupActivity extends Activity {
 
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
-        shell.setBackgroundColor(UiKit.color(this, R.color.gzh_background));
+        shell.setBackgroundColor(UiKit.backgroundColor(this));
         setContentView(shell);
         // Edge-to-edge still handled the same way: pad the outermost view by
         // the system bars/cutout so the app bar clears the status bar and the
@@ -278,7 +278,7 @@ public class SetupActivity extends Activity {
         nav.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_LTR);
         nav.setTextDirection(android.view.View.TEXT_DIRECTION_LOCALE);
 
-        nav.setBackgroundColor(UiKit.color(this, R.color.gzh_surface_container_low));
+        nav.setBackgroundColor(UiKit.surfaceContainerLowColor(this));
         nav.setElevation(0f);
         nav.setLabelVisibilityMode(NavigationBarView.LABEL_VISIBILITY_LABELED);
         nav.setItemIconSize(UiKit.dp(this, 22));
@@ -608,7 +608,7 @@ public class SetupActivity extends Activity {
         dotShape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
         dotShape.setColor(ThemeHelper.previewColor(this, index));
         dotShape.setStroke(Math.max(1, UiKit.dp(this, 1)),
-            UiKit.color(this, R.color.gzh_outline_variant));
+            UiKit.outlineVariantColor(this));
         dot.setBackground(dotShape);
         LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(
             UiKit.dp(this, 30), UiKit.dp(this, 30));
@@ -787,7 +787,7 @@ public class SetupActivity extends Activity {
                 break;
             }
         }
-        new android.app.AlertDialog.Builder(this)
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.setup_game_text_dialog_title)
             .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                 LocaleHelper.setGameTextToken(this, which == 0 ? "" : tokens.get(which - 1));
@@ -813,7 +813,7 @@ public class SetupActivity extends Activity {
                 break;
             }
         }
-        new android.app.AlertDialog.Builder(this)
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.setup_language_dialog_title)
             .setSingleChoiceItems(labels, currentIndex, (dialog, which) -> {
                 LocaleHelper.setSavedLanguageTag(this, tags[which]);
@@ -952,7 +952,7 @@ public class SetupActivity extends Activity {
         // the value the header already spells out properly.
         uiScaleSlider.setLabelBehavior(LabelFormatter.LABEL_GONE);
         uiScaleSlider.setTrackActiveTintList(UiKit.accentTint(this));
-        uiScaleSlider.setTrackInactiveTintList(UiKit.tint(this, R.color.gzh_surface_container_highest));
+        uiScaleSlider.setTrackInactiveTintList(UiKit.surfaceContainerHighestTint(this));
         uiScaleSlider.setThumbTintList(UiKit.accentTint(this));
         uiScaleSlider.setHaloTintList(UiKit.accentRippleTint(this));
         updateUiScaleLabel(startPercent);
@@ -1181,7 +1181,7 @@ public class SetupActivity extends Activity {
         if (!gpu.isEmpty()) {
             UiKit.chip(content, R.drawable.ic_gzh_chip,
                 getString(R.string.setup_render_backend_gpu, gpu),
-                R.color.gzh_on_surface, R.color.gzh_surface_container_high);
+                0, 0);  // theme-accent text on the theme-surface wash
         }
 
         UiKit.helpText(content, getString(R.string.setup_render_backend_help));
@@ -1750,7 +1750,7 @@ public class SetupActivity extends Activity {
 
         diagnosticsNoFolderHint = UiKit.chip(content, R.drawable.ic_gzh_info,
             getString(R.string.setup_diagnostics_no_folder),
-            R.color.gzh_status_warn, R.color.gzh_surface_container_high);
+            R.color.gzh_status_warn, 0);  // warn text on the theme-surface wash
 
         for (int i = 0; i < DIAGNOSTIC_MARKERS.length; i++) {
             if (i > 0) {
@@ -2002,7 +2002,8 @@ public class SetupActivity extends Activity {
     // can be pointed at wherever they already live. Offer that here rather
     // than leaving it to be discovered among the buttons further down.
     private void showFolderProblemDialog(String message, boolean offerBasePicker) {
-        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder b =
+            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.setup_dialog_folder_problem_title)
             .setMessage(message)
             .setPositiveButton(android.R.string.ok, null);

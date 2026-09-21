@@ -1,24 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- GeneralsX @feature Android port accent-colors 21/09/2026 Per-accent
-         theme overlays for the launcher's Interface -> Accent picker
-         (ThemeHelper.getTheme()/applyThemeOverlay()). Each overlay re-points
-         the Material 3 primary (and the framework legacy slots) at one of the
-         alternate palettes in accent_colors.xml; the night halves of those
-         colours resolve through values-night, so one overlay per accent
-         covers BOTH daylight and darkmode. The default violet needs no
-         overlay — the base Theme.GeneralsZHSettings already resolves to it.
+         theme overlays for the launcher's Interface → Accent picker
+         (ThemeHelper.applyAccentTheme()). Each overlay re-points the Material
+         3 primary slots at one of the alternate palettes in
+         accent_colors.xml; the night halves of those colours resolve through
+         values-night, so one overlay per accent covers BOTH daylight and
+         darkmode. The default violet needs no overlay — the base
+         Theme.GeneralsZHSettings already resolves to it.
 
-         Every role follows the base theme's own mapping (see values/
-         themes.xml) so an overlayed activity looks like the base theme with
-         a different accent, never like a different theme: colourPrimary /
-         colorOnPrimary / colorPrimaryContainer / colorOnPrimaryContainer get
-         the M3 slots the widgets actually read, the framework's legacy
-         colorAccent/colorPrimaryDark and text highlight follow along, and
-         the two dialog overlays re-declare their primary so dialogs opened
-         from an accented activity match. Ripples do not need an overlay:
-         they are the accent at 0x33 alpha and the code that sets them reads
-         the theme attribute after the overlay is applied. -->
+         GeneralsX @feature Android port accent-tinted-surfaces 21/09/2026
+         The overlays now also re-point the surface ladder
+         (colorSurface, the four colorSurfaceContainer* tones,
+         android:colorBackground/android:windowBackground,
+         colorSurfaceVariant) plus the outline pair and the secondary pair,
+         so a picked accent recolours the WHOLE interface: pale pastel washes
+         of the hue in daylight, near-black hue washes in darkmode, both from
+         the same overlay through values-night. Text/foreground roles (the
+         on_surface ladder, status colours) and the danger/error pair stay
+         neutral on purpose — they read against every hue, and a red accent
+         must not blur the red danger semantics. The Java surface reads were
+         moved to theme attributes in the same pass (UiKit.surfaceTheme and
+         friends), which is what lets the overlay reach the hand-tinted
+         widgets too.
+
+         Every item follows the base theme's own mapping (see values/
+         themes.xml, which now carries the same attribute set). Ripples are
+         not listed: they are the accent at 0x33 alpha, computed from the
+         theme attribute in code. -->
 
     <style name="ThemeOverlay.GeneralsZH.Accent.Blue" parent="">
         <item name="colorPrimary">@color/gzh_accent_blue_primary</item>
@@ -28,6 +37,20 @@
         <item name="colorAccent">@color/gzh_accent_blue_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_blue_on_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_blue_container</item>
+        <item name="colorSecondary">@color/gzh_accent_blue_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_blue_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_blue_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_blue_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_blue_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_blue_background</item>
+        <item name="colorSurface">@color/gzh_accent_blue_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_blue_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_blue_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_blue_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_blue_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_blue_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_blue_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_blue_outline_variant</item>
     </style>
 
     <style name="ThemeOverlay.GeneralsZH.Accent.Green" parent="">
@@ -38,6 +61,20 @@
         <item name="colorAccent">@color/gzh_accent_green_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_green_on_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_green_container</item>
+        <item name="colorSecondary">@color/gzh_accent_green_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_green_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_green_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_green_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_green_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_green_background</item>
+        <item name="colorSurface">@color/gzh_accent_green_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_green_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_green_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_green_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_green_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_green_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_green_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_green_outline_variant</item>
     </style>
 
     <style name="ThemeOverlay.GeneralsZH.Accent.Teal" parent="">
@@ -48,6 +85,20 @@
         <item name="colorAccent">@color/gzh_accent_teal_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_teal_on_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_teal_container</item>
+        <item name="colorSecondary">@color/gzh_accent_teal_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_teal_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_teal_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_teal_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_teal_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_teal_background</item>
+        <item name="colorSurface">@color/gzh_accent_teal_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_teal_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_teal_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_teal_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_teal_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_teal_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_teal_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_teal_outline_variant</item>
     </style>
 
     <style name="ThemeOverlay.GeneralsZH.Accent.Orange" parent="">
@@ -58,6 +109,20 @@
         <item name="colorAccent">@color/gzh_accent_orange_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_orange_on_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_orange_container</item>
+        <item name="colorSecondary">@color/gzh_accent_orange_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_orange_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_orange_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_orange_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_orange_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_orange_background</item>
+        <item name="colorSurface">@color/gzh_accent_orange_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_orange_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_orange_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_orange_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_orange_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_orange_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_orange_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_orange_outline_variant</item>
     </style>
 
     <style name="ThemeOverlay.GeneralsZH.Accent.Red" parent="">
@@ -68,5 +133,19 @@
         <item name="colorAccent">@color/gzh_accent_red_primary</item>
         <item name="colorPrimaryDark">@color/gzh_accent_red_on_container</item>
         <item name="android:textColorHighlight">@color/gzh_accent_red_container</item>
+        <item name="colorSecondary">@color/gzh_accent_red_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_red_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_red_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_red_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_red_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_red_background</item>
+        <item name="colorSurface">@color/gzh_accent_red_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_red_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_red_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_red_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_red_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_red_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_red_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_red_outline_variant</item>
     </style>
 </resources>

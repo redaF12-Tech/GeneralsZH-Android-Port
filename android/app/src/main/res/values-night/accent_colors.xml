@@ -2,14 +2,20 @@
 <resources>
     <!-- GeneralsX @feature Android port accent-colors 21/09/2026 The DARKMODE
          halves of the five alternate accent palettes offered by the launcher's
-         Interface -> Accent picker (ThemeHelper). The default violet lives in
+         Interface → Accent picker (ThemeHelper). The default violet lives in
          the base values-night/colors.xml and needs no overlay. Names mirror
          values/accent_colors.xml exactly — keep the two lists in sync.
 
-         Dark roles follow the M3 dark-scheme derivation the default violet
-         palette already uses: primary is the P80 tone (light), on_primary the
-         P10/P20 tone (dark), container the P30, on_container the P90. White
-         would be unreadable on the light primaries in darkmode. -->
+         GeneralsX @feature Android port accent-tinted-surfaces 21/09/2026
+         The surface ladder here is the accent's hue as a PALE DARK wash —
+         near-black grounds carrying only a whisper of the hue (the violet
+         dark palette in values-night/colors.xml is the reference: #0E0E11
+         ground, #1A1A21 cards). Surfaces stay dim so the light on-accent
+         tones and the neutral light text roles keep their contrast; the
+         accent's own saturation lives in the primary/container roles, not
+         in the walls. On-secondary follows the dark-mode convention (light
+         on dark container). Dark outline stays near-neutral so hairlines
+         read as structure, not colour. -->
 
     <!-- Blue -->
     <color name="gzh_accent_blue_primary">#A8C8FF</color>
@@ -17,6 +23,18 @@
     <color name="gzh_accent_blue_container">#1E4787</color>
     <color name="gzh_accent_blue_on_container">#D3E4FF</color>
     <color name="gzh_accent_blue_ripple">#33A8C8FF</color>
+    <color name="gzh_accent_blue_background">#0D0F14</color>
+    <color name="gzh_accent_blue_surface">#111319</color>
+    <color name="gzh_accent_blue_container_low">#141720</color>
+    <color name="gzh_accent_blue_container_surface">#181B26</color>
+    <color name="gzh_accent_blue_container_high">#21242F</color>
+    <color name="gzh_accent_blue_container_highest">#2A2D38</color>
+    <color name="gzh_accent_blue_outline">#3B3C48</color>
+    <color name="gzh_accent_blue_outline_variant">#26272F</color>
+    <color name="gzh_accent_blue_secondary">#C4C5D8</color>
+    <color name="gzh_accent_blue_on_secondary">#2D2F44</color>
+    <color name="gzh_accent_blue_secondary_container">#43455C</color>
+    <color name="gzh_accent_blue_on_secondary_container">#E0E1F1</color>
 
     <!-- Green -->
     <color name="gzh_accent_green_primary">#9CD67D</color>
@@ -24,6 +42,18 @@
     <color name="gzh_accent_green_container">#235104</color>
     <color name="gzh_accent_green_on_container">#B7F397</color>
     <color name="gzh_accent_green_ripple">#339CD67D</color>
+    <color name="gzh_accent_green_background">#0F120D</color>
+    <color name="gzh_accent_green_surface">#131712</color>
+    <color name="gzh_accent_green_container_low">#161B14</color>
+    <color name="gzh_accent_green_container_surface">#1A2018</color>
+    <color name="gzh_accent_green_container_high">#232A20</color>
+    <color name="gzh_accent_green_container_highest">#2C3328</color>
+    <color name="gzh_accent_green_outline">#3C4336</color>
+    <color name="gzh_accent_green_outline_variant">#272D22</color>
+    <color name="gzh_accent_green_secondary">#C6CBB8</color>
+    <color name="gzh_accent_green_on_secondary">#303728</color>
+    <color name="gzh_accent_green_secondary_container">#4A5140</color>
+    <color name="gzh_accent_green_on_secondary_container">#E2E6D6</color>
 
     <!-- Teal -->
     <color name="gzh_accent_teal_primary">#80D5C7</color>
@@ -31,6 +61,18 @@
     <color name="gzh_accent_teal_container">#005048</color>
     <color name="gzh_accent_teal_on_container">#9CF2E5</color>
     <color name="gzh_accent_teal_ripple">#3380D5C7</color>
+    <color name="gzh_accent_teal_background">#0C1312</color>
+    <color name="gzh_accent_teal_surface">#101716</color>
+    <color name="gzh_accent_teal_container_low">#131B19</color>
+    <color name="gzh_accent_teal_container_surface">#171F1E</color>
+    <color name="gzh_accent_teal_container_high">#202827</color>
+    <color name="gzh_accent_teal_container_highest">#293130</color>
+    <color name="gzh_accent_teal_outline">#394340</color>
+    <color name="gzh_accent_teal_outline_variant">#242D2A</color>
+    <color name="gzh_accent_teal_secondary">#BECBC8</color>
+    <color name="gzh_accent_teal_on_secondary">#283B37</color>
+    <color name="gzh_accent_teal_secondary_container">#3F524E</color>
+    <color name="gzh_accent_teal_on_secondary_container">#DAE8E4</color>
 
     <!-- Orange -->
     <color name="gzh_accent_orange_primary">#FFB86B</color>
@@ -38,6 +80,18 @@
     <color name="gzh_accent_orange_container">#6B3C00</color>
     <color name="gzh_accent_orange_on_container">#FFDCC2</color>
     <color name="gzh_accent_orange_ripple">#33FFB86B</color>
+    <color name="gzh_accent_orange_background">#14100B</color>
+    <color name="gzh_accent_orange_surface">#18140E</color>
+    <color name="gzh_accent_orange_container_low">#1C170F</color>
+    <color name="gzh_accent_orange_container_surface">#201C13</color>
+    <color name="gzh_accent_orange_container_high">#2A2418</color>
+    <color name="gzh_accent_orange_container_highest">#332C1E</color>
+    <color name="gzh_accent_orange_outline">#473E2F</color>
+    <color name="gzh_accent_orange_outline_variant">#2F291D</color>
+    <color name="gzh_accent_orange_secondary">#D8C3A8</color>
+    <color name="gzh_accent_orange_on_secondary">#3E2F1C</color>
+    <color name="gzh_accent_orange_secondary_container">#57452F</color>
+    <color name="gzh_accent_orange_on_secondary_container">#F5DFC8</color>
 
     <!-- Red -->
     <color name="gzh_accent_red_primary">#FFB4AB</color>
@@ -45,4 +99,16 @@
     <color name="gzh_accent_red_container">#93000A</color>
     <color name="gzh_accent_red_on_container">#FFDAD6</color>
     <color name="gzh_accent_red_ripple">#33FFB4AB</color>
+    <color name="gzh_accent_red_background">#140E0D</color>
+    <color name="gzh_accent_red_surface">#181210</color>
+    <color name="gzh_accent_red_container_low">#1C1514</color>
+    <color name="gzh_accent_red_container_surface">#201917</color>
+    <color name="gzh_accent_red_container_high">#292020</color>
+    <color name="gzh_accent_red_container_highest">#322828</color>
+    <color name="gzh_accent_red_outline">#463734</color>
+    <color name="gzh_accent_red_outline_variant">#2E2320</color>
+    <color name="gzh_accent_red_secondary">#D5B7B3</color>
+    <color name="gzh_accent_red_on_secondary">#3D2A27</color>
+    <color name="gzh_accent_red_secondary_container">#55403C</color>
+    <color name="gzh_accent_red_on_secondary_container">#F5DCD8</color>
 </resources>

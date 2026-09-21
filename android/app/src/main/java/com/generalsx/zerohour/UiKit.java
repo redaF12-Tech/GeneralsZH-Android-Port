@@ -141,6 +141,56 @@ final class UiKit {
         return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_on_primary_container);
     }
 
+    // GeneralsX @feature Android port accent-tinted-surfaces 21/09/2026
+    // Surface and outline reads go through the theme for the same reason the
+    // accent does: the accent overlays re-point the whole surface ladder, so
+    // a resource read would keep painting the default palette inside an
+    // accented activity. Values/themes.xml carries the same attribute set.
+
+    static int surfaceColor(Context c) {
+        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurface);
+        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface);
+    }
+
+    static int backgroundColor(Context c) {
+        int fromTheme = themeColor(c, android.R.attr.colorBackground);
+        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_background);
+    }
+
+    static int surfaceContainerColor(Context c) {
+        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurfaceContainer);
+        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface_container);
+    }
+
+    static int surfaceContainerLowColor(Context c) {
+        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurfaceContainerLow);
+        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface_container_low);
+    }
+
+    static int surfaceContainerHighColor(Context c) {
+        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurfaceContainerHigh);
+        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface_container_high);
+    }
+
+    static int surfaceContainerHighestColor(Context c) {
+        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurfaceContainerHighest);
+        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface_container_highest);
+    }
+
+    static ColorStateList surfaceContainerHighestTint(Context c) {
+        return ColorStateList.valueOf(surfaceContainerHighestColor(c));
+    }
+
+    static int outlineVariantColor(Context c) {
+        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorOutlineVariant);
+        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_outline_variant);
+    }
+
+    static int outlineColor(Context c) {
+        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorOutline);
+        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_outline);
+    }
+
     /** The accent at Material's 0x33 ripple alpha. */
     static int accentRipple(Context c) {
         return (accentColor(c) & 0x00FFFFFF) | 0x33000000;
@@ -248,7 +298,7 @@ final class UiKit {
         button.setContentDescription(description);
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(color(c, R.color.gzh_surface_container_high));
+        bg.setColor(surfaceContainerHighColor(c));
         button.setBackground(bg);
         button.setClickable(true);
         button.setFocusable(true);
@@ -270,7 +320,7 @@ final class UiKit {
         MaterialCardView card = new MaterialCardView(c);
         card.setRadius(dim(c, R.dimen.gzh_radius_card));
         card.setCardElevation(0f);
-        card.setCardBackgroundColor(color(c, R.color.gzh_surface_container));
+        card.setCardBackgroundColor(surfaceContainerColor(c));
         card.setStrokeWidth(0);
         card.setUseCompatPadding(false);
         card.setPreventCornerOverlap(false);
@@ -389,7 +439,7 @@ final class UiKit {
     static View divider(LinearLayout parent) {
         Context c = parent.getContext();
         View line = new View(c);
-        line.setBackgroundColor(color(c, R.color.gzh_outline_variant));
+        line.setBackgroundColor(outlineVariantColor(c));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(c, 1)));
         lp.topMargin = dim(c, R.dimen.gzh_item_gap);
@@ -446,7 +496,7 @@ final class UiKit {
             case BTN_OUTLINE:
                 b.setBackgroundTintList(tint(c, android.R.color.transparent));
                 b.setStrokeWidth(Math.max(1, dp(c, 1)));
-                b.setStrokeColor(tint(c, R.color.gzh_outline, R.color.gzh_outline_variant));
+                b.setStrokeColor(tint(outlineColor(c), outlineVariantColor(c)));
                 b.setTextColor(tint(c, R.color.gzh_on_surface, R.color.gzh_on_surface_disabled));
                 b.setIconTint(tint(accentColor(c), color(c, R.color.gzh_on_surface_disabled)));
                 b.setRippleColor(accentRippleTint(c));
@@ -454,14 +504,14 @@ final class UiKit {
             case BTN_DANGER:
                 b.setBackgroundTintList(tint(c, android.R.color.transparent));
                 b.setStrokeWidth(Math.max(1, dp(c, 1)));
-                b.setStrokeColor(tint(c, R.color.gzh_tertiary_container, R.color.gzh_outline_variant));
+                b.setStrokeColor(tint(color(c, R.color.gzh_tertiary_container), outlineVariantColor(c)));
                 b.setTextColor(tint(c, R.color.gzh_tertiary, R.color.gzh_on_surface_disabled));
                 b.setIconTint(tint(c, R.color.gzh_tertiary, R.color.gzh_on_surface_disabled));
                 b.setRippleColor(tint(c, R.color.gzh_ripple_light));
                 break;
             case BTN_TONAL:
             default:
-                b.setBackgroundTintList(tint(c, R.color.gzh_surface_container_high, R.color.gzh_container_disabled));
+                b.setBackgroundTintList(tint(surfaceContainerHighColor(c), color(c, R.color.gzh_container_disabled)));
                 b.setTextColor(tint(c, R.color.gzh_on_surface, R.color.gzh_on_surface_disabled));
                 b.setIconTint(tint(accentColor(c), color(c, R.color.gzh_on_surface_disabled)));
                 b.setRippleColor(tint(c, R.color.gzh_ripple_light));
@@ -553,7 +603,7 @@ final class UiKit {
             b.setElevation(0f);
             b.setStateListAnimator(null);
             b.setStrokeWidth(Math.max(1, dp(c, 1)));
-            b.setStrokeColor(checkedTint(accentColor(c), color(c, R.color.gzh_outline)));
+            b.setStrokeColor(checkedTint(accentColor(c), outlineColor(c)));
             b.setBackgroundTintList(checkedTint(accentColor(c), color(c, android.R.color.transparent)));
             b.setTextColor(checkedTint(onAccentColor(c), color(c, R.color.gzh_on_surface_variant)));
             b.setRippleColor(accentRippleTint(c));
@@ -659,7 +709,7 @@ final class UiKit {
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
         bg.setCornerRadius(dim(c, R.dimen.gzh_radius_row));
-        bg.setColor(color(c, R.color.gzh_surface_container_high));
+        bg.setColor(surfaceContainerHighColor(c));
         row.setBackground(bg);
         if (onClick != null) {
             row.setClickable(true);
@@ -732,7 +782,7 @@ final class UiKit {
         Context c = parent.getContext();
         int textColor = textColorRes != 0 ? color(c, textColorRes) : accentColor(c);
         int bgColor = backgroundColorRes != 0 ? color(c, backgroundColorRes)
-            : color(c, R.color.gzh_surface_container_high);
+            : surfaceContainerHighColor(c);
         TextView chip = new TextView(c);
         chip.setText(label);
         chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, dim(c, R.dimen.gzh_text_caption));

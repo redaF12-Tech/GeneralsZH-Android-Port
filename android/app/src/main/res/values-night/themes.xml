@@ -6,22 +6,16 @@
          here: every colour it names resolves through the palette split
          (values-night/colors.xml) and the status-bar flag through the bool
          below, so only the resources that genuinely differ per mode are
-         overridden. -->
+         overridden.
+
+         GeneralsX @bugfix Android port accent-tinted-surfaces 21/09/2026
+         The dark variant of Theme.GeneralsZH.AlertDialog that used to stand
+         here is gone with its daylight twin: every launcher dialog builds
+         through MaterialAlertDialogBuilder now, whose theme resolves the
+         palette (default or accent-overlayed) from the overlaid activity
+         theme without a per-mode style pair. -->
 
     <!-- Dark content on the transparent system bars, over the near-black
          ground. -->
     <bool name="gzh_light_system_bars">false</bool>
-
-    <!-- The framework's plain-alert parents cannot be swapped through an
-         attribute, so the dark variant of Theme.GeneralsZH.AlertDialog is
-         re-declared with the dark parent; every other item is identical to
-         the daylight declaration (the colours themselves resolve per mode).
-         Keep the two lists in sync when one changes. -->
-    <style name="Theme.GeneralsZH.AlertDialog" parent="android:Theme.Material.Dialog.Alert">
-        <item name="android:windowBackground">@drawable/gzh_dialog_background</item>
-        <item name="android:colorAccent">@color/gzh_primary</item>
-        <item name="android:textColorPrimary">@color/gzh_on_surface</item>
-        <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
-        <item name="android:textColorAlertDialogListItem">@color/gzh_on_surface</item>
-    </style>
 </resources>
