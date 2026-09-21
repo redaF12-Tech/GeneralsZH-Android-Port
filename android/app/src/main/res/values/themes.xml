@@ -84,9 +84,18 @@
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.GeneralsZH.Dialog</item>
     </style>
 
+    <!-- GeneralsX @bugfix Android port accent-mode-dialog 21/09/2026 This
+         dialog theme carries NO palette pins: re-pointing colorSurface/
+         colorPrimary at the DEFAULT palette resources here overrode every
+         accent overlay the activity had folded in (an overlay applies over
+         the activity theme, but this one re-declared those slots after it),
+         so with an accent picked the dialogs were the only surface in the
+         app still wearing the default violet — loudest right after a
+         Daylight/Darkmode switch. The Material dialog theme inherits all
+         colour roles through the overlaid activity theme instead; only the
+         neutral framework text pins remain, and those resolve correctly in
+         both modes through values-night. -->
     <style name="ThemeOverlay.GeneralsZH.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="colorSurface">@color/gzh_surface_container_high</item>
-        <item name="colorPrimary">@color/gzh_primary</item>
         <item name="android:textColorPrimary">@color/gzh_on_surface</item>
         <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
     </style>
