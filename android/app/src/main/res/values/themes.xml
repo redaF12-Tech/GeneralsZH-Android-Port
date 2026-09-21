@@ -1,18 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- GeneralsX @feature Android port launcher-ui-2026 08/09/2026 The
+    <!-- GeneralsX @feature Android port daylight-darkmode 20/09/2026 The
          launcher's Material 3 theme, applied per-Activity in
          AndroidManifest.xml (Setup / Folder Picker / Log Viewer /
          GeneralsOnline). The application-level Theme.NoTitleBar.Fullscreen
          stays the default for GeneralsZHActivity (the game surface), which
          must never pick any of this up.
 
-         Deliberately Theme.Material3.Dark rather than .DayNight: this
-         launcher has always drawn on a dark ground, its accent palette is
-         designed for one, and committing to it means the contrast of every
-         colour pair below can be reasoned about once instead of twice. -->
-    <style name="Theme.GeneralsZHSettings" parent="Theme.Material3.Dark.NoActionBar">
-        <!-- M3 colour roles -->
+         Was Theme.Material3.Dark — this launcher had always drawn on a dark
+         ground — and is deliberately Theme.Material3.DayNight since the
+         in-app Daylight/Darkmode setting (ThemeHelper, Interface tab):
+         the palette split lives in res/values/colors.xml (daylight) and
+         res/values-night/colors.xml (darkmode, the original set verbatim),
+         and which half resolves is decided by the effective night mode —
+         the system's, or the launcher's own override applied through
+         Configuration.uiMode in every launcher Activity's
+         attachBaseContext(). The DayNight parent also keeps Material's own
+         internal widget shading (switch tracks, slider tracks, ripple
+         bounds) coherent in both halves, which a fixed-Dark parent cannot
+         do once a light palette is in values/. -->
+    <style name="Theme.GeneralsZHSettings" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- M3 colour roles (both palettes define the same names) -->
         <item name="colorPrimary">@color/gzh_primary</item>
         <item name="colorOnPrimary">@color/gzh_on_primary</item>
         <item name="colorPrimaryContainer">@color/gzh_primary_container</item>
@@ -34,6 +42,11 @@
         <item name="colorSurfaceVariant">@color/gzh_surface_container_high</item>
         <item name="colorOnSurfaceVariant">@color/gzh_on_surface_variant</item>
         <item name="colorOutline">@color/gzh_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_outline_variant</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_surface_container_highest</item>
         <item name="android:colorBackground">@color/gzh_background</item>
         <item name="colorOnBackground">@color/gzh_on_surface</item>
 
@@ -51,14 +64,24 @@
         <!-- Edge-to-edge: targetSdk 35 draws behind the bars anyway, and
              InsetUtil.applySafeInsets() pads the content out from under
              them. Painting the bars transparent lets the page colour run
-             all the way to the physical edges instead of banding. -->
+             all the way to the physical edges instead of banding. The
+             light/dark content-colour flag resolves through a bool resource
+             rather than being hard-coded here, so the daylight palette gets
+             dark status-bar icons and the darkmode palette light ones
+             without re-declaring this whole style per mode. -->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">@bool/gzh_light_system_bars</item>
 
-        <!-- Material's own dialogs/alerts follow the same palette. -->
+        <!-- Material's own dialogs follow the same (accented) palette.
+             GeneralsX @bugfix Android port accent-tinted-surfaces 21/09/2026
+             The hand-rolled Theme.GeneralsZH.AlertDialog light/dark pair and
+             its theme wiring were deleted: every launcher dialog builds
+             through MaterialAlertDialogBuilder now (the plain framework
+             builder does NOT inherit an activity's theme overlay), so the
+             Material dialog theme resolves the palette — accented or not —
+             on its own. -->
         <item name="materialAlertDialogTheme">@style/ThemeOverlay.GeneralsZH.Dialog</item>
-        <item name="android:alertDialogTheme">@style/Theme.GeneralsZH.AlertDialog</item>
     </style>
 
     <style name="ThemeOverlay.GeneralsZH.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
@@ -68,19 +91,6 @@
         <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
     </style>
 
-    <!-- SetupActivity/LogViewerActivity still build a couple of plain
-         android.app.AlertDialogs (single-choice language / render-backend
-         pickers, "clear logs?"). Give those the same ground and text
-         colours so they don't flash a light-grey Holo box on a near-black
-         screen. -->
-    <style name="Theme.GeneralsZH.AlertDialog" parent="android:Theme.Material.Dialog.Alert">
-        <item name="android:windowBackground">@drawable/gzh_dialog_background</item>
-        <item name="android:colorAccent">@color/gzh_primary</item>
-        <item name="android:textColorPrimary">@color/gzh_on_surface</item>
-        <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
-        <item name="android:textColorAlertDialogListItem">@color/gzh_on_surface</item>
-    </style>
-
     <!-- Applied with a ContextThemeWrapper where an outlined text field is
          wanted: TextInputLayout resolves its style from ?attr/textInputStyle,
          so swapping that attribute is the way to pick OutlinedBox for a
@@ -88,4 +98,8 @@
     <style name="ThemeOverlay.GeneralsZH.OutlinedField" parent="">
         <item name="textInputStyle">@style/Widget.Material3.TextInputLayout.OutlinedBox</item>
     </style>
+
+    <!-- Status-bar signal for the framework flag above: true in daylight,
+         false in darkmode, flipped by values-night/themes.xml. -->
+    <bool name="gzh_light_system_bars">true</bool>
 </resources>

@@ -30,6 +30,24 @@
     <string name="setup_status_logs_note">Логи краху/рушія зберігаються у приватному сховищі застосунку і доступні лише через кнопку «Переглянути логи» вище — Android навмисно приховує їх від звичайних файлових менеджерів (це стандартна пісочниця Android, а не особливість цього застосунку).</string>
 
     <!-- SetupActivity: Language card -->
+    <!-- SetupActivity: Appearance card (Daylight/Darkmode) -->
+    <string name="setup_card_appearance">Тема</string>
+    <string name="setup_appearance_status">Тема: %1$s</string>
+    <string name="setup_appearance_mode_system">Як у системі</string>
+    <string name="setup_appearance_mode_daylight">Світла</string>
+    <string name="setup_appearance_mode_darkmode">Темна</string>
+    <string name="setup_appearance_help">Змінює кольори цього застосунку налаштувань, переглядача журналів, оглядача папок і екрана облікового запису. «Як у системі» слідує оформленню телефону та режиму енергозбереження. Сама гра цього не стосується і не змінюється.</string>
+    <!-- SetupActivity: Accent picker (second half of the Theme card) -->
+    <string name="setup_card_accent">Колір акценту</string>
+    <string name="setup_accent_help">Задає колір акценту в цьому застосунку налаштувань, переглядачі журналів, провіднику папок і на екрані облікового запису. Працює з будь-якою з тем вище.</string>
+    <string name="setup_accent_picker">Колір акценту</string>
+    <string name="setup_accent_option">Акцент: %1$s</string>
+    <string name="setup_accent_name_default">Фіолетовий</string>
+    <string name="setup_accent_name_blue">Синій</string>
+    <string name="setup_accent_name_green">Зелений</string>
+    <string name="setup_accent_name_teal">Бірюзовий</string>
+    <string name="setup_accent_name_orange">Помаранчевий</string>
+    <string name="setup_accent_name_red">Червоний</string>
     <string name="setup_card_language">Мова</string>
     <string name="setup_language_help">Змінює мову цього застосунку налаштувань, перегляду журналів і вибору теки. Текст самої гри — окреме налаштування нижче: обирається з мов, які справді є в теці гри, або завантажується. «Як у системі» слідує мові телефона, а якщо її немає в списку — використовується англійська.</string>
     <string name="setup_language_status">Мова: %1$s</string>

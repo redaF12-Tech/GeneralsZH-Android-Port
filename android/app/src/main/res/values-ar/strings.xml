@@ -30,6 +30,24 @@
     <string name="setup_status_logs_note">سجلات الأعطال/المحرك مخزنة في التخزين الخاص بالتطبيق ولا يمكن الوصول إليها إلا عبر \"عرض السجلات\" أعلاه — يقوم أندرويد بإخفائها عمدًا عن مديري الملفات العاديين (هذا هو العزل المعتاد في أندرويد، وليس خاصية مميزة لهذا التطبيق).</string>
 
     <!-- SetupActivity: Language card -->
+    <!-- SetupActivity: Appearance card (Daylight/Darkmode) -->
+    <string name="setup_card_appearance">المظهر</string>
+    <string name="setup_appearance_status">المظهر: %1$s</string>
+    <string name="setup_appearance_mode_system">كما في النظام</string>
+    <string name="setup_appearance_mode_daylight">نهاري</string>
+    <string name="setup_appearance_mode_darkmode">ليلي</string>
+    <string name="setup_appearance_help">يغيّر ألوان تطبيق الإعدادات هذا وعارض السجلات ومتصفّح المجلدات وشاشة الحساب. «كما في النظام» يتبع مظهر الهاتف ووضع توفير الطاقة. عرض اللعبة نفسه شأن منفصل ولا يتغيّر أبداً.</string>
+    <!-- SetupActivity: Accent picker (second half of the Theme card) -->
+    <string name="setup_card_accent">لون التمييز</string>
+    <string name="setup_accent_help">يختار لون التمييز المستخدم في تطبيق الإعدادات هذا وعارض السجلات ومتصفّح المجلدات وشاشة الحساب. يعمل مع أيٍّ من النمطين أعلاه.</string>
+    <string name="setup_accent_picker">لون التمييز</string>
+    <string name="setup_accent_option">التمييز: %1$s</string>
+    <string name="setup_accent_name_default">بنفسجي</string>
+    <string name="setup_accent_name_blue">أزرق</string>
+    <string name="setup_accent_name_green">أخضر</string>
+    <string name="setup_accent_name_teal">فيروزي</string>
+    <string name="setup_accent_name_orange">برتقالي</string>
+    <string name="setup_accent_name_red">أحمر</string>
     <string name="setup_card_language">اللغة</string>
     <string name="setup_language_help">يغيّر لغة تطبيق الإعدادات هذا وعارض السجلات ومتصفّح المجلدات. نصوص اللعبة نفسها إعداد منفصل بالأسفل — اخترها من اللغات الموجودة فعلاً في مجلد اللعبة، أو نزّل واحدة. «افتراضي النظام» يتبع لغة الهاتف، ويعود إلى الإنجليزية إن لم تكن ضمن القائمة.</string>
     <string name="setup_language_status">اللغة: %1$s</string>

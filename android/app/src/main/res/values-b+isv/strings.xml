@@ -30,6 +30,24 @@
     <string name="setup_status_logs_note">Logi padu/jadra sut v privatnom skladišču aplikacije i dostupni tolko čerez \"Prokazati logi\" vyše — Android namerno skryva jih od normalnyh upravitelev datotek (to jest standardny Android peskovnik, ne osobitost sej aplikacije).</string>
 
     <!-- SetupActivity: Language card -->
+    <!-- SetupActivity: Appearance card (Daylight/Darkmode) -->
+    <string name="setup_card_appearance">Izglejd</string>
+    <string name="setup_appearance_status">Izglejd: %1$s</string>
+    <string name="setup_appearance_mode_system">Sistemny</string>
+    <string name="setup_appearance_mode_daylight">Dnevny</string>
+    <string name="setup_appearance_mode_darkmode">Nočny</string>
+    <string name="setup_appearance_help">Měnja barvy togo nastavjenja, prěgledača logov, prěgledača papok i ekrana konta. „Sistemny“ slěduje izglejadu telefona i režimu ščeđenja baterije. Samoj igry to ne dotykače i nikogda ne měnja se.</string>
+    <!-- SetupActivity: Accent picker (second half of the Theme card) -->
+    <string name="setup_card_accent">Barva akcenta</string>
+    <string name="setup_accent_help">Izbiraje barvu akcenta v tutonej aplikaciji nastavok, v pregledniku dnevnikov, v oglědani papok i na ekranu konto. Rabotaje s oběma temami vyše.</string>
+    <string name="setup_accent_picker">Barva akcenta</string>
+    <string name="setup_accent_option">Akcent: %1$s</string>
+    <string name="setup_accent_name_default">Fioletovy</string>
+    <string name="setup_accent_name_blue">Modry</string>
+    <string name="setup_accent_name_green">Zeleny</string>
+    <string name="setup_accent_name_teal">Biruzy</string>
+    <string name="setup_accent_name_orange">Oranževy</string>
+    <string name="setup_accent_name_red">Crveny</string>
     <string name="setup_card_language">Jezyk</string>
     <string name="setup_language_help">Měnjaje jezyk tutoj aplikacije nastrojenj, pregleda dnevnikov i izbora papky. Tekst samoj igry jest odděljeno nastrojenje nizše — izberite iz jezykov, ktore vistinno sut v papkě igry, ili sņimite jedin. «Kako v sistemě» slěduje jezyku telefona, a ako jego ne jest v spisku — jest upotrěbjeny anglijsky.</string>
     <string name="setup_language_status">Jezyk: %1$s</string>

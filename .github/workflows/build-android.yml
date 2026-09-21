@@ -278,7 +278,26 @@ jobs:
       # and run #2 sailed straight past a fatal configure error into "success"
       # — exactly the pipeline-masking failure the porting playbook warns
       # about. The Verify step caught it; now the failing step reports itself.
+      # CMake configure cache
+      #
+      # The configure result is cached independently from ccache/vcpkg/DXVK.
+      # When all CMake/toolchain/dependency inputs are unchanged, the exact
+      # configured build tree is restored and the expensive `cmake --preset`
+      # step is skipped completely.
+      - name: Restore CMake configure cache
+        id: cache-cmake-configure
+        uses: actions/cache/restore@v5
+        with:
+          path: |
+            build/${{ env.PRESET }}/CMakeCache.txt
+            build/${{ env.PRESET }}/CMakeFiles
+            build/${{ env.PRESET }}/build.ninja
+            build/${{ env.PRESET }}/rules.ninja
+            build/${{ env.PRESET }}/cmake_install.cmake
+          key: cmake-configure-android-${{ runner.os }}-${{ env.PRESET }}-${{ env.NDK_VERSION }}-${{ env.VCPKG_COMMIT }}-${{ env.DXVK_REF }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'vcpkg.json', 'vcpkg-lock.json', 'cmake/triplets/arm64-android.cmake', 'GeneralsMD/**/CMakeLists.txt', 'Core/**/CMakeLists.txt', 'Dependencies/**/CMakeLists.txt', 'Patches/**') }}
+
       - name: Configure CMake (Android)
+        if: steps.cache-cmake-configure.outputs.cache-hit != 'true'
         run: |
           set -o pipefail
           mkdir -p logs
@@ -287,6 +306,43 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DANDROID_CI_BUILD_NUMBER=${{ github.run_number }} \
             2>&1 | tee logs/configure_android.log
+
+      - name: Verify CMake configure tree
+        if: always()
+        run: |
+          set -euo pipefail
+
+          BUILD_DIR="build/${{ env.PRESET }}"
+
+          if [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; then
+            echo "::error::CMakeCache.txt is missing"
+            exit 1
+          fi
+
+          if [ ! -f "$BUILD_DIR/build.ninja" ]; then
+            echo "::error::build.ninja is missing"
+            exit 1
+          fi
+
+          if [ ! -d "$BUILD_DIR/CMakeFiles" ]; then
+            echo "::error::CMakeFiles directory is missing"
+            exit 1
+          fi
+
+          echo "CMake configure tree is valid."
+          echo "Cache hit: ${{ steps.cache-cmake-configure.outputs.cache-hit }}"
+
+      - name: Save CMake configure cache
+        if: always() && steps.cache-cmake-configure.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            build/${{ env.PRESET }}/CMakeCache.txt
+            build/${{ env.PRESET }}/CMakeFiles
+            build/${{ env.PRESET }}/build.ninja
+            build/${{ env.PRESET }}/rules.ninja
+            build/${{ env.PRESET }}/cmake_install.cmake
+          key: cmake-configure-android-${{ runner.os }}-${{ env.PRESET }}-${{ env.NDK_VERSION }}-${{ env.VCPKG_COMMIT }}-${{ env.DXVK_REF }}-${{ hashFiles('CMakeLists.txt', 'CMakePresets.json', 'cmake/**', 'vcpkg.json', 'vcpkg-lock.json', 'cmake/triplets/arm64-android.cmake', 'GeneralsMD/**/CMakeLists.txt', 'Core/**/CMakeLists.txt', 'Dependencies/**/CMakeLists.txt', 'Patches/**') }}
 
       - name: Build z_generals (libmain.so) + DXVK d3d8/d3d9
         run: |

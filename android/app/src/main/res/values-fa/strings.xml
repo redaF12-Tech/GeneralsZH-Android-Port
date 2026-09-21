@@ -30,6 +30,24 @@
     <string name="setup_status_logs_note">گزارش‌های خرابی/موتور در حافظه خصوصی این برنامه ذخیره می‌شوند و فقط از طریق «مشاهده گزارش‌ها» در بالا قابل دسترسی هستند — اندروید عمداً آن‌ها را از مدیرهای فایل معمولی پنهان می‌کند (این رفتار استاندارد سندباکس اندروید است، نه ویژگی خاص این برنامه).</string>
 
     <!-- SetupActivity: Language card -->
+    <!-- SetupActivity: Appearance card (Daylight/Darkmode) -->
+    <string name="setup_card_appearance">پوسته</string>
+    <string name="setup_appearance_status">پوسته: %1$s</string>
+    <string name="setup_appearance_mode_system">مثل سیستم</string>
+    <string name="setup_appearance_mode_daylight">روشن</string>
+    <string name="setup_appearance_mode_darkmode">تاریک</string>
+    <string name="setup_appearance_help">رنگ‌های این برنامهٔ تنظیمات، نمایشگر لاگ، مرورگر پوشه و صفحهٔ حساب را عوض می‌کند. «مثل سیستم» از ظاهر گوشی و حالت ذخیرهٔ باتری پیروی می‌کند. نمایش خود بازی جدا است و هرگز تغییر نمی‌کند.</string>
+    <!-- SetupActivity: Accent picker (second half of the Theme card) -->
+    <string name="setup_card_accent">رنگ تأکیدی</string>
+    <string name="setup_accent_help">رنگ تأکیدی این برنامهٔ تنظیمات، نمایشگر گزارش‌ها، مرورگر پوشه‌ها و صفحهٔ حساب را انتخاب می‌کند. با هر دو پوستهٔ بالا کار می‌کند.</string>
+    <string name="setup_accent_picker">رنگ تأکیدی</string>
+    <string name="setup_accent_option">تأکیدی: %1$s</string>
+    <string name="setup_accent_name_default">بنفش</string>
+    <string name="setup_accent_name_blue">آبی</string>
+    <string name="setup_accent_name_green">سبز</string>
+    <string name="setup_accent_name_teal">فیروزه‌ای</string>
+    <string name="setup_accent_name_orange">نارنجی</string>
+    <string name="setup_accent_name_red">قرمز</string>
     <string name="setup_card_language">زبان</string>
     <string name="setup_language_help">زبان این برنامهٔ تنظیمات، نمایشگر گزارش‌ها و مرورگر پوشه را تغییر می‌دهد. متن خود بازی تنظیمی جداگانه در پایین است — از میان زبان‌هایی که واقعاً در پوشهٔ بازی هستند انتخاب کنید یا یکی دانلود کنید. «پیش‌فرض سامانه» از زبان گوشی پیروی می‌کند و اگر در فهرست نباشد به انگلیسی بازمی‌گردد.</string>
     <string name="setup_language_status">زبان: %1$s</string>
