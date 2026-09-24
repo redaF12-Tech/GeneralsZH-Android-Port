@@ -358,6 +358,7 @@ public class SetupActivity extends Activity {
                 buildAppearanceSection(page);
                 buildLanguageSection(page);
                 buildUiScaleSection(page);
+                buildTouchControlsSection(page);
                 break;
             case TAB_TOOLS:
                 buildLogsSection(page);
@@ -940,6 +941,22 @@ public class SetupActivity extends Activity {
     // actually reads (see SDL3Main.cpp: HOME=<internal storage>, so the file
     // is <filesDir>/.local/share/GeneralsX/GeneralsZH/Options.ini) -- no need
     // to wait for the game to visit its own Options menu first.
+    // GeneralsX @feature Android touch controls: the v123 Configure Controls
+    // entry is adapted to the current Material/UiKit launcher. The editor
+    // remains a separate landscape activity so the existing launcher stays intact.
+    private void buildTouchControlsSection(LinearLayout root) {
+        LinearLayout content = UiKit.card(root);
+        UiKit.sectionHeader(content, R.drawable.ic_gzh_sliders,
+            getString(R.string.setup_card_touch_controls), false);
+        UiKit.helpText(content, getString(R.string.setup_touch_controls_help));
+        UiKit.button(content, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_sliders,
+            getString(R.string.setup_button_touch_controls), this::onTouchControls);
+    }
+
+    private void onTouchControls() {
+        startActivity(new Intent(this, TouchControlsActivity.class));
+    }
+
     private Slider uiScaleSlider;
     private TextView uiScaleLabel;
 
