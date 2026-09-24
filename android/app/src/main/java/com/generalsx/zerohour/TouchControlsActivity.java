@@ -462,8 +462,8 @@ public class TouchControlsActivity extends Activity {
             int alpha = Math.round(255f * config.buttonOpacity);
             for (int i = 0; i < config.buttons.size(); ++i) {
                 TouchControlConfig.ButtonSpec spec = config.buttons.get(i);
-                float width = dp(spec.widthDp) * config.buttonScale;
-                float height = dp(spec.heightDp) * config.buttonScale;
+                float width = spec.widthDp * config.buttonScale * getResources().getDisplayMetrics().density;
+                float height = spec.heightDp * config.buttonScale * getResources().getDisplayMetrics().density;
                 if (spec.shape == TouchControlConfig.SHAPE_SQUARE || spec.shape == TouchControlConfig.SHAPE_CIRCLE) {
                     float side = Math.min(width, height); width = height = side;
                 }
