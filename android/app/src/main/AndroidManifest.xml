@@ -130,7 +130,7 @@
             android:name=".TouchControlsActivity"
             android:exported="false"
             android:screenOrientation="landscape"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:theme="@style/Theme.GeneralsZHSettings"
             android:configChanges="orientation|screenSize|keyboardHidden" />
 
         <activity
