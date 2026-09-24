@@ -358,7 +358,6 @@ public class SetupActivity extends Activity {
                 buildAppearanceSection(page);
                 buildLanguageSection(page);
                 buildUiScaleSection(page);
-                buildTouchControlsSection(page);
                 break;
             case TAB_TOOLS:
                 buildLogsSection(page);
@@ -399,6 +398,11 @@ public class SetupActivity extends Activity {
         // The one thing this app exists to do, as the first thing on it.
         UiKit.button(page, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
             getString(R.string.setup_button_launch_game), this::onLaunchGame);
+
+        // GeneralsX @feature Android touch controls: Configure Controls is a
+        // primary launcher action, so keep it on Home rather than burying it
+        // under the Interface tab.
+        buildTouchControlsSection(page);
 
         LinearLayout folder = UiKit.card(page);
         UiKit.sectionHeader(folder, R.drawable.ic_gzh_folder,

@@ -52,7 +52,11 @@ public class TouchControlsActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(LocaleHelper.wrap(newBase));
+        // This screen uses AppCompat widgets (SwitchCompat). Give it the same
+        // launcher theme/context pipeline as SetupActivity; using the raw
+        // platform fullscreen theme causes an immediate crash when the first
+        // AppCompat widget is inflated on some devices.
+        super.attachBaseContext(ThemeHelper.wrap(LocaleHelper.wrap(newBase)));
     }
 
     @Override
@@ -60,6 +64,7 @@ public class TouchControlsActivity extends Activity {
         super.onCreate(savedInstanceState);
         // GeneralsX @feature Codex 28/08/2026 Allow either landscape rotation for cabled controllers.
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+        ThemeHelper.applyAccentTheme(this);
         setTitle(R.string.touch_editor_title);
         config = TouchControlConfig.load(this);
         buildUi();
