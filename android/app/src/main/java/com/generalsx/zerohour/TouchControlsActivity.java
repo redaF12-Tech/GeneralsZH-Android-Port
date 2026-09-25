@@ -15,6 +15,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.View;
@@ -22,6 +23,8 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Spinner;
@@ -272,9 +275,29 @@ public class TouchControlsActivity extends Activity {
         });
 
         EditText fillColor = colorField("Fill color", TouchControlConfig.colorToString(spec.fillColor));
-        EditText borderColor = colorField("Border color", TouchControlConfig.colorToString(spec.borderColor));
-        EditText textColor = colorField("Text color", TouchControlConfig.colorToString(spec.textColor));
-        form.addView(fillColor); form.addView(borderColor); form.addView(textColor);
+        EditText borderColor = colorField(getString(R.string.touch_border_color), TouchControlConfig.colorToString(ThemeHelper.accentColor(this)));
+        borderColor.setEnabled(false);
+        borderColor.setHint(R.string.touch_border_color_help);
+        form.addView(fillColor);
+        form.addView(borderColor);
+
+        // Text color is selected visually; manual #RRGGBB/#AARRGGBB entry is intentionally removed.
+        final int[] selectedTextColor = {spec.textColor};
+        LinearLayout textColorRow = new LinearLayout(this);
+        textColorRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        TextView textColorLabel = new TextView(this);
+        textColorLabel.setText(R.string.touch_text_color);
+        textColorLabel.setPadding(0, dp(8), dp(12), dp(8));
+        textColorRow.addView(textColorLabel, new LinearLayout.LayoutParams(0,
+            LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        ImageButton textColorPicker = new ImageButton(this);
+        textColorPicker.setContentDescription(getString(R.string.touch_text_color_picker));
+        textColorPicker.setImageResource(android.R.drawable.ic_menu_edit);
+        textColorPicker.setPadding(dp(8), dp(8), dp(8), dp(8));
+        updateColorPickerIcon(textColorPicker, selectedTextColor[0]);
+        textColorPicker.setOnClickListener(v -> showTextColorPicker(textColorPicker, selectedTextColor));
+        textColorRow.addView(textColorPicker, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        form.addView(textColorRow);
 
         SeekBar.OnSeekBarChangeListener sizeListener = new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
@@ -321,8 +344,9 @@ public class TouchControlsActivity extends Activity {
                     spec.heightDp = spec.widthDp;
                 }
                 spec.fillColor = parseColorField(fillColor, spec.fillColor);
-                spec.borderColor = parseColorField(borderColor, spec.borderColor);
-                spec.textColor = parseColorField(textColor, spec.textColor);
+                // Border color is theme-controlled; keep the stored field for profile compatibility.
+                spec.borderColor = ThemeHelper.accentColor(this);
+                spec.textColor = selectedTextColor[0];
                 editor.invalidate();
                 refreshLabels();
             })
@@ -340,6 +364,51 @@ public class TouchControlsActivity extends Activity {
     private int parseColorField(EditText field, int fallback) {
         try { return Color.parseColor(field.getText().toString().trim()); }
         catch (Exception ignored) { return fallback; }
+    }
+
+    private void updateColorPickerIcon(ImageButton button, int color) {
+        GradientDrawable swatch = new GradientDrawable();
+        swatch.setShape(GradientDrawable.OVAL);
+        swatch.setColor(color);
+        swatch.setStroke(dp(2), ThemeHelper.accentColor(this));
+        button.setBackground(swatch);
+    }
+
+    private void showTextColorPicker(ImageButton button, int[] selectedColor) {
+        final int[] palette = {
+            Color.WHITE, Color.BLACK, Color.LTGRAY, Color.DKGRAY,
+            Color.RED, Color.rgb(255, 152, 0), Color.YELLOW,
+            Color.GREEN, Color.CYAN, Color.BLUE, Color.MAGENTA,
+            ThemeHelper.accentColor(this)
+        };
+        final int[] pending = {selectedColor[0]};
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(4);
+        grid.setPadding(dp(16), dp(12), dp(16), dp(4));
+        for (int color : palette) {
+            ImageButton swatch = new ImageButton(this);
+            swatch.setContentDescription(String.format("#%06X", color & 0xFFFFFF));
+            swatch.setPadding(dp(6), dp(6), dp(6), dp(6));
+            updateColorPickerIcon(swatch, color);
+            swatch.setOnClickListener(v -> {
+                pending[0] = color;
+                button.setBackground(((ImageButton) v).getBackground());
+            });
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = dp(52); lp.height = dp(52);
+            lp.setMargins(dp(4), dp(4), dp(4), dp(4));
+            grid.addView(swatch, lp);
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+            .setTitle(R.string.touch_text_color_picker)
+            .setView(grid)
+            .setNegativeButton(R.string.common_cancel, null)
+            .setPositiveButton(R.string.touch_apply_button, (d, which) -> {
+                selectedColor[0] = pending[0];
+                updateColorPickerIcon(button, pending[0]);
+            })
+            .create();
+        dialog.show();
     }
 
     private void resetDefaults() {
@@ -483,7 +552,7 @@ public class TouchControlsActivity extends Activity {
                 drawShape(canvas, rect, spec, paint);
                 paint.setStyle(Paint.Style.STROKE);
                 paint.setStrokeWidth(i == selectedIndex ? dp(3) : dp(1));
-                paint.setColor(spec.borderColor); paint.setAlpha(255);
+                paint.setColor(ThemeHelper.accentColor(TouchControlsActivity.this)); paint.setAlpha(255);
                 drawShape(canvas, rect, spec, paint);
                 text.setColor(spec.textColor);
                 text.setTextSize(dp(spec.label.length() > 5 ? 12 : 15) * config.buttonScale);

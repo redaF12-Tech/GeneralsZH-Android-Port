@@ -34,6 +34,7 @@ final class HotkeyOverlayView extends View {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final float scale;
     private final float opacity;
+    private final int accentColor;
 
     private int activeButton = -1;
     private int activePointer = -1;
@@ -43,13 +44,14 @@ final class HotkeyOverlayView extends View {
         buttons.addAll(TouchControlConfig.copyButtons(config.buttons));
         scale = config.buttonScale;
         opacity = config.buttonOpacity;
+        accentColor = ThemeHelper.accentColor(activity);
         setClickable(false);
         setFocusable(false);
         setWillNotDraw(false);
 
         borderPaint.setStyle(Paint.Style.STROKE);
         borderPaint.setStrokeWidth(dp(1.5f));
-        borderPaint.setColor(Color.rgb(220, 181, 86));
+        borderPaint.setColor(accentColor);
         textPaint.setColor(Color.WHITE);
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setFakeBoldText(true);
@@ -77,7 +79,9 @@ final class HotkeyOverlayView extends View {
             boolean pressed = i == activeButton;
             fillPaint.setColor(pressed ? lighten(spec.fillColor, 0.16f) : spec.fillColor);
             fillPaint.setAlpha(pressed ? Math.min(255, baseAlpha + 45) : baseAlpha);
-            borderPaint.setColor(spec.borderColor);
+            // The interface accent is the single source of truth for the button frame.
+            // Keep fill/text colors configurable, but make the frame follow the app theme.
+            borderPaint.setColor(accentColor);
             borderPaint.setAlpha(pressed ? 255 : Math.max(120, baseAlpha));
             drawShape(canvas, rect, spec, fillPaint);
             drawShape(canvas, rect, spec, borderPaint);
