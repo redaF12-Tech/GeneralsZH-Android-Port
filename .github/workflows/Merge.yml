@@ -1,226 +1,79 @@
-name: Merge My Changes into MYSOREZ Main
+name: Merge MYSOREZ network-diagnostics with my changes
 
 on:
   workflow_dispatch:
-    inputs:
-      target_branch:
-        description: "Current MYSOREZ branch"
-        required: true
-        default: "main"
-
-      my_branch:
-        description: "Your branch containing your changes"
-        required: true
-        default: "redaF12-Tech-patch-1"
-
-      merge_branch:
-        description: "New branch that will contain the merged result"
-        required: true
-        default: "merge/mysorez-with-my-changes"
 
 jobs:
   merge:
-    name: Merge my changes safely
     runs-on: ubuntu-latest
 
+    env:
+      SOURCE_REPO: MYSOREZ/GeneralsZH-Android-Port
+      SOURCE_BRANCH: claude/network-diagnostics
+      MY_BRANCH: redaF12-Tech-patch-1
+      MERGE_BRANCH: merge/mysorez-network-diagnostics
+
     steps:
-
-      # ==================================================
-      # 1. Check SYNC_TOKEN
-      # ==================================================
-
       - name: Check SYNC_TOKEN
-        env:
-          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
-          if [ -z "$SYNC_TOKEN" ]; then
-            echo "::error::SYNC_TOKEN is missing."
+          if [ -z "${{ secrets.SYNC_TOKEN }}" ]; then
+            echo "SYNC_TOKEN is missing"
             exit 1
           fi
 
-          echo "SYNC_TOKEN is available."
-
-      # ==================================================
-      # 2. Checkout main
-      # ==================================================
-
-      - name: Checkout target branch
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository }}
-          ref: ${{ inputs.target_branch }}
-          fetch-depth: 0
-          token: ${{ secrets.SYNC_TOKEN }}
-          persist-credentials: true
-
-      # ==================================================
-      # 3. Configure Git
-      # ==================================================
-
-      - name: Configure Git
+      - name: Prepare Git
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # ==================================================
-      # 4. Get latest branches
-      # ==================================================
+          git init
+          git remote add origin \
+            "https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/${{ github.repository }}.git"
+
+          git remote add mysorez \
+            "https://github.com/${SOURCE_REPO}.git"
+
+      - name: Verify source and my branches
+        run: |
+          echo "Checking MYSOREZ branch..."
+          git ls-remote --exit-code --heads \
+            "https://github.com/${SOURCE_REPO}.git" \
+            "${SOURCE_BRANCH}"
+
+          echo "Checking my branch..."
+          git ls-remote --exit-code --heads \
+            origin \
+            "${MY_BRANCH}"
 
       - name: Fetch branches
         run: |
-          git fetch origin \
-            "${{ inputs.target_branch }}" \
-            "${{ inputs.my_branch }}" \
-            --prune
+          git fetch --no-tags mysorez \
+            "${SOURCE_BRANCH}"
 
-      # ==================================================
-      # 5. Show branch information
-      # ==================================================
+          git fetch --no-tags origin \
+            "${MY_BRANCH}"
 
-      - name: Show branch information
+      - name: Create merge branch from MYSOREZ
         run: |
-          echo "=========================================="
-          echo "TARGET BRANCH"
-          echo "=========================================="
-
-          git log -1 --oneline \
-            "origin/${{ inputs.target_branch }}"
-
-          echo ""
-          echo "=========================================="
-          echo "MY BRANCH"
-          echo "=========================================="
-
-          git log -1 --oneline \
-            "origin/${{ inputs.my_branch }}"
-
-          echo ""
-          echo "=========================================="
-          echo "COMPARISON"
-          echo "=========================================="
-
-          git rev-list \
-            --left-right \
-            --count \
-            "origin/${{ inputs.target_branch }}...origin/${{ inputs.my_branch }}"
-
-      # ==================================================
-      # 6. Make sure merge branch does not already exist
-      # ==================================================
-
-      - name: Check merge branch
-        run: |
-          if git ls-remote --exit-code --heads origin \
-            "${{ inputs.merge_branch }}" >/dev/null 2>&1; then
-
-            echo "::error::Merge branch already exists:"
-            echo "${{ inputs.merge_branch }}"
-            echo ""
-            echo "Delete it first or choose another merge_branch."
-            exit 1
-          fi
-
-          echo "Merge branch is available."
-
-      # ==================================================
-      # 7. Create integration branch from main
-      # ==================================================
-
-      - name: Create integration branch
-        run: |
-          git checkout -b "${{ inputs.merge_branch }}" \
-            "origin/${{ inputs.target_branch }}"
-
-          echo "Created:"
-          git branch --show-current
-
-      # ==================================================
-      # 8. Merge my branch
-      #
-      # IMPORTANT:
-      # - main remains untouched
-      # - patch-1 remains untouched
-      # - conflicts prefer patch-1
-      # ==================================================
+          git checkout -b "${MERGE_BRANCH}" \
+            "FETCH_HEAD"
 
       - name: Merge my changes
         run: |
-          echo "Merging:"
-          echo "origin/${{ inputs.my_branch }}"
-          echo ""
-          echo "into:"
-          echo "${{ inputs.merge_branch }}"
-          echo ""
-
           git merge \
             --no-ff \
             --no-edit \
             -X theirs \
-            "origin/${{ inputs.my_branch }}"
-
-      # ==================================================
-      # 9. Verify merge
-      # ==================================================
-
-      - name: Verify merge result
-        run: |
-          echo "=========================================="
-          echo "MERGE RESULT"
-          echo "=========================================="
-
-          git status --short
-
-          echo ""
-          echo "Current branch:"
-          git branch --show-current
-
-          echo ""
-          echo "Current commit:"
-          git log -1 --oneline
-
-          echo ""
-          echo "Recent history:"
-          git log --oneline --decorate -10
-
-      # ==================================================
-      # 10. Push ONLY the new merge branch
-      # ==================================================
+            "origin/${MY_BRANCH}"
 
       - name: Push merge branch
-        env:
-          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
         run: |
-          TARGET_URL="https://x-access-token:${SYNC_TOKEN}@github.com/${{ github.repository }}.git"
+          git push origin \
+            "HEAD:${MERGE_BRANCH}"
 
-          git push \
-            "$TARGET_URL" \
-            "HEAD:${{ inputs.merge_branch }}"
-
-      # ==================================================
-      # 11. Finish
-      # ==================================================
-
-      - name: Merge completed
+      - name: Done
         run: |
-          echo ""
-          echo "=========================================="
-          echo "MERGE COMPLETED"
-          echo "=========================================="
-
-          echo ""
-          echo "MYSOREZ/main:"
-          echo "${{ inputs.target_branch }}"
-
-          echo ""
-          echo "Your changes:"
-          echo "${{ inputs.my_branch }}"
-
-          echo ""
-          echo "New merged branch:"
-          echo "${{ inputs.merge_branch }}"
-
-          echo ""
-          echo "IMPORTANT:"
-          echo "main was NOT modified."
-          echo "Your branch was NOT modified."
-          echo "The merged result exists only in the new branch."
+          echo "========================================"
+          echo "Merge branch created successfully:"
+          echo "${MERGE_BRANCH}"
+          echo "========================================"
