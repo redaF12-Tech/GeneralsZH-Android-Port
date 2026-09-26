@@ -293,4 +293,22 @@
     <string name="replaycheck_trace_failed">Netzwerk-Trace konnte nicht eingeschaltet werden; im Log fehlen die Prüfsummen-Details.</string>
     <string name="replaycheck_crc_every_frame">Prüfsumme jedes Frames</string>
     <string name="replaycheck_crc_every_frame_help">Schreibt zusätzlich die Logik-Prüfsumme jedes Frames ins Log. Damit lässt sich eine Kopie des Replays bauen, die der PC-Client Frame für Frame prüft. Langsamer.</string>
+
+    <string name="setup_card_appearance">Design</string>
+    <string name="setup_appearance_status">Design: %1$s</string>
+    <string name="setup_appearance_mode_system">System</string>
+    <string name="setup_appearance_mode_daylight">Taglicht</string>
+    <string name="setup_appearance_mode_darkmode">Dunkelmodus</string>
+    <string name="setup_appearance_help">Ändert die Farben dieser Einstellungen-App, des Log-Betrachters, des Ordner-Browsers und des Konto-Bildschirms. „System“ folgt dem Erscheinungsbild des Telefons und dem Energiesparmodus. Die Darstellung des Spiels selbst bleibt davon unberührt.</string>
+    <string name="setup_card_accent">Akzentfarbe</string>
+    <string name="setup_accent_help">Wählt die Akzentfarbe für diese Einstellungen-App, den Log-Betrachter, den Ordner-Browser und den Account-Bildschirm. Funktioniert mit beiden Designs oben.</string>
+    <string name="setup_accent_picker">Akzentfarbe</string>
+    <string name="setup_accent_option">Akzent: %1$s</string>
+    <string name="setup_accent_name_default">Violett</string>
+    <string name="setup_accent_name_blue">Blau</string>
+    <string name="setup_accent_name_green">Grün</string>
+    <string name="setup_accent_name_teal">Türkis</string>
+    <string name="setup_accent_name_orange">Orange</string>
+    <string name="setup_accent_name_red">Rot</string>
+
 </resources>

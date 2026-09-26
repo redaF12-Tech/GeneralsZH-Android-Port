@@ -293,4 +293,22 @@
     <string name="replaycheck_trace_failed">No se pudo activar el rastreo de red; el registro no tendrá los detalles de las sumas de control.</string>
     <string name="replaycheck_crc_every_frame">Suma de control de cada fotograma</string>
     <string name="replaycheck_crc_every_frame_help">Además escribe en el registro la suma de control de la lógica de cada fotograma. Sirve para crear una copia de la repetición que el cliente de PC comprueba fotograma a fotograma. Más lento.</string>
+
+    <string name="setup_card_appearance">Tema</string>
+    <string name="setup_appearance_status">Tema: %1$s</string>
+    <string name="setup_appearance_mode_system">Sistema</string>
+    <string name="setup_appearance_mode_daylight">Diurno</string>
+    <string name="setup_appearance_mode_darkmode">Nocturno</string>
+    <string name="setup_appearance_help">Cambia los colores de esta app de ajustes, del visor de registros, del explorador de carpetas y de la pantalla de cuenta. «Sistema» sigue la apariencia del teléfono y el ahorro de batería. El renderizado del juego es algo aparte y nunca cambia.</string>
+    <string name="setup_card_accent">Color de acento</string>
+    <string name="setup_accent_help">Elige el color de acento de esta app de ajustes, el visor de registros, el explorador de carpetas y la pantalla de cuenta. Funciona con cualquiera de los dos temas de arriba.</string>
+    <string name="setup_accent_picker">Color de acento</string>
+    <string name="setup_accent_option">Acento: %1$s</string>
+    <string name="setup_accent_name_default">Violeta</string>
+    <string name="setup_accent_name_blue">Azul</string>
+    <string name="setup_accent_name_green">Verde</string>
+    <string name="setup_accent_name_teal">Turquesa</string>
+    <string name="setup_accent_name_orange">Naranja</string>
+    <string name="setup_accent_name_red">Rojo</string>
+
 </resources>

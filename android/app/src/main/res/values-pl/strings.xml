@@ -293,4 +293,22 @@
     <string name="replaycheck_trace_failed">Nie udało się włączyć śledzenia sieci; w dzienniku zabraknie szczegółów sum kontrolnych.</string>
     <string name="replaycheck_crc_every_frame">Suma kontrolna każdej klatki</string>
     <string name="replaycheck_crc_every_frame_help">Dodatkowo zapisuje w dzienniku sumę kontrolną logiki dla każdej klatki. Służy do zbudowania kopii powtórki, którą klient PC sprawdzi klatka po klatce. Wolniej.</string>
+
+    <string name="setup_card_appearance">Motyw</string>
+    <string name="setup_appearance_status">Motyw: %1$s</string>
+    <string name="setup_appearance_mode_system">Systemowy</string>
+    <string name="setup_appearance_mode_daylight">Jasny</string>
+    <string name="setup_appearance_mode_darkmode">Ciemny</string>
+    <string name="setup_appearance_help">Zmienia kolory tej aplikacji ustawień, przeglądarki logów, przeglądarki folderów i ekranu konta. Opcja „Systemowy” uwzględnia motyw telefonu i oszczędzanie baterii. Wygląd samej gry pozostaje bez zmian.</string>
+    <string name="setup_card_accent">Kolor akcentu</string>
+    <string name="setup_accent_help">Wybiera kolor akcentu w tej aplikacji ustawień, przeglądarce logów, przeglądarce folderów i ekranie konta. Działa z oboma motywami powyżej.</string>
+    <string name="setup_accent_picker">Kolor akcentu</string>
+    <string name="setup_accent_option">Akcent: %1$s</string>
+    <string name="setup_accent_name_default">Fioletowy</string>
+    <string name="setup_accent_name_blue">Niebieski</string>
+    <string name="setup_accent_name_green">Zielony</string>
+    <string name="setup_accent_name_teal">Morski</string>
+    <string name="setup_accent_name_orange">Pomarańczowy</string>
+    <string name="setup_accent_name_red">Czerwony</string>
+
 </resources>

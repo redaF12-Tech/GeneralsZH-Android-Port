@@ -293,4 +293,22 @@
     <string name="replaycheck_trace_failed">无法开启网络跟踪；日志中将缺少校验和细节。</string>
     <string name="replaycheck_crc_every_frame">每帧校验和</string>
     <string name="replaycheck_crc_every_frame_help">同时把每一帧的逻辑校验和写入日志。用于生成一份回放副本，让 PC 客户端逐帧校验。速度较慢。</string>
+
+    <string name="setup_card_appearance">主题</string>
+    <string name="setup_appearance_status">主题：%1$s</string>
+    <string name="setup_appearance_mode_system">跟随系统</string>
+    <string name="setup_appearance_mode_daylight">浅色</string>
+    <string name="setup_appearance_mode_darkmode">深色</string>
+    <string name="setup_appearance_help">更改此设置应用、日志查看器、文件夹浏览器和账户界面的配色。“跟随系统”遵循手机的外观与省电模式。游戏本身的画面与此无关，永不改变。</string>
+    <string name="setup_card_accent">强调色</string>
+    <string name="setup_accent_help">选择此设置应用、日志查看器、文件夹浏览器和账号界面使用的强调色。可与上方任一主题搭配。</string>
+    <string name="setup_accent_picker">强调色</string>
+    <string name="setup_accent_option">强调色：%1$s</string>
+    <string name="setup_accent_name_default">紫色</string>
+    <string name="setup_accent_name_blue">蓝色</string>
+    <string name="setup_accent_name_green">绿色</string>
+    <string name="setup_accent_name_teal">青色</string>
+    <string name="setup_accent_name_orange">橙色</string>
+    <string name="setup_accent_name_red">红色</string>
+
 </resources>

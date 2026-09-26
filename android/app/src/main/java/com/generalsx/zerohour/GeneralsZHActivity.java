@@ -269,7 +269,19 @@ public class GeneralsZHActivity extends SDLActivity {
             }
         }
 
+        // GeneralsX @feature Android touch hotkey overlay: persist the native
+        // pan sensitivity and remove the legacy fixed GroupPanel when the
+        // configurable overlay is enabled. This must happen before SDLActivity
+        // starts libmain.so.
+        File launchFolder = haveCustomPath ? new File(gamePath) : legacyGameDataDir();
+        TouchControlConfig.prepareForLaunch(this, launchFolder);
+
         super.onCreate(savedInstanceState);
+
+        // SDLActivity has created its native surface/layout. Put the configurable
+        // hotkey layer above it; only configured button rectangles consume touch,
+        // so normal battlefield gestures continue to reach SDL unchanged.
+        HotkeyOverlayView.attach(this);
     }
 
     // GeneralsX @bugfix Android port 02/08/2026 A tester reported the camera

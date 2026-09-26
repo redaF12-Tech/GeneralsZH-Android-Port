@@ -293,4 +293,22 @@
     <string name="replaycheck_trace_failed">Não foi possível ativar o rastreamento de rede; o registro não terá os detalhes das somas de verificação.</string>
     <string name="replaycheck_crc_every_frame">Soma de verificação de cada quadro</string>
     <string name="replaycheck_crc_every_frame_help">Também grava no registro a soma de verificação da lógica de cada quadro. Serve para montar uma cópia do replay que o cliente de PC verifica quadro a quadro. Mais lento.</string>
+
+    <string name="setup_card_appearance">Tema</string>
+    <string name="setup_appearance_status">Tema: %1$s</string>
+    <string name="setup_appearance_mode_system">Sistema</string>
+    <string name="setup_appearance_mode_daylight">Claro</string>
+    <string name="setup_appearance_mode_darkmode">Escuro</string>
+    <string name="setup_appearance_help">Muda as cores deste app de configurações, do visualizador de logs, do navegador de pastas e da tela de conta. “Sistema” segue a aparência do telefone e o modo de economia de bateria. A renderização do jogo é à parte e nunca muda.</string>
+    <string name="setup_card_accent">Cor de destaque</string>
+    <string name="setup_accent_help">Escolhe a cor de destaque deste aplicativo de configurações, do visualizador de logs, do explorador de pastas e da tela de conta. Funciona com qualquer um dos dois temas acima.</string>
+    <string name="setup_accent_picker">Cor de destaque</string>
+    <string name="setup_accent_option">Destaque: %1$s</string>
+    <string name="setup_accent_name_default">Violeta</string>
+    <string name="setup_accent_name_blue">Azul</string>
+    <string name="setup_accent_name_green">Verde</string>
+    <string name="setup_accent_name_teal">Turquesa</string>
+    <string name="setup_accent_name_orange">Laranja</string>
+    <string name="setup_accent_name_red">Vermelho</string>
+
 </resources>
