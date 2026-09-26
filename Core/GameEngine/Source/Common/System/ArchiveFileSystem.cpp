@@ -52,6 +52,9 @@
 #include "Common/LocalFileSystem.h"
 #include "Common/AsciiString.h"
 #include "Common/PerfTimer.h"
+#if defined(__ANDROID__)
+#include <cstdlib>  // std::getenv (GENERALSX_MOD_PATH, set from mod_path.txt in SDL3Main.cpp)
+#endif
 
 
 //----------------------------------------------------------------------------
@@ -239,6 +242,22 @@ void ArchiveFileSystem::loadIntoDirectoryTree(ArchiveFile *archiveFile, Bool ove
 
 void ArchiveFileSystem::loadMods()
 {
+#if defined(__ANDROID__)
+	// GeneralsX @feature Android Mod Manager - the Setup launcher lets the user
+	// pick a mod folder and persists it as mod_path.txt; SDL3Main.cpp reads it
+	// before GameMain() and exports it as GENERALSX_MOD_PATH. Mount the folder's
+	// *.big archives here with overwrite=TRUE so they land on top of everything
+	// already mounted: Mod > GeneralsZH > Base Generals.
+	const char *androidModPath = std::getenv("GENERALSX_MOD_PATH");
+	if (androidModPath != nullptr && androidModPath[0] != '\0')
+	{
+		MAYBE_UNUSED Bool ret = loadBigFilesFromDirectory(AsciiString(androidModPath), "*.big", TRUE);
+		(void)ret;
+		DEBUG_ASSERTLOG(ret, ("loadBigFilesFromDirectory(%s) returned FALSE!", androidModPath));
+		DEBUG_LOG(("ArchiveFileSystem::loadMods - Android Mod Manager directory: %s", androidModPath));
+	}
+#endif
+
 #if RTS_ZEROHOUR
 	// GeneralsX @bugfix Android port 13/09/2026 Mount the GeneralsOnline community
 	// data patch, which is why this port could not join a single PC-hosted lobby.
