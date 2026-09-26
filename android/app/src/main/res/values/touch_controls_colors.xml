@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Default/fallback strings required so Java compilation always has these resource IDs. -->
-    <string name="touch_border_color">Button border color</string>
-    <string name="touch_border_color_help">Follows the selected interface accent color automatically</string>
-    <string name="touch_text_color">Button text color</string>
-    <string name="touch_text_color_picker">Choose text color</string>
-</resources>
