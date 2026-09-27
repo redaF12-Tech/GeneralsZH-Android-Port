@@ -1,0 +1,82 @@
+name: Sync MYSOREZ network-diagnostics to main
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    env:
+      SOURCE_REPO: MYSOREZ/GeneralsZH-Android-Port
+      SOURCE_BRANCH: claude/network-diagnostics
+      TARGET_BRANCH: main
+
+    steps:
+      - name: Check SYNC_TOKEN
+        run: |
+          if [ -z "${{ secrets.SYNC_TOKEN }}" ]; then
+            echo "SYNC_TOKEN is missing"
+            exit 1
+          fi
+
+      - name: Prepare Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git init
+
+          git remote add origin \
+            "https://x-access-token:${{ secrets.SYNC_TOKEN }}@github.com/${{ github.repository }}.git"
+
+          git remote add mysorez \
+            "https://github.com/${SOURCE_REPO}.git"
+
+      - name: Verify branches
+        run: |
+          echo "Checking MYSOREZ branch..."
+          git ls-remote --exit-code --heads \
+            "https://github.com/${SOURCE_REPO}.git" \
+            "${SOURCE_BRANCH}"
+
+          echo "Checking target branch..."
+          git ls-remote --exit-code --heads \
+            origin \
+            "${TARGET_BRANCH}"
+
+      - name: Fetch MYSOREZ branch
+        run: |
+          git fetch --no-tags mysorez \
+            "${SOURCE_BRANCH}:refs/remotes/mysorez/${SOURCE_BRANCH}"
+
+      - name: Checkout main
+        run: |
+          git fetch --no-tags origin \
+            "${TARGET_BRANCH}:refs/remotes/origin/${TARGET_BRANCH}"
+
+          git checkout -B "${TARGET_BRANCH}" \
+            "origin/${TARGET_BRANCH}"
+
+      - name: Sync MYSOREZ branch directly to main
+        run: |
+          git reset --hard \
+            "mysorez/${SOURCE_BRANCH}"
+
+      - name: Push directly to main
+        run: |
+          git push --force-with-lease \
+            origin \
+            "HEAD:${TARGET_BRANCH}"
+
+      - name: Done
+        run: |
+          echo "========================================"
+          echo "MYSOREZ branch synced directly to main"
+          echo ""
+          echo "Source:"
+          echo "${SOURCE_REPO}:${SOURCE_BRANCH}"
+          echo ""
+          echo "Target:"
+          echo "${TARGET_BRANCH}"
+          echo "========================================"
