@@ -322,4 +322,20 @@
     <string name="online_network_settings">Netzwerkeinstellungen (Server, PC-Kompatibilität): vom %1$s, automatisch vom GitHub des Projekts aktualisiert und signiert.</string>
     <string name="online_network_settings_builtin">Netzwerkeinstellungen (Server, PC-Kompatibilität): in diese Version eingebaut; neuere kommen automatisch vom GitHub des Projekts.</string>
     <string name="online_datapacks_chip_update">Update verfügbar</string>
+    <string name="setup_card_appearance">Design</string>
+    <string name="setup_appearance_status">Design: %1$s</string>
+    <string name="setup_appearance_mode_system">System</string>
+    <string name="setup_appearance_mode_daylight">Taglicht</string>
+    <string name="setup_appearance_mode_darkmode">Dunkelmodus</string>
+    <string name="setup_appearance_help">Ändert die Farben dieser Einstellungen-App, des Log-Betrachters, des Ordner-Browsers und des Konto-Bildschirms. „System“ folgt dem Erscheinungsbild des Telefons und dem Energiesparmodus. Die Darstellung des Spiels selbst bleibt davon unberührt.</string>
+    <string name="setup_card_accent">Akzentfarbe</string>
+    <string name="setup_accent_help">Wählt die Akzentfarbe für diese Einstellungen-App, den Log-Betrachter, den Ordner-Browser und den Account-Bildschirm. Funktioniert mit beiden Designs oben.</string>
+    <string name="setup_accent_picker">Akzentfarbe</string>
+    <string name="setup_accent_option">Akzent: %1$s</string>
+    <string name="setup_accent_name_default">Violett</string>
+    <string name="setup_accent_name_blue">Blau</string>
+    <string name="setup_accent_name_green">Grün</string>
+    <string name="setup_accent_name_teal">Türkis</string>
+    <string name="setup_accent_name_orange">Orange</string>
+    <string name="setup_accent_name_red">Rot</string>
 </resources>

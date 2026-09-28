@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GeneralsX @feature Android port daylight-darkmode 20/09/2026 A sun and
+     a moon sharing one glyph for the Appearance (Daylight/Darkmode) card.
+     Fill colour matches the other ic_gzh_* vectors; every usage tints it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Sun: disc plus three rays (up, down, left), leaving the right side
+         clean where the moon sits. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8 9 a3 3 0 1 0 0 6 a3 3 0 1 0 0 -6 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7.3 5.6 h1.4 v1.8 h-1.4 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7.3 16.6 h1.4 v1.8 h-1.4 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M2.6 11.3 h1.8 v1.4 h-1.8 Z" />
+    <!-- Moon: crescent = disc minus an inset bite (even-odd). -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M16.2 8 a4 4 0 1 0 0 8 a4 4 0 1 0 0 -8 Z M17.4 8.3 a2.6 2.6 0 1 1 0 5.2 a2.6 2.6 0 1 1 0 -5.2 Z" />
+</vector>
