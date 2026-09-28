@@ -590,6 +590,35 @@ public class SetupActivity extends Activity {
         UiKit.sectionHeader(help, R.drawable.ic_gzh_doc,
             getString(R.string.setup_card_how_it_works), false);
         UiKit.supporting(help, getString(R.string.setup_how_it_works_body));
+
+        buildCommunitySection(page);
+    }
+
+    // GeneralsX @feature Android port telegram-community-link 28/09/2026 The
+    // community's Telegram group, one tap from the Help tab. The in-game main
+    // menu's buttons live in the retail window layouts inside the BIG archives,
+    // so the launcher's Help tab is where a community link belongs -- same
+    // place users already come to look for help.
+    private static final String TELEGRAM_GROUP_URL = "https://t.me/Generals_Universal";
+
+    private void buildCommunitySection(LinearLayout page) {
+        LinearLayout community = UiKit.card(page);
+        UiKit.sectionHeader(community, R.drawable.ic_gzh_telegram,
+            getString(R.string.setup_card_community), false);
+        UiKit.listRow(community, R.drawable.ic_gzh_telegram,
+            getString(R.string.setup_community_row_telegram),
+            getString(R.string.setup_community_telegram_note),
+            this::onOpenTelegramGroup);
+    }
+
+    private void onOpenTelegramGroup() {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(TELEGRAM_GROUP_URL)));
+        } catch (Exception e) {
+            // Same "no browser" handling as the GeneralsOnline sign-in flow:
+            // nothing else on the device can open an https link.
+            Toast.makeText(this, getString(R.string.online_toast_no_browser, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
     }
 
     // The build's own version, as the manifest carries it -- no new string

@@ -380,4 +380,7 @@
     <string name="touch_shape_circle">دائرة</string>
     <string name="touch_shape_oval">بيضاوي</string>
     <string name="touch_colors_note">تُكتب الألوان بصيغة #RRGGBB أو #AARRGGBB</string>
+    <string name="setup_card_community">المجتمع</string>
+    <string name="setup_community_row_telegram">مجموعة تيليجرام</string>
+    <string name="setup_community_telegram_note">أخبار ودعم ولقاءات اللعب الجماعي لمنفذ الأندرويد.</string>
 </resources>
