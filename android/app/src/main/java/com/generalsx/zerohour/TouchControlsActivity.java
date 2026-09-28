@@ -276,12 +276,11 @@ public class TouchControlsActivity extends Activity {
             @Override public void onNothingSelected(android.widget.AdapterView<?> parent) { }
         });
 
-        EditText fillColor = colorField("Fill color", TouchControlConfig.colorToString(spec.fillColor));
-        EditText borderColor = colorField(getString(R.string.touch_border_color), TouchControlConfig.colorToString(ThemeHelper.accentColor(this)));
-        borderColor.setEnabled(false);
-        borderColor.setHint(R.string.touch_border_color_help);
-        form.addView(fillColor);
-        form.addView(borderColor);
+        // GeneralsX @tweak Android touch controls 28/09/2026 Removed the two
+        // color-typing lines (the disabled border-color field and the manual fill
+        // color #RRGGBB field); colors are picked visually only -- border stays
+        // accent-driven, fill and text use the same swatch-grid picker.
+        final int[] selectedFillColor = {spec.fillColor};
 
         // Text color is selected visually; manual #RRGGBB/#AARRGGBB entry is intentionally removed.
         final int[] selectedTextColor = {spec.textColor};
@@ -297,9 +296,28 @@ public class TouchControlsActivity extends Activity {
         textColorPicker.setImageResource(android.R.drawable.ic_menu_edit);
         textColorPicker.setPadding(dp(8), dp(8), dp(8), dp(8));
         updateColorPickerIcon(textColorPicker, selectedTextColor[0]);
-        textColorPicker.setOnClickListener(v -> showTextColorPicker(textColorPicker, selectedTextColor));
+        textColorPicker.setOnClickListener(v -> showColorPicker(textColorPicker, selectedTextColor));
         textColorRow.addView(textColorPicker, new LinearLayout.LayoutParams(dp(52), dp(52)));
         form.addView(textColorRow);
+
+        // GeneralsX @feature Android touch controls 28/09/2026 Fill color gets
+        // the same visual swatch-grid picker as text color, replacing the typed
+        // #RRGGBB field that was here before.
+        LinearLayout fillColorRow = new LinearLayout(this);
+        fillColorRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        TextView fillColorLabel = new TextView(this);
+        fillColorLabel.setText(R.string.touch_fill_color);
+        fillColorLabel.setPadding(0, dp(8), dp(12), dp(8));
+        fillColorRow.addView(fillColorLabel, new LinearLayout.LayoutParams(0,
+            LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        ImageButton fillColorPicker = new ImageButton(this);
+        fillColorPicker.setContentDescription(getString(R.string.touch_fill_color_picker));
+        fillColorPicker.setImageResource(android.R.drawable.ic_menu_edit);
+        fillColorPicker.setPadding(dp(8), dp(8), dp(8), dp(8));
+        updateColorPickerIcon(fillColorPicker, selectedFillColor[0]);
+        fillColorPicker.setOnClickListener(v -> showColorPicker(fillColorPicker, selectedFillColor));
+        fillColorRow.addView(fillColorPicker, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        form.addView(fillColorRow);
 
         SeekBar.OnSeekBarChangeListener sizeListener = new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
@@ -316,12 +334,9 @@ public class TouchControlsActivity extends Activity {
         widthSeek.setOnSeekBarChangeListener(sizeListener);
         heightSeek.setOnSeekBarChangeListener(sizeListener);
 
-        LinearLayout modifiers2 = new LinearLayout(this);
-        CheckBox note = new CheckBox(this);
-        note.setText(R.string.touch_colors_note);
-        note.setEnabled(false);
-        modifiers2.addView(note);
-        form.addView(modifiers2);
+        // GeneralsX @tweak Android touch controls 28/09/2026 Removed the
+        // disabled "Colors use #RRGGBB or #AARRGGBB" checkbox along with the
+        // typed color fields it described; every color is now picked visually.
 
         android.widget.ScrollView formScroll = new android.widget.ScrollView(this);
         formScroll.addView(form);
@@ -345,7 +360,7 @@ public class TouchControlsActivity extends Activity {
                 if (spec.shape == TouchControlConfig.SHAPE_SQUARE || spec.shape == TouchControlConfig.SHAPE_CIRCLE) {
                     spec.heightDp = spec.widthDp;
                 }
-                spec.fillColor = parseColorField(fillColor, spec.fillColor);
+                spec.fillColor = selectedFillColor[0];
                 // Border color is theme-controlled; keep the stored field for profile compatibility.
                 spec.borderColor = ThemeHelper.accentColor(this);
                 spec.textColor = selectedTextColor[0];
@@ -353,19 +368,6 @@ public class TouchControlsActivity extends Activity {
                 refreshLabels();
             })
             .show();
-    }
-
-    private EditText colorField(String hint, String value) {
-        EditText field = new EditText(this);
-        field.setHint(hint + "  #RRGGBB");
-        field.setText(value);
-        field.setSingleLine(true);
-        return field;
-    }
-
-    private int parseColorField(EditText field, int fallback) {
-        try { return Color.parseColor(field.getText().toString().trim()); }
-        catch (Exception ignored) { return fallback; }
     }
 
     private void updateColorPickerIcon(ImageButton button, int color) {
@@ -376,7 +378,7 @@ public class TouchControlsActivity extends Activity {
         button.setBackground(swatch);
     }
 
-    private void showTextColorPicker(ImageButton button, int[] selectedColor) {
+    private void showColorPicker(ImageButton button, int[] selectedColor) {
         final int[] palette = {
             Color.WHITE, Color.BLACK, Color.LTGRAY, Color.DKGRAY,
             Color.RED, Color.rgb(255, 152, 0), Color.YELLOW,
@@ -402,7 +404,7 @@ public class TouchControlsActivity extends Activity {
             grid.addView(swatch, lp);
         }
         androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.touch_text_color_picker)
+            .setTitle(R.string.touch_color_picker_title)
             .setView(grid)
             .setNegativeButton(R.string.common_cancel, null)
             .setPositiveButton(R.string.touch_apply_button, (d, which) -> {
