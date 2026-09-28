@@ -7,7 +7,7 @@
 package com.generalsx.zerohour;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.content.pm.ActivityInfo;
 import android.content.Intent;
 import android.net.Uri;
@@ -326,7 +326,7 @@ public class TouchControlsActivity extends Activity {
         android.widget.ScrollView formScroll = new android.widget.ScrollView(this);
         formScroll.addView(form);
 
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
             .setTitle(R.string.touch_edit_dialog_title)
             .setView(formScroll)
             .setNegativeButton(R.string.common_cancel, null)
@@ -401,7 +401,7 @@ public class TouchControlsActivity extends Activity {
             lp.setMargins(dp(4), dp(4), dp(4), dp(4));
             grid.addView(swatch, lp);
         }
-        AlertDialog dialog = new AlertDialog.Builder(this)
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
             .setTitle(R.string.touch_text_color_picker)
             .setView(grid)
             .setNegativeButton(R.string.common_cancel, null)
