@@ -5,7 +5,7 @@
  },
  {
   "label": "TOOLTIP:LimitSuperweapons",
-  "text": "Поставить предел на молекулярные пушки, залповые установки ракетами Р-17М и т.п. на одного игрока"
+  "text": "Поставить предел на молекулярные пушки, залповые установки Скад и т.п. на одного игрока"
  },
  {
   "label": "TOOLTIP:BattleHonorStreak100",
@@ -449,7 +449,7 @@
  },
  {
   "label": "CONTROLBAR:ConstructChinaVehicleHelix",
-  "text": "Улитка [&X]"
+  "text": "Хеликс [&X]"
  },
  {
   "label": "CONTROLBAR:ConstructChinaInfantryNukeHunter",
@@ -557,11 +557,11 @@
  },
  {
   "label": "CONTROLBAR:ChinaUpgradeHelixNapalmBomb",
-  "text": "Возможность сбросить бомбу с напалмом с этой Улитки"
+  "text": "Возможность сбросить бомбу с напалмом с этого Хеликса"
  },
  {
   "label": "CONTROLBAR:ChinaUpgradeHelixNukeBomb",
-  "text": "Возможность сбросить ядерную бомбу с этой Улитки"
+  "text": "Возможность сбросить ядерную бомбу с этого Хеликса"
  },
  {
   "label": "CONTROLBAR:UpgradeHelixNapalmBomb",
@@ -637,7 +637,7 @@
  },
  {
   "label": "CONTROLBAR:ScudStormShortcut",
-  "text": "Залп ракетами Р-17М"
+  "text": "Залп ракетами Скад"
  },
  {
   "label": "CONTROLBAR:TomahawkStorm",
@@ -729,15 +729,15 @@
  },
  {
   "label": "UPGRADE:HelixGattlingCannon",
-  "text": "Пулемётная пушка для Улитки"
+  "text": "Пулемётная пушка для Хеликса"
  },
  {
   "label": "UPGRADE:HelixPropagandaTower",
-  "text": "Вышка пропаганды для Улитки"
+  "text": "Вышка пропаганды для Хеликса"
  },
  {
   "label": "UPGRADE:HelixBattleBunker",
-  "text": "Боевой бункер для Улитки"
+  "text": "Боевой бункер для Хеликса"
  },
  {
   "label": "UPGRADE:SupplyLines",

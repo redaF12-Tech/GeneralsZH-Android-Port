@@ -90,6 +90,9 @@ public class GeneralsOnlineActivity extends Activity {
     private TextView dataPackChip;
     private boolean dataPackBusy;
     private boolean dataPackPrompted;
+    // The automatic version check runs once per process, like the Updates card's.
+    private static boolean sDataPackCheckedThisProcess;
+    private TextView networkSettingsStatus;
     private TextView crossPlayPatchChip;
     private TextView crossPlayHzChip;
 
@@ -170,6 +173,9 @@ public class GeneralsOnlineActivity extends Activity {
             getString(R.string.online_window_title), false);
         statusText = UiKit.body(statusCard, null);
         statusText.setTextIsSelectable(true);
+        // GeneralsX @feature Android port 27/09/2026 See SetupActivity's online card: the service
+        // keeps lobbies with different anti-cheat apart, and this client has none.
+        UiKit.supporting(statusCard, getString(R.string.setup_online_anticheat_note));
         signOutButton = UiKit.button(statusCard, UiKit.BTN_DANGER, R.drawable.ic_gzh_trash,
             getString(R.string.online_button_sign_out), this::onSignOut);
 
@@ -211,6 +217,7 @@ public class GeneralsOnlineActivity extends Activity {
 
         dataPackStatus = UiKit.body(card, null);
         dataPackStatus.setTextIsSelectable(true);
+        networkSettingsStatus = UiKit.supporting(card, "");
 
         dataPackButton = UiKit.button(card, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_download,
             getString(R.string.online_button_datapacks_update), this::onUpdateDataPacks);
@@ -233,6 +240,59 @@ public class GeneralsOnlineActivity extends Activity {
         });
 
         refreshDataPackCard();
+        maybeAutoCheckDataPacks();
+    }
+
+    /**
+     * GeneralsX @feature Android port 27/09/2026 The card checks for a newer patch by itself, with
+     * the same decision the Updates card makes (UpdateManager.checkDatapackOnly) and under the
+     * same "Check automatically" switch: on Wi-Fi a newer patch is installed with its progress
+     * shown here, on mobile data the card says a new version is there and the button installs it.
+     */
+    private void maybeAutoCheckDataPacks() {
+        if (sDataPackCheckedThisProcess || dataPackBusy || !UpdateManager.isAutoCheckEnabled(this)) {
+            return;
+        }
+        sDataPackCheckedThisProcess = true;
+        final boolean havePatch = DataPackInstaller.installedVersion(this) != null;
+        dataPackBusy = havePatch;
+        refreshDataPackCard();
+        final android.content.Context app = getApplicationContext();
+        final boolean install = UpdateManager.isUnmeteredNetwork(app);
+        new Thread(() -> {
+            // The network settings first: a few lines from the signed manifest, and the ones the
+            // game uses online (servers, the PC checksum). The engine is the home screen's.
+            UpdateManager.check(app, false);
+            UpdateManager.Result r = havePatch
+                ? UpdateManager.checkDatapackOnly(app, install, cardProgress())
+                : null;
+            handler.post(() -> {
+                dataPackBusy = false;
+                refreshDataPackCard();
+                if (r != null && r.datapackInstalled != null) {
+                    dataPackStatus.setText(getString(R.string.setup_updates_datapack_installed,
+                        r.datapackInstalled));
+                }
+            });
+        }, "gx-online-update-check").start();
+    }
+
+    private DataPackInstaller.Progress cardProgress() {
+        return new DataPackInstaller.Progress() {
+            @Override public void onChecking() {
+                handler.post(() -> dataPackStatus.setText(R.string.online_datapacks_checking));
+            }
+
+            @Override public void onDownloading(long bytes, long total) {
+                final int percent = total > 0 ? (int) (bytes * 100 / total) : 0;
+                handler.post(() -> dataPackStatus.setText(
+                    getString(R.string.online_datapacks_downloading, percent)));
+            }
+
+            @Override public void onInstalling() {
+                handler.post(() -> dataPackStatus.setText(R.string.online_datapacks_installing));
+            }
+        };
     }
 
     /**
@@ -249,9 +309,25 @@ public class GeneralsOnlineActivity extends Activity {
         final String version = DataPackInstaller.installedVersion(this);
         final boolean installed = version != null && !version.isEmpty();
 
-        dataPackStatus.setText(installed
-            ? getString(R.string.online_datapacks_installed, version)
-            : getString(R.string.online_datapacks_not_installed));
+        final java.util.Date settingsDate = UpdateManager.settingsPublished(this);
+        networkSettingsStatus.setText(settingsDate != null
+            ? getString(R.string.online_network_settings,
+                android.text.format.DateFormat.getDateFormat(this).format(settingsDate))
+            : getString(R.string.online_network_settings_builtin));
+
+        final boolean updateWanted = installed && UpdateManager.datapackUpdateWanted(this);
+        final String latest = UpdateManager.datapackLatestSeen(this);
+        if (!installed) {
+            dataPackStatus.setText(R.string.online_datapacks_not_installed);
+        } else if (updateWanted && latest != null && !latest.equals(version)) {
+            dataPackStatus.setText(getString(R.string.online_datapacks_update_available, version, latest));
+        } else if (updateWanted) {
+            dataPackStatus.setText(getString(R.string.online_datapacks_update_for_crc, version));
+        } else if (latest != null) {
+            dataPackStatus.setText(getString(R.string.online_datapacks_up_to_date, version));
+        } else {
+            dataPackStatus.setText(getString(R.string.online_datapacks_installed, version));
+        }
 
         // Downloading before sign-in would be allowed by the CDN, but it would
         // also be the wrong order to learn this in: the data exists to make an
@@ -271,6 +347,9 @@ public class GeneralsOnlineActivity extends Activity {
         } else if (!DataPackInstaller.isEnabled()) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
                 R.string.online_datapacks_chip_off, R.color.gzh_status_warn);
+        } else if (updateWanted) {
+            setChip(dataPackChip, R.drawable.ic_gzh_download,
+                R.string.online_datapacks_chip_update, R.color.gzh_status_warn);
         } else {
             setChip(dataPackChip, R.drawable.ic_gzh_check,
                 R.string.online_datapacks_chip_ready, R.color.gzh_status_ok);
@@ -361,24 +440,7 @@ public class GeneralsOnlineActivity extends Activity {
         dataPackDeleteButton.setEnabled(false);
 
         new Thread(() -> {
-            DataPackInstaller.Result result = DataPackInstaller.install(this,
-                new DataPackInstaller.Progress() {
-                    @Override public void onChecking() {
-                        handler.post(() ->
-                            dataPackStatus.setText(R.string.online_datapacks_checking));
-                    }
-
-                    @Override public void onDownloading(long bytes, long total) {
-                        final int percent = total > 0 ? (int) (bytes * 100 / total) : 0;
-                        handler.post(() -> dataPackStatus.setText(
-                            getString(R.string.online_datapacks_downloading, percent)));
-                    }
-
-                    @Override public void onInstalling() {
-                        handler.post(() ->
-                            dataPackStatus.setText(R.string.online_datapacks_installing));
-                    }
-                });
+            DataPackInstaller.Result result = DataPackInstaller.install(this, cardProgress());
 
             handler.post(() -> {
                 dataPackBusy = false;

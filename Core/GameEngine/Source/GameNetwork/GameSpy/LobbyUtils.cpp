@@ -384,7 +384,8 @@ static void gameTooltip(GameWindow* window,
 
 #if defined(GENERALS_ONLINE)
 	// GO already has the full map info, don't need the cache
-	mapName.translate(lobbyEntry.map_name.c_str());
+	// GeneralsX @bugfix Android port 27/09/2026 UTF-8, as the game list column reads it below.
+	mapName = UnicodeString(from_utf8(lobbyEntry.map_name).c_str());
 #else
 	const MapMetaData *md = TheMapCache->findMap(room->getMap());
 	if (md)
@@ -827,6 +828,15 @@ static Int insertGame(GameWindow* win, LobbyEntry& lobbyInfo, Bool showMap)
 		gameColor = GameSpyColor[GSCOLOR_GAME_CRCMISMATCH];
 	}
 #if defined(GENERALS_ONLINE)
+	// GeneralsX @feature Android port 27/09/2026 Games hosted from a phone carry "[Android]" in
+	// their name (PopupHostGame.cpp); show them green so they stand out in a long list. Joinable
+	// and not rows keep the same contrast as the stock colours; a buddy's game stays cyan.
+	if (lobbyInfo.name.find("[Android]") != std::string::npos)
+	{
+		gameColor = (gameColor == GameSpyColor[GSCOLOR_GAME_CRCMISMATCH])
+			? GameMakeColor(46, 110, 46, 255)    // darker green
+			: GameMakeColor(96, 220, 96, 255);   // lighter green
+	}
 	// Buddy lobby highlight:
 	if (theBuddyGames && theBuddyGames->count(lobbyInfo.lobbyID))
 	{

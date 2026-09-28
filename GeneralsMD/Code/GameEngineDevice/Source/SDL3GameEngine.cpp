@@ -38,6 +38,7 @@
 #include "GameClient/GameWindow.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/Gadget.h"
+#include "GameClient/GadgetListBox.h"
 #include "GameClient/Display.h"
 #include "WW3D2/dx8wrapper.h"
 #include "GameClient/View.h"
@@ -333,6 +334,9 @@ struct TouchState {
 		             // motion publishes a position so the radius decal, the validity hint and
 		             // the on-screen reticle follow it, and release fires the command there.
 		             // See the FINGER_DOWN case for why this cannot be left to PENDING.
+		LIST_SCROLL, // finger1 landed on a list box and dragged past the dead zone -- the list
+		             // follows the finger (GadgetListBoxTouchScroll*), nothing is sent to the
+		             // window manager, and the release selects nothing.
 		UI_PRESS     // finger1 landed directly on a GameWindow (button, panel, etc.) --
 		             // LEFT_BUTTON_DOWN already sent immediately at touch-down, motion is
 		             // ignored entirely (frozen at the anchor) until release/cancel sends
@@ -347,6 +351,7 @@ struct TouchState {
 	float downX = 0.0f, downY = 0.0f;   // finger1 down position (window points), fixed until release
 	float lastX = 0.0f, lastY = 0.0f;   // finger1 latest position (pixels)
 	Uint64 downTicks = 0;
+	GameWindow *listBox = nullptr;      // list box under finger1 at touch-down, see LIST_SCROLL
 
 	// GeneralsX @feature Android port 01/08/2026 Native touch camera control:
 	// pan/zoom go straight to TheTacticalView (userScrollBy/userZoom), driven
@@ -740,6 +745,23 @@ Bool touchPointBelongsToUi(Real px, Real py)
 	       TheWindowManager->getWindowForInputAt((Int)px, (Int)py) != nullptr;
 }
 
+// GeneralsX @feature Android port 27/09/2026 The list box (map list, replays, a combo box's
+// drop-down, lobby lists) a finger at this point would scroll, or null. The hit window itself
+// or the nearest ancestor that is a list; the scroll bar's arrows and thumb are push buttons
+// and never get here -- they take the UI_PRESS path first.
+GameWindow *listBoxAt(Real px, Real py)
+{
+	if (TheWindowManager == nullptr) {
+		return nullptr;
+	}
+	for (GameWindow *w = TheWindowManager->getWindowUnderCursor((Int)px, (Int)py); w != nullptr; w = w->winGetParent()) {
+		if (BitIsSet(w->winGetStyle(), GWS_SCROLL_LISTBOX)) {
+			return w;
+		}
+	}
+	return nullptr;
+}
+
 // Hover/position hint -- WindowXlat.cpp uses this to set GUI hilite state,
 // SelectionXlat.cpp uses it to build the selection-box drag region, and
 // LookAtXlat.cpp uses it to know where a drag/edge-scroll anchor is. A real
@@ -1007,6 +1029,7 @@ void handleTouchEvent(SDL_Window *window, const SDL_Event &event)
 			s_touch.downX = s_touch.lastX = px;
 			s_touch.downY = s_touch.lastY = py;
 			s_touch.downTicks = SDL_GetTicks();
+			s_touch.listBox = listBoxAt(px, py);
 			// Move the cursor to the touch point NOW (motion clicks nothing, so the
 			// deferred-tap protection is intact). This lets the GUI process hover
 			// over the next frame(s) before the tap commits — hover-driven widgets
@@ -1114,6 +1137,15 @@ void handleTouchEvent(SDL_Window *window, const SDL_Event &event)
 		if (s_touch.phase == TouchState::PENDING && event.tfinger.fingerID == s_touch.finger1) {
 			const float moved = SDL_fabsf(px - s_touch.downX) + SDL_fabsf(py - s_touch.downY);
 			if (moved >= TAP_DEAD_ZONE_PX) {
+				// GeneralsX @feature Android port 27/09/2026 A drag that started on a list
+				// scrolls the list, not the camera. Re-hit-tested at the press point rather than
+				// trusting the pointer taken at touch-down: a screen change in between destroys
+				// windows, and a stale list must not be touched.
+				if (s_touch.listBox != nullptr && listBoxAt(s_touch.downX, s_touch.downY) == s_touch.listBox) {
+					GadgetListBoxTouchScrollBegin(s_touch.listBox, (Int)s_touch.downY);
+					GadgetListBoxTouchScrollMove(s_touch.listBox, (Int)py);
+					s_touch.phase = TouchState::LIST_SCROLL;
+				} else
 				if (TheInGameUI && TheInGameUI->getPendingPlaceType()) {
 					// GeneralsX @feature Android port 02/08/2026 Building
 					// placement: a drag past the dead zone while a build is
@@ -1184,6 +1216,11 @@ void handleTouchEvent(SDL_Window *window, const SDL_Event &event)
 					s_touch.panLastPxX = px;
 					s_touch.panLastPxY = py;
 				}
+			}
+		}
+		else if (s_touch.phase == TouchState::LIST_SCROLL && event.tfinger.fingerID == s_touch.finger1) {
+			if (listBoxAt(s_touch.downX, s_touch.downY) == s_touch.listBox) {
+				GadgetListBoxTouchScrollMove(s_touch.listBox, (Int)py);
 			}
 		}
 		else if (s_touch.phase == TouchState::SELECTING && event.tfinger.fingerID == s_touch.finger1) {
@@ -1586,6 +1623,11 @@ void handleTouchEvent(SDL_Window *window, const SDL_Event &event)
 						}
 					}
 					break;
+				case TouchState::LIST_SCROLL:
+					// The drag was a scroll: nothing to select, nothing to click.
+					GadgetListBoxTouchScrollEnd();
+					s_touch.listBox = nullptr;
+					break;
 				case TouchState::UI_PRESS:
 				{
 					// GeneralsX @bugfix Android port 03/08/2026 Release at the
@@ -1672,6 +1714,7 @@ const char *touchPhaseName(TouchState::Phase phase)
 		case TouchState::PLACING:   return "PLACING";
 		case TouchState::SELECTING: return "SELECTING";
 		case TouchState::TARGETING: return "TARGETING";
+		case TouchState::LIST_SCROLL: return "LIST_SCROLL";
 		case TouchState::UI_PRESS:  return "UI_PRESS";
 	}
 	return "?";
@@ -2253,6 +2296,22 @@ void SDL3GameEngine::pollSDL3Events(void)
 
 			case SDL_EVENT_KEY_DOWN:
 			case SDL_EVENT_KEY_UP:
+				// GeneralsX @bugfix Android port 27/09/2026 Enter never finished a text entry under
+				// SDL. On Windows the Return key reaches a focused entry as the character VK_RETURN
+				// (WM_CHAR), and that is the only thing GadgetTextEntryInput takes as "done" -- its
+				// KEY_ENTER case has been commented out since the original code. SDL delivers Return
+				// as a key only (text input carries no control characters), so an entry without a
+				// button of its own could not be submitted: the join-game password popup sat with
+				// "213" typed and nothing happening. Hand the focused entry the same character.
+				if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat &&
+						(event.key.scancode == SDL_SCANCODE_RETURN || event.key.scancode == SDL_SCANCODE_KP_ENTER) &&
+						m_TextInputFocusWindow != nullptr && TheWindowManager != nullptr &&
+						TheWindowManager->winGetFocus() == m_TextInputFocusWindow &&
+						BitIsSet(m_TextInputFocusWindow->winGetStyle(), GWS_ENTRY_FIELD)) {
+					const WideChar returnCharacter = 0x0D; // VK_RETURN, which GadgetTextEntryInput compares against
+					TheWindowManager->winSendInputMsg(m_TextInputFocusWindow, GWM_IME_CHAR,
+						static_cast<WindowMsgData>(returnCharacter), 0);
+				}
 				// Fighter19 pattern: direct addSDLEvent() call
 				// GeneralsX @refactor felipebraz 16/02/2026 Simplified event routing
 				if (TheKeyboard) {
@@ -2445,6 +2504,13 @@ void SDL3GameEngine::forwardTextInputEvent(const char* utf8Text)
 		}
 
 		if (codepoint > 0xFFFFU) {
+			continue;
+		}
+
+		// Return is delivered from the key event (see SDL_EVENT_KEY_DOWN); a line break that
+		// also arrives as text (some Android keyboards commit "\n") must not submit twice or be
+		// typed into the field.
+		if (codepoint == '\n' || codepoint == '\r') {
 			continue;
 		}
 

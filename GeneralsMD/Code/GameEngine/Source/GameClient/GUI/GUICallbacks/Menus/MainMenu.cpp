@@ -56,6 +56,9 @@
 #include "GameClient/KeyDefs.h"
 #include "GameClient/GameWindowManager.h"
 #include "GameClient/GadgetStaticText.h"
+#include "GameClient/DisplayStringManager.h"
+#include "Common/GXSafeArea.h"
+#include "Common/GXRemoteConfig.h"
 #include "GameClient/GlobalLanguage.h"
 #include "GameClient/Mouse.h"
 #include "GameClient/WindowVideoManager.h"
@@ -432,17 +435,76 @@ GameWindow *win = nullptr;
 
 }
 
+// GeneralsX @bugfix Android port 27/09/2026 Both watermark boxes -- the stock LabelVersion,
+// sized for the 800x600 version string, and the fallback made below with a fixed 28px height
+// -- draw their text wrapped at the box width and clipped to the box. With the scaled-up font
+// the watermark wrapped after "C&C" and the second line, plus the lower half of the first,
+// fell outside the box, right at the phone's rounded bottom corner (seen on a 2510x1156
+// phone). Grow the box to the unwrapped text and keep it inside the screen's safe area; the
+// box never shrinks, so a desktop layout that already fits is unchanged.
+static void fitCreditLabel( GameWindow *label, const UnicodeString &text )
+{
+	GameFont *font = label ? label->winGetFont() : nullptr;
+	if (!font || !TheDisplay || !TheDisplayStringManager)
+		return;
+
+	DisplayString *measure = TheDisplayStringManager->newDisplayString();
+	measure->setFont( font );
+	measure->setText( text );
+	Int textWidth = 0, textHeight = 0;
+	measure->getSize( &textWidth, &textHeight );
+	TheDisplayStringManager->freeDisplayString( measure );
+
+	// drawStaticTextText wraps at width - 10 and draws at the left/top margins.
+	TextData *textData = (TextData *)label->winGetUserData();
+	const Int marginX = textData ? textData->leftMargin : 0;
+	const Int marginY = textData ? textData->topMargin : 0;
+	Int width = 0, height = 0, x = 0, y = 0;
+	label->winGetSize( &width, &height );
+	label->winGetScreenPosition( &x, &y );
+	width = max( width, textWidth + marginX + 12 );
+	height = max( height, textHeight + marginY + 2 );
+
+	const Int left = GXSafeArea::leftPx();
+	const Int newX = max( x, left );
+	Int newY = min( y, (Int)TheDisplay->getHeight() - GXSafeArea::bottomPx() - height );
+#if defined(__ANDROID__) || (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)
+	// Under the frame, not on it: the menu backdrop (MainMenuRuler, 800x600 art stretched over
+	// the whole screen) draws its bottom frame line at rows 559-560 of 600 -- measured on a
+	// device screenshot at 1077-1079 of 1156. Centre the watermark in the strip between that
+	// line and the bottom edge. The strip lies below the bottom safe inset, which is there for
+	// the rounded corners; the label starts at the left inset, clear of the corner's curve.
+	const Int displayHeight = (Int)TheDisplay->getHeight();
+	const Int lineBottom = ( displayHeight * 561 ) / 600;
+	const Int strip = displayHeight - lineBottom;
+	if( strip >= height )
+		newY = lineBottom + ( strip - height ) / 2;
+#endif
+
+	Int parentX = 0, parentY = 0;
+	if (GameWindow *parent = label->winGetParent())
+		parent->winGetScreenPosition( &parentX, &parentY );
+	label->winSetSize( width, height );
+	label->winSetPosition( newX - parentX, newY - parentY );
+}
+
 // GeneralsX @tweak BenderAI 31/03/2026 Print fixed project watermark in optional main-menu LabelVersion widget.
 static void initLabelVersion()
 {
 	NameKeyType versionID = TheNameKeyGenerator->nameToKey( "MainMenu.wnd:LabelVersion" );
 	GameWindow *labelVersion = TheWindowManager->winGetWindowFromId( nullptr, versionID );
 	UnicodeString creditText;
+#if defined(__ANDROID__)
+	creditText.translate("GeneralsX for Android - C&C Generals Zero Hour");
+#else
 	creditText.translate("GeneralsX - Multiplatform C&C Generals");
+#endif
 
 	if (labelVersion)
 	{
 		GadgetStaticTextSetText( labelVersion, creditText );
+
+		fitCreditLabel( labelVersion, creditText );
 		return;
 	}
 
@@ -482,6 +544,7 @@ static void initLabelVersion()
 				fallbackCreditLabel->winSetFont(TheWindowManager->winFindFont("Arial", creditFontSize, FALSE));
 				fallbackCreditLabel->winSetEnabledTextColors(GameMakeColor(255, 220, 60, 255), GameMakeColor(0, 0, 0, 0));
 				GadgetStaticTextSetText(fallbackCreditLabel, creditText);
+				fitCreditLabel(fallbackCreditLabel, creditText);
 			}
 		}
 	}
@@ -492,6 +555,10 @@ static void initLabelVersion()
 //-------------------------------------------------------------------------------------------------
 void MainMenuInit( WindowLayout *layout, void *userData )
 {
+	// GeneralsX @feature Android port 27/09/2026 The engine got this far: an updated engine that
+	// the launcher is watching (UpdateManager.noteEngineBoot) is good. See GXRemoteConfig.h.
+	GXRemoteConfig::markEngineBootComplete();
+
 	TheWritableGlobalData->m_breakTheMovie = FALSE;
 
 	// GeneralsX @bugfix Android port 08/09/2026 This call used to run unconditionally.
@@ -750,6 +817,14 @@ void MainMenuInit( WindowLayout *layout, void *userData )
 		initialGadgetDelay = 2;
 		if(rule)
 		rule->winHide(FALSE);
+
+		// GeneralsX @bugfix Android port 27/09/2026 This path brings the menu up by itself (the
+		// justEntered branch in MainMenuUpdate), but notShown stayed TRUE if the first menu was
+		// never revealed through MainMenuInput -- e.g. the first session went straight into a
+		// game. The next tap anywhere then counted as "first input", MainMenuInput slid the main
+		// dropdown in again, and it sat on top of whichever submenu was open, both working.
+		notShown = FALSE;
+		TheMouse->setVisibility(TRUE);
 	}
 
 	layout->bringForward();

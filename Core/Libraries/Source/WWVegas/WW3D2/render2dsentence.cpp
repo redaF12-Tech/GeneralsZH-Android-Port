@@ -45,6 +45,7 @@
 // GeneralsX @perf Android port 09/05/2026 - draw-category / UI-timing hooks
 #include "d3d8gles.h"
 #include <chrono>
+#include <vector>
 #endif
 
 
@@ -55,6 +56,334 @@
 #define no_TEST_PLACEMENT 1	 // Shows alignment markers for text.
 
 #define TEXTURE_OFFSET 2
+
+////////////////////////////////////////////////////////////////////////////////////
+//
+//	Right-to-left text (Arabic, Persian, Hebrew)
+//
+// GeneralsX @feature Android port 27/09/2026 The layout below places glyphs strictly left to
+// right, one glyph per code point, which is only correct for scripts that neither join nor run
+// right to left. Arabic needs both, so RTL text is handled in two steps around the unchanged
+// layout:
+//   1. Prepare_RTL_Text (before layout): Arabic letters are replaced with their contextual
+//      presentation forms (isolated/final/initial/medial, lam-alef ligatures), and each word's
+//      characters are put in visual order. Latin/digit runs inside a word keep their order;
+//      brackets inside RTL runs are mirrored; a hotkey "&X" pair stays atomic.
+//   2. Mirror_RTL_Lines (after layout): word order within each laid-out line is reversed by
+//      mirroring the chunks' screen positions, so the first word ends up on the right. A run of
+//      consecutive Latin words (a unit name, "(&K)", a number) is moved as one block and keeps
+//      its internal order. Line breaking is therefore still done in logical order.
+////////////////////////////////////////////////////////////////////////////////////
+namespace
+{
+struct ArabicForms
+{
+	WCHAR	base;
+	WCHAR	isolated;
+	WCHAR	final_form;
+	WCHAR	initial;
+	WCHAR	medial;
+};
+
+// Presentation forms, U+FE70-FEFF (Arabic) and U+FB50-FDFF (Persian letters). A zero initial/medial
+// form means the letter only joins to the preceding one.
+static const ArabicForms kArabicForms[] = {
+	{ 0x0621, 0xFE80, 0,      0,      0      },
+	{ 0x0622, 0xFE81, 0xFE82, 0,      0      },
+	{ 0x0623, 0xFE83, 0xFE84, 0,      0      },
+	{ 0x0624, 0xFE85, 0xFE86, 0,      0      },
+	{ 0x0625, 0xFE87, 0xFE88, 0,      0      },
+	{ 0x0626, 0xFE89, 0xFE8A, 0xFE8B, 0xFE8C },
+	{ 0x0627, 0xFE8D, 0xFE8E, 0,      0      },
+	{ 0x0628, 0xFE8F, 0xFE90, 0xFE91, 0xFE92 },
+	{ 0x0629, 0xFE93, 0xFE94, 0,      0      },
+	{ 0x062A, 0xFE95, 0xFE96, 0xFE97, 0xFE98 },
+	{ 0x062B, 0xFE99, 0xFE9A, 0xFE9B, 0xFE9C },
+	{ 0x062C, 0xFE9D, 0xFE9E, 0xFE9F, 0xFEA0 },
+	{ 0x062D, 0xFEA1, 0xFEA2, 0xFEA3, 0xFEA4 },
+	{ 0x062E, 0xFEA5, 0xFEA6, 0xFEA7, 0xFEA8 },
+	{ 0x062F, 0xFEA9, 0xFEAA, 0,      0      },
+	{ 0x0630, 0xFEAB, 0xFEAC, 0,      0      },
+	{ 0x0631, 0xFEAD, 0xFEAE, 0,      0      },
+	{ 0x0632, 0xFEAF, 0xFEB0, 0,      0      },
+	{ 0x0633, 0xFEB1, 0xFEB2, 0xFEB3, 0xFEB4 },
+	{ 0x0634, 0xFEB5, 0xFEB6, 0xFEB7, 0xFEB8 },
+	{ 0x0635, 0xFEB9, 0xFEBA, 0xFEBB, 0xFEBC },
+	{ 0x0636, 0xFEBD, 0xFEBE, 0xFEBF, 0xFEC0 },
+	{ 0x0637, 0xFEC1, 0xFEC2, 0xFEC3, 0xFEC4 },
+	{ 0x0638, 0xFEC5, 0xFEC6, 0xFEC7, 0xFEC8 },
+	{ 0x0639, 0xFEC9, 0xFECA, 0xFECB, 0xFECC },
+	{ 0x063A, 0xFECD, 0xFECE, 0xFECF, 0xFED0 },
+	{ 0x0641, 0xFED1, 0xFED2, 0xFED3, 0xFED4 },
+	{ 0x0642, 0xFED5, 0xFED6, 0xFED7, 0xFED8 },
+	{ 0x0643, 0xFED9, 0xFEDA, 0xFEDB, 0xFEDC },
+	{ 0x0644, 0xFEDD, 0xFEDE, 0xFEDF, 0xFEE0 },
+	{ 0x0645, 0xFEE1, 0xFEE2, 0xFEE3, 0xFEE4 },
+	{ 0x0646, 0xFEE5, 0xFEE6, 0xFEE7, 0xFEE8 },
+	{ 0x0647, 0xFEE9, 0xFEEA, 0xFEEB, 0xFEEC },
+	{ 0x0648, 0xFEED, 0xFEEE, 0,      0      },
+	{ 0x0649, 0xFEEF, 0xFEF0, 0,      0      },
+	{ 0x064A, 0xFEF1, 0xFEF2, 0xFEF3, 0xFEF4 },
+	{ 0x067E, 0xFB56, 0xFB57, 0xFB58, 0xFB59 },
+	{ 0x0686, 0xFB7A, 0xFB7B, 0xFB7C, 0xFB7D },
+	{ 0x0698, 0xFB8A, 0xFB8B, 0,      0      },
+	{ 0x06A9, 0xFB8E, 0xFB8F, 0xFB90, 0xFB91 },
+	{ 0x06AF, 0xFB92, 0xFB93, 0xFB94, 0xFB95 },
+	{ 0x06CC, 0xFBFC, 0xFBFD, 0xFBFE, 0xFBFF },
+};
+
+static const ArabicForms *Find_Arabic_Forms( WCHAR ch )
+{
+	for ( const ArabicForms &forms : kArabicForms ) {
+		if ( forms.base == ch ) {
+			return &forms;
+		}
+	}
+	return nullptr;
+}
+
+// The base letter a presentation form was made from, or 0. Used when no face has the form.
+static WCHAR Arabic_Presentation_Base( WCHAR ch )
+{
+	for ( const ArabicForms &forms : kArabicForms ) {
+		if ( ch == forms.isolated || ch == forms.final_form
+			|| ( forms.initial != 0 && ( ch == forms.initial || ch == forms.medial ) ) ) {
+			return forms.base;
+		}
+	}
+	return 0;
+}
+
+enum JoiningType { JOIN_NONE, JOIN_RIGHT, JOIN_DUAL, JOIN_CAUSING, JOIN_TRANSPARENT };
+
+static JoiningType Get_Joining_Type( WCHAR ch )
+{
+	if ( ( ch >= 0x064B && ch <= 0x065F ) || ch == 0x0670 || ( ch >= 0x06D6 && ch <= 0x06ED ) ) {
+		return JOIN_TRANSPARENT;
+	}
+	if ( ch == 0x0640 || ch == 0x200D ) {
+		return JOIN_CAUSING;
+	}
+	const ArabicForms *forms = Find_Arabic_Forms( ch );
+	if ( forms == nullptr || forms->final_form == 0 ) {
+		return JOIN_NONE;
+	}
+	return forms->initial != 0 ? JOIN_DUAL : JOIN_RIGHT;
+}
+
+static bool Is_Strong_RTL( WCHAR ch )
+{
+	if ( ( ch >= 0x0660 && ch <= 0x066C ) || ( ch >= 0x06F0 && ch <= 0x06F9 ) ) {
+		return false;	// Arabic-Indic digits and the percent/decimal/thousands signs keep number order
+	}
+	return ( ch >= 0x0590 && ch <= 0x08FF ) || ( ch >= 0xFB1D && ch <= 0xFDFF ) || ( ch >= 0xFE70 && ch <= 0xFEFF );
+}
+
+static bool Is_Strong_LTR( WCHAR ch )
+{
+	if ( ( ch >= L'A' && ch <= L'Z' ) || ( ch >= L'a' && ch <= L'z' ) || ( ch >= L'0' && ch <= L'9' ) ) {
+		return true;
+	}
+	if ( ( ch >= 0x0660 && ch <= 0x0669 ) || ( ch >= 0x06F0 && ch <= 0x06F9 ) ) {
+		return true;
+	}
+	if ( ch < 0x00C0 || ch == 0x00D7 || ch == 0x00F7 || ( ch >= 0x2000 && ch <= 0x2BFF ) || ( ch >= 0x3000 && ch <= 0x303F ) ) {
+		return false;
+	}
+	return !Is_Strong_RTL( ch );
+}
+
+static WCHAR Mirror_Bracket( WCHAR ch )
+{
+	switch ( ch ) {
+		case L'(': return L')';
+		case L')': return L'(';
+		case L'[': return L']';
+		case L']': return L'[';
+		case L'{': return L'}';
+		case L'}': return L'{';
+		case L'<': return L'>';
+		case L'>': return L'<';
+		case 0x00AB: return 0x00BB;
+		case 0x00BB: return 0x00AB;
+		default: return ch;
+	}
+}
+
+// Contextual shaping, in logical order. ZWJ/ZWNJ only steer the joining and are dropped.
+static void Shape_Arabic( const WCHAR *text, std::vector<WCHAR> &out )
+{
+	const size_t len = wcslen( text );
+	out.clear();
+	out.reserve( len + 1 );
+
+	auto neighbour_type = [&]( size_t i, int step ) -> JoiningType {
+		for ( long j = (long)i + step; j >= 0 && j < (long)len; j += step ) {
+			JoiningType type = Get_Joining_Type( text[j] );
+			if ( type != JOIN_TRANSPARENT ) {
+				return type;
+			}
+		}
+		return JOIN_NONE;
+	};
+
+	for ( size_t i = 0; i < len; i++ ) {
+		const WCHAR ch = text[i];
+		if ( ch == 0x200C || ch == 0x200D ) {
+			continue;
+		}
+		const JoiningType type = Get_Joining_Type( ch );
+		// Harakat (fatha, shadda, tanween, ...) are dropped: the layout gives every code point its
+		// own cell and advance, so a mark would open a gap in the middle of the word instead of
+		// sitting on its letter. Arabic reads correctly without them.
+		if ( type == JOIN_TRANSPARENT ) {
+			continue;
+		}
+		if ( type != JOIN_RIGHT && type != JOIN_DUAL ) {
+			out.push_back( ch );
+			continue;
+		}
+
+		const JoiningType prev = neighbour_type( i, -1 );
+		const bool joins_prev = ( prev == JOIN_DUAL || prev == JOIN_CAUSING );
+
+		// Lam followed by an alef becomes a single ligature that only joins to the right.
+		if ( ch == 0x0644 && i + 1 < len ) {
+			WCHAR ligature = 0;
+			switch ( text[i + 1] ) {
+				case 0x0622: ligature = 0xFEF5; break;
+				case 0x0623: ligature = 0xFEF7; break;
+				case 0x0625: ligature = 0xFEF9; break;
+				case 0x0627: ligature = 0xFEFB; break;
+				default: break;
+			}
+			if ( ligature != 0 ) {
+				out.push_back( joins_prev ? (WCHAR)( ligature + 1 ) : ligature );
+				i++;
+				continue;
+			}
+		}
+
+		const JoiningType next = neighbour_type( i, +1 );
+		const bool joins_next = ( type == JOIN_DUAL )
+			&& ( next == JOIN_DUAL || next == JOIN_RIGHT || next == JOIN_CAUSING );
+
+		const ArabicForms *forms = Find_Arabic_Forms( ch );
+		WCHAR shaped = forms->isolated;
+		if ( joins_prev && joins_next ) {
+			shaped = forms->medial;
+		} else if ( joins_prev ) {
+			shaped = forms->final_form;
+		} else if ( joins_next ) {
+			shaped = forms->initial;
+		}
+		out.push_back( shaped );
+	}
+	out.push_back( 0 );
+}
+
+// Puts one word (no spaces or newlines) into visual order, see the block comment above.
+static void Reorder_RTL_Word( WCHAR *word, size_t len )
+{
+	struct Unit { size_t start; size_t count; int dir; };	// dir: 0 neutral, 1 LTR, 2 RTL
+	std::vector<Unit> units;
+	bool any_rtl = false;
+	for ( size_t i = 0; i < len; ) {
+		Unit unit = { i, 1, 0 };
+		if ( word[i] == L'&' && i + 1 < len ) {
+			unit.count = 2;
+		}
+		const WCHAR key = word[i + unit.count - 1];
+		unit.dir = Is_Strong_RTL( key ) ? 2 : ( Is_Strong_LTR( key ) ? 1 : 0 );
+		any_rtl = any_rtl || unit.dir == 2;
+		units.push_back( unit );
+		i += unit.count;
+	}
+	if ( !any_rtl ) {
+		return;
+	}
+
+	// A neutral takes the LTR direction only between two LTR units, otherwise the paragraph's.
+	for ( size_t u = 0; u < units.size(); u++ ) {
+		if ( units[u].dir != 0 ) {
+			continue;
+		}
+		int before = 0;
+		int after = 0;
+		for ( size_t k = u; k-- > 0; ) {
+			if ( units[k].dir != 0 ) { before = units[k].dir; break; }
+		}
+		for ( size_t k = u + 1; k < units.size(); k++ ) {
+			if ( units[k].dir != 0 ) { after = units[k].dir; break; }
+		}
+		units[u].dir = ( before == 1 && after == 1 ) ? 3 : 2;	// 3: resolved LTR
+	}
+
+	std::vector<WCHAR> visual;
+	visual.reserve( len );
+	size_t run_end = units.size();
+	while ( run_end > 0 ) {
+		const bool rtl = units[run_end - 1].dir == 2;
+		size_t run_start = run_end - 1;
+		while ( run_start > 0 && ( units[run_start - 1].dir == 2 ) == rtl ) {
+			run_start--;
+		}
+		if ( rtl ) {
+			for ( size_t u = run_end; u-- > run_start; ) {
+				for ( size_t c = 0; c < units[u].count; c++ ) {
+					visual.push_back( units[u].count == 1 ? Mirror_Bracket( word[units[u].start] ) : word[units[u].start + c] );
+				}
+			}
+		} else {
+			for ( size_t u = run_start; u < run_end; u++ ) {
+				for ( size_t c = 0; c < units[u].count; c++ ) {
+					visual.push_back( word[units[u].start + c] );
+				}
+			}
+		}
+		run_end = run_start;
+	}
+	for ( size_t i = 0; i < len; i++ ) {
+		word[i] = visual[i];
+	}
+}
+
+static bool Contains_RTL( const WCHAR *text )
+{
+	for ( ; *text != 0; text++ ) {
+		if ( Is_Strong_RTL( *text ) ) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// Returns the text to lay out: `text` itself when it has no RTL characters, otherwise the
+// shaped, word-reordered copy in `buffer`.
+static const WCHAR *Prepare_RTL_Text( const WCHAR *text, std::vector<WCHAR> &buffer, bool *is_rtl )
+{
+	*is_rtl = ( text != nullptr ) && Contains_RTL( text );
+	if ( !*is_rtl ) {
+		return text;
+	}
+	Shape_Arabic( text, buffer );
+	WCHAR *chars = buffer.data();
+	size_t word_start = 0;
+	for ( size_t i = 0; ; i++ ) {
+		const WCHAR ch = chars[i];
+		if ( ch == 0 || ch == L' ' || ch == L'\n' ) {
+			if ( i > word_start ) {
+				Reorder_RTL_Word( chars + word_start, i - word_start );
+			}
+			word_start = i + 1;
+			if ( ch == 0 ) {
+				break;
+			}
+		}
+	}
+	return chars;
+}
+}
 ////////////////////////////////////////////////////////////////////////////////////
 //
 //	Render2DSentenceClass
@@ -67,6 +396,9 @@ Render2DSentenceClass::Render2DSentenceClass () :
 	TextureOffset (0, 0),
 	TextureStartX (0),
 	LastCharOverhang (0),
+	PendingLeadPad (0),
+	ChunkHasRTL (false),
+	ChunkHasLTR (false),
 	CurSurface (nullptr),
 	CurrTextureSize (0),
 	MonoSpaced (false),
@@ -398,6 +730,12 @@ Render2DSentenceClass::Get_Text_Extents (const WCHAR *text)
 
 	Vector2 extent (0, Font->Get_Char_Height());
 
+	// GeneralsX @feature Android port 27/09/2026 Measure the shaped text: lam-alef ligatures and
+	// contextual forms have different advances from the logical letters.
+	std::vector<WCHAR> rtl_buffer;
+	bool is_rtl = false;
+	text = Prepare_RTL_Text(text, rtl_buffer, &is_rtl);
+
 	while (*text) {
 		WCHAR ch = *text++;
 
@@ -422,6 +760,9 @@ Render2DSentenceClass::Get_Formatted_Text_Extents (const WCHAR *text)
 	if (Font == nullptr || text == nullptr)
 		return Vector2 (0, 0);
 
+	std::vector<WCHAR> rtl_buffer;
+	bool is_rtl = false;
+	text = Prepare_RTL_Text(text, rtl_buffer, &is_rtl);
 	return Build_Sentence_Not_Centered(text, nullptr, nullptr, true);
 }
 
@@ -780,7 +1121,7 @@ Render2DSentenceClass::Draw_Sentence (uint32 color)
 //
 ////////////////////////////////////////////////////////////////////////////////////
 void
-Render2DSentenceClass::Record_Sentence_Chunk ()
+Render2DSentenceClass::Record_Sentence_Chunk (bool joins_next)
 {
 	//
 	//	Do we have anything to store?
@@ -817,11 +1158,158 @@ Render2DSentenceClass::Record_Sentence_Chunk ()
 		sentence_data.UVRect.Top			= TextureOffset.J;
 		sentence_data.UVRect.Right			= TextureOffset.I + overhang;
 		sentence_data.UVRect.Bottom		= TextureOffset.J + char_height;
+		sentence_data.LeadPad			= min (PendingLeadPad, (float)width);
+		sentence_data.JoinsNext			= joins_next;
+		sentence_data.HasRTL				= ChunkHasRTL;
+		sentence_data.HasLTR				= ChunkHasLTR;
 
 		//
 		//	Add this information to our list
 		//
 		SentenceData.Add (sentence_data);
+	}
+	PendingLeadPad = 0;
+	ChunkHasRTL = false;
+	ChunkHasLTR = false;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////
+//
+//	Note_Chunk_Char
+//
+////////////////////////////////////////////////////////////////////////////////////
+void
+Render2DSentenceClass::Note_Chunk_Char (WCHAR ch)
+{
+	ChunkHasRTL = ChunkHasRTL || Is_Strong_RTL (ch);
+	ChunkHasLTR = ChunkHasLTR || Is_Strong_LTR (ch);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////
+//
+//	Is_RTL_Text
+//
+// GeneralsX @feature Android port 27/09/2026 Same test Build_Sentence uses to decide whether a
+// sentence is shaped and mirrored, so a caller's alignment always agrees with the layout.
+////////////////////////////////////////////////////////////////////////////////////
+bool
+Render2DSentenceClass::Is_RTL_Text (const WCHAR *text)
+{
+	return text != nullptr && Contains_RTL (text);
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+//
+//	Mirror_RTL_Lines
+//
+// GeneralsX @feature Android port 27/09/2026 Reverses the word order of every laid-out line of
+// an RTL sentence (see the block comment at the top of the file). Each line is mirrored inside
+// [0, widest line], which keeps centred lines centred, right-aligns wrapped paragraphs, and leaves
+// the sentence's extents unchanged. Chunks of one word split at the texture edge move together;
+// consecutive LTR words move as one block so they keep their order. A blitted leading space is
+// cut off its chunk first, otherwise it would end up between the wrong two words.
+////////////////////////////////////////////////////////////////////////////////////
+void
+Render2DSentenceClass::Mirror_RTL_Lines (int *hkX, int *hkY)
+{
+	const int count = SentenceData.Count ();
+	if (count == 0) {
+		return;
+	}
+
+	std::vector<RectClass> original (count);
+	float span = 0;
+	for (int index = 0; index < count; index ++) {
+		SentenceDataStruct &data = SentenceData[index];
+		original[index] = data.ScreenRect;
+		if (data.LeadPad > 0) {
+			data.ScreenRect.Left	+= data.LeadPad;
+			data.UVRect.Left		+= data.LeadPad;
+		}
+		span = max (span, data.ScreenRect.Right);
+	}
+
+	std::vector<float> delta (count, 0.0F);
+	int line_start = 0;
+	while (line_start < count) {
+		int line_end = line_start + 1;
+		while (line_end < count && SentenceData[line_end].ScreenRect.Top == SentenceData[line_start].ScreenRect.Top) {
+			line_end ++;
+		}
+
+		//	Words: chunks joined across a texture edge. dir: 1 LTR, 2 RTL, 0 neutral.
+		struct Word { int first; int last; int dir; };
+		std::vector<Word> words;
+		for (int index = line_start; index < line_end; index ++) {
+			Word word = { index, index, 0 };
+			while (SentenceData[word.last].JoinsNext && word.last + 1 < line_end) {
+				word.last ++;
+			}
+			bool has_rtl = false;
+			bool has_ltr = false;
+			for (int k = word.first; k <= word.last; k ++) {
+				has_rtl = has_rtl || SentenceData[k].HasRTL;
+				has_ltr = has_ltr || SentenceData[k].HasLTR;
+			}
+			word.dir = has_rtl ? 2 : (has_ltr ? 1 : 0);
+			words.push_back (word);
+			index = word.last;
+		}
+		for (size_t w = 0; w < words.size (); w ++) {
+			if (words[w].dir != 0) {
+				continue;
+			}
+			bool ltr_before = false;
+			bool ltr_after = false;
+			for (size_t k = w; k-- > 0; ) {
+				if (words[k].dir != 0) { ltr_before = (words[k].dir == 1); break; }
+			}
+			for (size_t k = w + 1; k < words.size (); k ++) {
+				if (words[k].dir != 0) { ltr_after = (words[k].dir == 1); break; }
+			}
+			words[w].dir = (ltr_before && ltr_after) ? 3 : 2;
+		}
+
+		//	Blocks: an RTL word on its own, or a run of LTR words.
+		for (size_t w = 0; w < words.size (); ) {
+			size_t w_end = w + 1;
+			if (words[w].dir != 2) {
+				while (w_end < words.size () && words[w_end].dir != 2) {
+					w_end ++;
+				}
+			}
+			const int first = words[w].first;
+			const int last = words[w_end - 1].last;
+			float left = SentenceData[first].ScreenRect.Left;
+			float right = SentenceData[first].ScreenRect.Right;
+			for (int k = first; k <= last; k ++) {
+				left = min (left, SentenceData[k].ScreenRect.Left);
+				right = max (right, SentenceData[k].ScreenRect.Right);
+			}
+			const float shift = span - right - left;
+			for (int k = first; k <= last; k ++) {
+				delta[k] = shift;
+			}
+			w = w_end;
+		}
+		line_start = line_end;
+	}
+
+	for (int index = 0; index < count; index ++) {
+		SentenceData[index].ScreenRect.Left		+= delta[index];
+		SentenceData[index].ScreenRect.Right	+= delta[index];
+	}
+
+	//	The hotkey letter is drawn separately at (hkX, hkY); move it with the chunk it was in.
+	if (hkX != nullptr && hkY != nullptr) {
+		for (int index = 0; index < count; index ++) {
+			if (original[index].Top == (float)*hkY && (float)*hkX >= original[index].Left && (float)*hkX < original[index].Right) {
+				*hkX += (int)delta[index];
+				break;
+			}
+		}
 	}
 }
 
@@ -955,6 +1443,9 @@ void	Render2DSentenceClass::Build_Sentence_Centered (const WCHAR *text, int *hkX
 	//	Start fresh
 	//
 	Reset_Sentence_Data ();
+	PendingLeadPad = 0;
+	ChunkHasRTL = false;
+	ChunkHasLTR = false;
 	Cursor.Set (0, 0);
 
 	//
@@ -1102,7 +1593,7 @@ void	Render2DSentenceClass::Build_Sentence_Centered (const WCHAR *text, int *hkX
 			//	Do we need to record this portion of the sentence to its own chunk?
 			//
 			if (exceeded_texture_width || encountered_break_char) {
-				Record_Sentence_Chunk ();
+				Record_Sentence_Chunk (!encountered_break_char);
 
 				//
 				//	Adjust the positions
@@ -1185,6 +1676,7 @@ void	Render2DSentenceClass::Build_Sentence_Centered (const WCHAR *text, int *hkX
 				LastCharOverhang = dontBlit ? 0
 					: max( 0, (int)(Font->Get_Char_Width (ch) - char_spacing) );
 
+				Note_Chunk_Char (ch);
 				TextureOffset.I += char_spacing;
 			}
 		}
@@ -1232,6 +1724,9 @@ Vector2	Render2DSentenceClass::Build_Sentence_Not_Centered (const WCHAR *text, i
 	if (!justCalcExtents)
 	{
 		Reset_Sentence_Data ();
+		PendingLeadPad = 0;
+		ChunkHasRTL = false;
+		ChunkHasLTR = false;
 	}
 	Cursor.Set (0, 0);
 
@@ -1278,7 +1773,13 @@ Vector2	Render2DSentenceClass::Build_Sentence_Not_Centered (const WCHAR *text, i
 		if (exceeded_texture_width || encountered_break_char|| wordBiggerThenLine) {
 			if (!justCalcExtents)
 			{
-				Record_Sentence_Chunk ();
+				Record_Sentence_Chunk (exceeded_texture_width && !encountered_break_char && !wordBiggerThenLine);
+			}
+			// GeneralsX @feature Android port 27/09/2026 The space that ended this chunk is blitted
+			// at the start of the next one; Mirror_RTL_Lines cuts it off there.
+			if (!justCalcExtents)
+			{
+				PendingLeadPad = (ch == L' ') ? char_spacing : 0;
 			}
 
 			//
@@ -1392,6 +1893,10 @@ Vector2	Render2DSentenceClass::Build_Sentence_Not_Centered (const WCHAR *text, i
 			LastCharOverhang = dontBlit ? 0
 				: max( 0, (int)(Font->Get_Char_Width (ch) - char_spacing) );
 
+			if (!justCalcExtents)
+			{
+				Note_Chunk_Char (ch);
+			}
 			TextureOffset.I += char_spacing;
 		}
 	}
@@ -1440,10 +1945,19 @@ Render2DSentenceClass::Build_Sentence (const WCHAR *text, int *hkX, int *hkY)
 	if (Font == nullptr)
 		return;
 
+	// GeneralsX @feature Android port 27/09/2026 RTL text is shaped and put in visual word order
+	// before layout, and its lines mirrored after it (see Mirror_RTL_Lines).
+	std::vector<WCHAR> rtl_buffer;
+	bool is_rtl = false;
+	text = Prepare_RTL_Text(text, rtl_buffer, &is_rtl);
+
 	if(Centered && (WrapWidth > 0 || wcschr(text,L'\n')))
 		Build_Sentence_Centered(text, hkX, hkY);
 	else
 		Build_Sentence_Not_Centered(text, hkX, hkY);
+
+	if (is_rtl)
+		Mirror_RTL_Lines(hkX, hkY);
 
 }
 
@@ -1465,6 +1979,8 @@ FontCharsClass::FontCharsClass () :
 #if defined(SAGE_USE_FREETYPE) && !defined(_WIN32)
 	FTLibrary( nullptr ),
 	FTFace( nullptr ),
+	FTFallbackFaceCount( 0 ),
+	FTFallbackFacesLoaded( false ),
 #endif
 	CurrPixelOffset( 0 ),
 	PointSize( 0 ),
@@ -1476,6 +1992,9 @@ FontCharsClass::FontCharsClass () :
 {
 	AlternateUnicodeFont = nullptr;
 	::memset( ASCIICharArray, 0, sizeof (ASCIICharArray) );
+#if defined(SAGE_USE_FREETYPE) && !defined(_WIN32)
+	::memset( FTFallbackFaces, 0, sizeof (FTFallbackFaces) );
+#endif
 }
 
 
@@ -1972,6 +2491,8 @@ FontCharsClass::Update_Current_Buffer (int char_width)
 }
 
 #if defined(SAGE_USE_FREETYPE) && !defined(_WIN32)
+#include <strings.h>
+#include <unistd.h>
 
 #if (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE) || defined(__ANDROID__)
 
@@ -2210,6 +2731,41 @@ FontCharsClass::Store_Freetype_Char (WCHAR ch)
 	FT_UInt glyph_index = FT_Get_Char_Index( FTFace, ch );
 	GX_TRACE("Store_Freetype_Char: FT_Get_Char_Index returned glyph_index=%u\n", (unsigned int)glyph_index);
 
+	// GeneralsX @bugfix Android port 27/09/2026 A code point the face has no glyph for used to be
+	// rendered as glyph 0 (an empty box). The game text for zh/ko/ar/fa is almost entirely such
+	// code points, because the bundled faces are Latin/Cyrillic only, so look the glyph up in the
+	// fallback faces (system CJK/Arabic fonts) and render it from whichever face has it.
+	FT_Face face = FTFace;
+	if ( glyph_index == 0 && ch >= 0x80 ) {
+		FT_UInt fallback_index = 0;
+		FT_Face fallback = Find_Freetype_Fallback_Face( ch, &fallback_index );
+		if ( fallback != nullptr ) {
+			face = fallback;
+			glyph_index = fallback_index;
+		} else if ( Arabic_Presentation_Base( ch ) == 0 ) {
+			// Said once per code point, so a box on screen can be traced to the character a
+			// fallback font is still missing for.
+			static uint8 s_reported[0x10000 / 8];
+			const unsigned int code = (unsigned int)ch & 0xFFFFu;
+			if ( ( s_reported[code >> 3] & ( 1u << ( code & 7 ) ) ) == 0 ) {
+				s_reported[code >> 3] |= (uint8)( 1u << ( code & 7 ) );
+				fprintf( stderr, "[font] no glyph for U+%04X in %s or any fallback face\n", code, GDIFontName.str() );
+			}
+		} else {
+			// GeneralsX @feature Android port 27/09/2026 A face with Arabic letters but without
+			// the presentation-forms block: draw the unjoined letter rather than a box.
+			const WCHAR base = Arabic_Presentation_Base( ch );
+			glyph_index = FT_Get_Char_Index( FTFace, base );
+			if ( glyph_index == 0 ) {
+				fallback = Find_Freetype_Fallback_Face( base, &fallback_index );
+				if ( fallback != nullptr ) {
+					face = fallback;
+					glyph_index = fallback_index;
+				}
+			}
+		}
+	}
+
 	// GeneralsX @bugfix fbraz 03/06/2026 Log ALL Cyrillic character rendering attempts
 	if (ch >= 0x0400 && ch <= 0x04FF) {
 		GX_TRACE("[GX-ISSUE144] Store_Freetype_Char U+%04X glyph_idx=%u font=%s\n",
@@ -2221,7 +2777,7 @@ FontCharsClass::Store_Freetype_Char (WCHAR ch)
 	//
 	//	Load the glyph (without rendering yet)
 	//
-	FT_Error error = FT_Load_Glyph( FTFace, glyph_index, FT_LOAD_DEFAULT );
+	FT_Error error = FT_Load_Glyph( face, glyph_index, FT_LOAD_DEFAULT );
 	GX_TRACE("Store_Freetype_Char: FT_Load_Glyph returned error=%d\n", (int)error);
 	if ( error != 0 ) {
 		return nullptr;
@@ -2230,13 +2786,13 @@ FontCharsClass::Store_Freetype_Char (WCHAR ch)
 	//
 	//	Convert to an anti-aliased bitmap
 	//
-	error = FT_Render_Glyph( FTFace->glyph, FT_RENDER_MODE_NORMAL );
+	error = FT_Render_Glyph( face->glyph, FT_RENDER_MODE_NORMAL );
 	GX_TRACE("Store_Freetype_Char: FT_Render_Glyph returned error=%d\n", (int)error);
 	if ( error != 0 ) {
 		return nullptr;
 	}
 
-	FT_GlyphSlot glyph = FTFace->glyph;
+	FT_GlyphSlot glyph = face->glyph;
 	GX_TRACE("Store_Freetype_Char: glyph slot=%p bitmap.width=%u bitmap.rows=%u advance.x=%ld\n",
 		(void*)glyph, glyph ? glyph->bitmap.width : 0u, glyph ? glyph->bitmap.rows : 0u, glyph ? (long)glyph->advance.x : 0L);
 
@@ -2365,6 +2921,167 @@ FontCharsClass::Store_Freetype_Char (WCHAR ch)
 
 ////////////////////////////////////////////////////////////////////////////////////
 //
+//	Freetype fallback font files
+//
+// GeneralsX @bugfix Android port 27/09/2026 Candidate faces for glyphs the base face lacks.
+// Android ships its CJK/Arabic fonts in /system/fonts under stable file names; the Pan-CJK
+// collection's face 2 is Simplified Chinese, whose glyph set also covers Hangul and kana. A
+// fonts/fallback.* file in the game-data folder is tried first so a player can supply a face.
+// On fontconfig platforms the same families are resolved by name, and a candidate is only
+// accepted when fontconfig returns that family rather than its generic substitute.
+////////////////////////////////////////////////////////////////////////////////////
+namespace
+{
+struct FallbackFontFile
+{
+	const char *	path;
+	int				face_index;
+};
+
+static const FallbackFontFile kBundledFallbackFiles[] = {
+	{ "fonts/fallback.ttf", 0 },
+	{ "fonts/fallback.otf", 0 },
+	{ "fonts/fallback.ttc", 0 },
+};
+
+#if defined(__ANDROID__)
+static const FallbackFontFile kSystemFallbackFiles[] = {
+	{ "/system/fonts/NotoSansCJK-Regular.ttc", 2 },
+	{ "/system/fonts/NotoSansSC-Regular.otf", 0 },
+	{ "/system/fonts/NotoSansKR-Regular.otf", 0 },
+	{ "/system/fonts/DroidSansFallbackFull.ttf", 0 },
+	{ "/system/fonts/DroidSansFallback.ttf", 0 },
+	{ "/system/fonts/NotoNaskhArabic-Regular.ttf", 0 },
+	{ "/system/fonts/NotoNaskhArabicUI-Regular.ttf", 0 },
+	{ "/system/fonts/NotoSansArabic-Regular.ttf", 0 },
+	// GeneralsX @bugfix Android port 27/09/2026 Symbols. The GeneralsOnline lobby prefixes every
+	// room name with "[region][shield]", and the shield drew as an empty box here while the PC
+	// shows it: Windows' GDI links a missing glyph to its symbol fonts, and this list had none.
+	{ "/system/fonts/NotoSansSymbols-Regular-Subsetted.ttf", 0 },
+	{ "/system/fonts/NotoSansSymbols-Regular-Subsetted2.ttf", 0 },
+	{ "/system/fonts/NotoSansSymbols2-Regular.ttf", 0 },
+	{ "/system/fonts/DroidSans.ttf", 0 },
+};
+#endif
+
+#if !(defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE) && !defined(__ANDROID__)
+static const char *kFontconfigFallbackFamilies[] = {
+	"Noto Sans CJK SC",
+	"Noto Sans CJK KR",
+	"WenQuanYi Zen Hei",
+	"Droid Sans Fallback",
+	"Noto Naskh Arabic",
+	"Noto Sans Arabic",
+	"Noto Sans Symbols",
+	"Noto Sans Symbols2",
+	"DejaVu Sans",
+};
+#endif
+}
+
+void
+FontCharsClass::Load_Freetype_Fallback_Faces (void)
+{
+	FTFallbackFacesLoaded = true;
+	if ( FTLibrary == nullptr ) {
+		return;
+	}
+
+	const int font_height = FT_MulDiv( PointSize, 96, 72 );
+
+	auto add_face = [&]( const char *path, int face_index ) {
+		if ( FTFallbackFaceCount >= MAX_FT_FALLBACK_FACES ) {
+			return;
+		}
+		if ( FreetypeFontPath.Get_Length() > 0 && strcmp( path, FreetypeFontPath.Peek_Buffer() ) == 0 ) {
+			return;
+		}
+		FT_Face face = nullptr;
+		FT_Error error = FT_New_Face( FTLibrary, path, face_index, &face );
+		if ( error != 0 && face_index != 0 ) {
+			error = FT_New_Face( FTLibrary, path, 0, &face );
+		}
+		if ( error != 0 ) {
+			return;
+		}
+		if ( !FT_IS_SCALABLE( face ) || FT_Set_Pixel_Sizes( face, 0, font_height ) != 0 ) {
+			FT_Done_Face( face );
+			return;
+		}
+		GX_TRACE("[fontfallback] %s face %d family=%s glyphs=%ld for font=%s\n",
+			path, face_index, face->family_name ? face->family_name : "<null>", face->num_glyphs, GDIFontName.str());
+		FTFallbackFaces[FTFallbackFaceCount++] = face;
+	};
+
+	for ( const FallbackFontFile &file : kBundledFallbackFiles ) {
+		if ( access( file.path, R_OK ) == 0 ) {
+			add_face( file.path, file.face_index );
+		}
+	}
+
+#if defined(__ANDROID__)
+	for ( const FallbackFontFile &file : kSystemFallbackFiles ) {
+		if ( access( file.path, R_OK ) == 0 ) {
+			add_face( file.path, file.face_index );
+		}
+	}
+#elif !(defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)
+	FcConfig *config = FcInitLoadConfigAndFonts();
+	if ( config != nullptr ) {
+		for ( const char *family : kFontconfigFallbackFamilies ) {
+			FcPattern *pattern = FcNameParse( (const FcChar8*)family );
+			if ( pattern == nullptr ) {
+				continue;
+			}
+			FcConfigSubstitute( config, pattern, FcMatchPattern );
+			FcDefaultSubstitute( pattern );
+			FcResult result = FcResultNoMatch;
+			FcPattern *match = FcFontMatch( config, pattern, &result );
+			if ( match != nullptr && result == FcResultMatch ) {
+				FcChar8 *matched_family = nullptr;
+				FcChar8 *file_path = nullptr;
+				int face_index = 0;
+				FcPatternGetInteger( match, FC_INDEX, 0, &face_index );
+				if ( FcPatternGetString( match, FC_FAMILY, 0, &matched_family ) == FcResultMatch
+					&& strcasecmp( (const char*)matched_family, family ) == 0
+					&& FcPatternGetString( match, FC_FILE, 0, &file_path ) == FcResultMatch ) {
+					add_face( (const char*)file_path, face_index );
+				}
+			}
+			if ( match != nullptr ) {
+				FcPatternDestroy( match );
+			}
+			FcPatternDestroy( pattern );
+		}
+		FcConfigDestroy( config );
+	}
+#endif
+
+	if ( FTFallbackFaceCount == 0 ) {
+		GX_TRACE("[fontfallback] no fallback face found for font=%s; glyphs outside it render empty\n", GDIFontName.str());
+	}
+}
+
+FT_Face
+FontCharsClass::Find_Freetype_Fallback_Face (WCHAR ch, FT_UInt *glyph_index)
+{
+	if ( !FTFallbackFacesLoaded ) {
+		Load_Freetype_Fallback_Faces();
+	}
+
+	for ( int i = 0; i < FTFallbackFaceCount; i++ ) {
+		FT_UInt index = FT_Get_Char_Index( FTFallbackFaces[i], ch );
+		if ( index != 0 ) {
+			*glyph_index = index;
+			return FTFallbackFaces[i];
+		}
+	}
+	return nullptr;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////
+//
 //	Free_Freetype_Font
 //
 // GeneralsX @build fbraz 11/02/2026 BenderAI - Cleanup FreeType resources
@@ -2379,6 +3096,13 @@ FontCharsClass::Free_Freetype_Font (void)
 		FT_Done_Face( FTFace );
 		FTFace = nullptr;
 	}
+
+	for ( int i = 0; i < FTFallbackFaceCount; i++ ) {
+		FT_Done_Face( FTFallbackFaces[i] );
+		FTFallbackFaces[i] = nullptr;
+	}
+	FTFallbackFaceCount = 0;
+	FTFallbackFacesLoaded = false;
 
 	//
 	//	Free the FreeType library

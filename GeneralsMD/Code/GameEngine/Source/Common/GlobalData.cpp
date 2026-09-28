@@ -31,6 +31,7 @@
 
 // INCLUDES ///////////////////////////////////////////////////////////////////////////////////////
 #include "PreRTS.h"	// This must go first in EVERY cpp file in the GameEngine
+#include "Common/GXRemoteConfig.h"
 
 #include "ww3d.h"
 #include "texturefilter.h"
@@ -1177,6 +1178,48 @@ GlobalData *GlobalData::newOverride()
 
 }
 
+// GeneralsX @feature Android port 27/09/2026 The second half of the PC branch of
+// generateExeCRC(): the launcher leaves the CRC state after the PC executable and the version
+// number in files/update/pc_exe_crc_seed.txt, and the two multiplayer scripts are added here from
+// this engine's own file system, byte for byte as generateExeCRC() adds them.
+static void feedExeCrc(UnsignedInt &crc, const char *path)
+{
+	File *fp = TheFileSystem->openFile(path, File::READ | File::BINARY);
+	if (fp == nullptr)
+		return;
+	unsigned char block[65536];
+	Int amtRead;
+	while ((amtRead = fp->read(block, sizeof(block))) > 0)
+	{
+		for (Int i = 0; i < amtRead; ++i)
+			crc = ((crc << 1) | (crc >> 31)) + block[i];
+	}
+	fp->close();
+}
+
+static Bool pcExeCrcFromDataPack(UnsignedInt &out)
+{
+	const std::string dir = GXRemoteConfig::updateDirPath();
+	if (dir.empty() || TheFileSystem == nullptr)
+		return FALSE;
+	FILE *f = fopen((dir + "/pc_exe_crc_seed.txt").c_str(), "r");
+	if (f == nullptr)
+		return FALSE;
+	char buf[64] = { 0 };
+	const Bool read = fgets(buf, sizeof(buf), f) != nullptr;
+	fclose(f);
+	char *end = nullptr;
+	const unsigned long seed = read ? strtoul(buf, &end, 10) : 0;
+	if (!read || end == buf)
+		return FALSE;
+	UnsignedInt crc = (UnsignedInt)seed;
+	feedExeCrc(crc, "Data\\Scripts\\SkirmishScripts.scb");
+	feedExeCrc(crc, "Data\\Scripts\\MultiplayerScripts.scb");
+	fprintf(stderr, "[GX-CRC] PC exe checksum from the installed data package: %u\n", (unsigned)crc);
+	out = crc;
+	return TRUE;
+}
+
 //-------------------------------------------------------------------------------------------------
 void GlobalData::init()
 {
@@ -1209,7 +1252,25 @@ void GlobalData::init()
 		// The file may name a checksum to claim; empty means "the stock PC
 		// GeneralsOnline client", which is what it is for.
 		char buf[64] = { 0 };
-		unsigned long claimed = 3118172181UL;
+		// GeneralsX @bugfix Android port 27/09/2026 The PC client's checksum changes with every
+		// PC release (GeneralsOnline 092226_QFE1 moved it from 3118172181 to 524577083), and a
+		// stale number turns every PC lobby away. So it comes from the signed update settings
+		// (pc_exe_crc, GXRemoteConfig.h) first; the number below is only the one this build
+		// knew. scripts/update/pc-exe-crc.py computes it from a new PC executable.
+		unsigned long claimed = strtoul(GXRemoteConfig::get("pc_exe_crc", "524577083").c_str(), nullptr, 10);
+		if (claimed == 0)
+		{
+			claimed = 524577083UL;
+		}
+		// GeneralsX @feature Android port 27/09/2026 Better still, the number of the PC release
+		// this install actually has: the launcher hashes the PC executable inside the community
+		// data package when it installs it (DataPackInstaller.PC_EXE_NAME), so a new PC release
+		// needs neither an APK nor anyone to publish its number.
+		UnsignedInt fromDataPack = 0;
+		if (pcExeCrcFromDataPack(fromDataPack))
+		{
+			claimed = fromDataPack;
+		}
 		if (fgets(buf, sizeof(buf), marker) != nullptr)
 		{
 			const unsigned long parsed = strtoul(buf, nullptr, 10);

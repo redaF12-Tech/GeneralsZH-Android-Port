@@ -53,6 +53,7 @@
 #include "Common/Language.h"
 #include "Common/Debug.h"
 #include "Common/GameAudio.h"
+#include "GameClient/Display.h"
 #include "GameClient/DisplayStringManager.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/Gadget.h"
@@ -540,6 +541,61 @@ static Int addEntry( UnicodeString *string, Int color, Int row, Int column, Game
 ///////////////////////////////////////////////////////////////////////////////
 // PUBLIC FUNCTIONS ///////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+
+// GadgetListBoxTouchScroll ===================================================
+/** GeneralsX @feature Android port 27/09/2026 Scroll a list box by dragging a finger through
+	it. A mouse player has the wheel; on a phone the only way was the small arrows or the thumb
+	at the list's edge. The touch layer (SDL3GameEngine.cpp) recognises a drag that started on a
+	list and calls these directly -- a finger on a list is not a mouse, and the window manager's
+	drag messages never reach a list for a touch that has not yet been classified as a press.
+	The list follows the finger pixel by pixel, clamped to the bound the scroll bar's own
+	tracking uses (GSM_SLIDER_TRACK), and the thumb moves with it. */
+//=============================================================================
+static GameWindow *s_touchScrollWindow = nullptr;
+static Int s_touchScrollAnchorY = 0;
+static Int s_touchScrollAnchorPos = 0;
+
+void GadgetListBoxTouchScrollBegin( GameWindow *listbox, Int y )
+{
+	ListboxData *list = listbox ? (ListboxData *)listbox->winGetUserData() : nullptr;
+	s_touchScrollWindow = list ? listbox : nullptr;
+	s_touchScrollAnchorY = y;
+	s_touchScrollAnchorPos = list ? list->displayPos : 0;
+}
+
+void GadgetListBoxTouchScrollMove( GameWindow *listbox, Int y )
+{
+	if( listbox == nullptr || listbox != s_touchScrollWindow )
+		return;
+	ListboxData *list = (ListboxData *)listbox->winGetUserData();
+	if( list == nullptr || list->endPos <= 0 )
+		return;
+
+	Int maxPos = list->totalHeight - list->displayHeight + 1;
+	if( maxPos < 0 )
+		maxPos = 0;
+	Int pos = s_touchScrollAnchorPos - ( y - s_touchScrollAnchorY );
+	if( pos < 0 )
+		pos = 0;
+	if( pos > maxPos )
+		pos = maxPos;
+	if( pos == list->displayPos )
+		return;
+	list->displayPos = pos;
+
+	// Refresh the scroll bar's range, then move its thumb to the new position.
+	adjustDisplay( listbox, 0, FALSE );
+	if( list->slider != nullptr )
+	{
+		SliderData *sData = (SliderData *)list->slider->winGetUserData();
+		TheWindowManager->winSendSystemMsg( list->slider, GSM_SET_SLIDER, ( sData->maxVal - list->displayPos ), 0 );
+	}
+}
+
+void GadgetListBoxTouchScrollEnd()
+{
+	s_touchScrollWindow = nullptr;
+}
 
 // GadgetListBoxInput =========================================================
 /** Handle input for list box */

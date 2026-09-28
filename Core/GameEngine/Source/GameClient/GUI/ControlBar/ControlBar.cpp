@@ -907,6 +907,9 @@ ControlBar::ControlBar()
 	m_touchHoldPoint.x = m_touchHoldPoint.y = 0;
 	m_touchForceAttackButton = nullptr;
 	m_touchWaypointButton = nullptr;
+	m_touchBuilderMoreButton = nullptr;
+	m_touchBuilderBackButton = nullptr;
+	m_builderPageObject = INVALID_ID;
 
 	m_animateDownWin1Pos.x = m_animateDownWin1Pos.y = 0;
 	m_animateDownWin1Size.x = m_animateDownWin1Size.y = 0;
@@ -2773,6 +2776,31 @@ void ControlBar::initTouchModeButtons()
 	{
 		fprintf(stderr, "[touchmodes] SSRally image missing; no waypoint button\n");
 		m_touchWaypointButton = nullptr;
+	}
+
+	// GeneralsX @feature Android port 27/09/2026 The page arrows on a builder's bar
+	// (addBuilderPageButtons): a cyan down arrow for "more orders", an up arrow for "back".
+	// Both pictures are drawn by the display at startup (W3DDisplay.cpp,
+	// registerBuilderPageImages); should that ever fail, SUFakeToggle -- the GLA worker's own
+	// "other page" arrow -- stands in for both.
+	const char *moreImage = TheMappedImageCollection && TheMappedImageCollection->findImageByName( "GXBuilderPageMore" )
+		? "GXBuilderPageMore" : "SUFakeToggle";
+	const char *backImage = TheMappedImageCollection && TheMappedImageCollection->findImageByName( "GXBuilderPageBack" )
+		? "GXBuilderPageBack" : "SUFakeToggle";
+	CommandButton *builderMore = newCommandButton( "GX_Command_TouchBuilderPageMore" );
+	builderMore->initTouchModeButton( GUI_COMMAND_GX_BUILDER_PAGE,
+																	 "GX:BuilderPageMore", "GX:ToolTipBuilderPageMore", moreImage );
+	CommandButton *builderBack = newCommandButton( "GX_Command_TouchBuilderPageBack" );
+	builderBack->initTouchModeButton( GUI_COMMAND_GX_BUILDER_PAGE,
+																	 "GX:BuilderPageBack", "GX:ToolTipBuilderPageBack", backImage );
+	if( builderMore->getButtonImage() != nullptr && builderBack->getButtonImage() != nullptr )
+	{
+		m_touchBuilderMoreButton = builderMore;
+		m_touchBuilderBackButton = builderBack;
+	}
+	else
+	{
+		fprintf(stderr, "[touchmodes] builder page arrow images missing; no builder pages\n");
 	}
 #endif
 }

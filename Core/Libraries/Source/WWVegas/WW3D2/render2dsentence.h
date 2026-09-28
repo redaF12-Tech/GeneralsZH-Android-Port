@@ -135,6 +135,9 @@ private:
 	void							Free_Freetype_Font( void );
 	const FontCharsClassCharDataStruct *	Store_Freetype_Char( WCHAR ch );
 	const char *					Locate_Font_FontConfig( const char *font_name );
+	// GeneralsX @bugfix Android port 27/09/2026 Per-glyph fallback for scripts the base face lacks (CJK, Hangul, Arabic)
+	void							Load_Freetype_Fallback_Faces( void );
+	FT_Face							Find_Freetype_Fallback_Face( WCHAR ch, FT_UInt *glyph_index );
 #endif
 	
 	void							Update_Current_Buffer( int char_width );
@@ -170,6 +173,10 @@ private:
 	FT_Library							FTLibrary;
 	FT_Face								FTFace;
 	StringClass							FreetypeFontPath;
+	enum { MAX_FT_FALLBACK_FACES = 12 };
+	FT_Face								FTFallbackFaces[MAX_FT_FALLBACK_FACES];
+	int									FTFallbackFaceCount;
+	bool									FTFallbackFacesLoaded;
 #endif
 	
 	FontCharsClassCharDataStruct *					ASCIICharArray[256];
@@ -194,6 +201,11 @@ public:
 	// recycle pool (see render2dsentence.cpp). Call on device reset/shutdown --
 	// the pool intentionally outlives individual sentence objects.
 	static void		Flush_Recycled_Textures ();
+
+	// GeneralsX @feature Android port 27/09/2026 TRUE when the text is laid out right to left
+	// (it contains an Arabic/Persian/Hebrew letter). Callers that place a left-aligned sentence
+	// inside a box use this to right-align it instead, as RTL text reads from the right edge.
+	static bool		Is_RTL_Text (const WCHAR *text);
 	virtual	void	Reset ();
 	void				Reset_Polys ();
 
@@ -258,6 +270,13 @@ private:
 		SurfaceClass *		Surface;
 		RectClass			ScreenRect;
 		RectClass			UVRect;
+		// GeneralsX @feature Android port 27/09/2026 What Mirror_RTL_Lines needs per chunk: the
+		// width of a blitted leading space, whether the word continues in the next chunk (split
+		// at the texture edge), and whether it holds strong RTL/LTR characters.
+		float					LeadPad;
+		bool					JoinsNext;
+		bool					HasRTL;
+		bool					HasLTR;
 
 		bool operator== (const SentenceDataStruct &src)	{ return false; }
 		bool operator!= (const SentenceDataStruct &src)	{ return true; }
@@ -284,7 +303,9 @@ private:
 	//
 	void	Reset_Sentence_Data ();
 	void	Build_Textures ();
-	void	Record_Sentence_Chunk ();
+	void	Record_Sentence_Chunk (bool joins_next = false);
+	void	Note_Chunk_Char (WCHAR ch);
+	void	Mirror_RTL_Lines (int *hkX, int *hkY);
 	void	Allocate_New_Surface (const WCHAR *text, bool justCalcExtents = false);
 	void	Release_Pending_Surfaces ();
 	void	Build_Sentence_Centered (const WCHAR *text, int *hkX, int *hkY);
@@ -305,6 +326,10 @@ private:
 	// cell spills past the advance we stepped by. Record_Sentence_Chunk has to
 	// include it, or the final glyph of every chunk loses its tail.
 	int													LastCharOverhang;
+	// GeneralsX @feature Android port 27/09/2026 RTL layout state, see Mirror_RTL_Lines.
+	float												PendingLeadPad;
+	bool												ChunkHasRTL;
+	bool												ChunkHasLTR;
 	int													CurrTextureSize;
 	int													TextureSizeHint;
 	SurfaceClass *							CurSurface;
