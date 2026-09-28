@@ -400,4 +400,7 @@
     <string name="touch_shape_circle">Circle</string>
     <string name="touch_shape_oval">Oval</string>
     <string name="touch_colors_note">Colors use #RRGGBB or #AARRGGBB</string>
+    <string name="setup_card_community">Community</string>
+    <string name="setup_community_row_telegram">Telegram group</string>
+    <string name="setup_community_telegram_note">News, support and multiplayer meetups for the Android port.</string>
 </resources>
