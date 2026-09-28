@@ -324,4 +324,20 @@
     <string name="online_network_settings">Сетевые настройки (серверы, совместимость с ПК): от %1$s, обновляются автоматически с GitHub проекта и подписаны.</string>
     <string name="online_network_settings_builtin">Сетевые настройки (серверы, совместимость с ПК): встроенные в эту версию; новые придут автоматически с GitHub проекта.</string>
     <string name="online_datapacks_chip_update">Есть обновление</string>
+    <string name="setup_card_appearance">Тема</string>
+    <string name="setup_appearance_status">Тема: %1$s</string>
+    <string name="setup_appearance_mode_system">Системная</string>
+    <string name="setup_appearance_mode_daylight">Светлая</string>
+    <string name="setup_appearance_mode_darkmode">Тёмная</string>
+    <string name="setup_appearance_help">Меняет цвета этого приложения настроек, просмотрщика логов, обозревателя папок и экрана аккаунта. «Системная» следует оформлению телефона и режиму энергосбережения. Сама игра этого не касается и не меняется никогда.</string>
+    <string name="setup_card_accent">Цвет акцента</string>
+    <string name="setup_accent_help">Задаёт цвет акцента в этом приложении настроек, просмотрщике журналов, проводнике папок и на экране аккаунта. Работает с любой из тем выше.</string>
+    <string name="setup_accent_picker">Цвет акцента</string>
+    <string name="setup_accent_option">Акцент: %1$s</string>
+    <string name="setup_accent_name_default">Фиолетовый</string>
+    <string name="setup_accent_name_blue">Синий</string>
+    <string name="setup_accent_name_green">Зелёный</string>
+    <string name="setup_accent_name_teal">Бирюзовый</string>
+    <string name="setup_accent_name_orange">Оранжевый</string>
+    <string name="setup_accent_name_red">Красный</string>
 </resources>

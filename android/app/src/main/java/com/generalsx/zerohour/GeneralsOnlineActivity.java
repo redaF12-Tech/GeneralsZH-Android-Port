@@ -126,11 +126,14 @@ public class GeneralsOnlineActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(LocaleHelper.wrap(newBase));
+        super.attachBaseContext(ThemeHelper.wrap(LocaleHelper.wrap(newBase)));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // GeneralsX @feature Android port accent-colors 21/09/2026 Accent
+        // before views -- same reasoning as SetupActivity.onCreate().
+        ThemeHelper.applyAccentTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.online_window_title);
         buildUi();
@@ -156,7 +159,7 @@ public class GeneralsOnlineActivity extends Activity {
     private void buildUi() {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
-        shell.setBackgroundColor(UiKit.color(this, R.color.gzh_background));
+        shell.setBackgroundColor(UiKit.backgroundColor(this));
         setContentView(shell);
         InsetUtil.applySafeInsets(shell);
 
@@ -400,7 +403,7 @@ public class GeneralsOnlineActivity extends Activity {
             return;
         }
         dataPackPrompted = true;
-        new android.app.AlertDialog.Builder(this)
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.online_card_datapacks)
             .setMessage(R.string.online_datapacks_prompt)
             .setPositiveButton(R.string.online_button_datapacks_update,
@@ -410,7 +413,7 @@ public class GeneralsOnlineActivity extends Activity {
     }
 
     private void onDeleteDataPacks() {
-        new android.app.AlertDialog.Builder(this)
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.online_button_datapacks_delete)
             .setMessage(R.string.online_datapacks_delete_confirm)
             .setPositiveButton(R.string.online_button_datapacks_delete, (dialog, which) -> {
