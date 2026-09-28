@@ -386,6 +386,9 @@
     <string name="touch_border_color_help">Follows the selected interface accent automatically</string>
     <string name="touch_text_color">Button text color</string>
     <string name="touch_text_color_picker">Pick text color</string>
+    <string name="touch_fill_color">Button fill color</string>
+    <string name="touch_fill_color_picker">Pick fill color</string>
+    <string name="touch_color_picker_title">Pick a color</string>
     <string name="touch_modifier_ctrl">Ctrl</string>
     <string name="touch_modifier_shift">Shift</string>
     <string name="touch_modifier_alt">Alt</string>
