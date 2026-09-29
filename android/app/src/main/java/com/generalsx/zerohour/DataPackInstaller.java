@@ -109,19 +109,25 @@ final class DataPackInstaller {
     private static final String DISABLE_MARKER = "gx_no_community_patch.txt";
 
     /**
-     * GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 Mod
+     * GeneralsX @bugfix Android mod-manager-patch-interlock 29/09/2026 Mod
      * and community-patch exclusivity, shared with SetupActivity's mod card
      * and GeneralsOnlineActivity's cross-play switch. The PREFS_NAME of the
-     * setup prefs, re-declared locally: DataPackInstaller already sits below
-     * SetupActivity (which imports nothing from it in that direction), and a
-     * string is cheaper and clearer than widening that dependency graph.
+     * setup prefs, re-declared locally under a DISTINCT name (SETUP_PREFS_NAME):
+     * this class already has its own PREFS_NAME ("generals_online", the
+     * datapack prefs below), and re-using that identifier here was a duplicate
+     * declaration -- javac rejected the whole file. Local, because
+     * DataPackInstaller already sits below SetupActivity (which imports
+     * nothing from it in that direction), and a string is cheaper and clearer
+     * than widening that dependency graph. Must keep matching
+     * SetupActivity.PREFS_NAME ("generalszh_setup"), where the interlock flag
+     * is actually written.
      */
-    static final String PREFS_NAME = "generalszh_setup";
+    static final String SETUP_PREFS_NAME = "generalszh_setup";
     static final String PREF_MOD_PATCH_INTERLOCK = "mod_patch_interlock";
 
     /** Whether the mod folder currently owns the INI space (see PREF_MOD_PATCH_INTERLOCK). */
     static boolean modOwnsIniSpace(Context ctx) {
-        return ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return ctx.getSharedPreferences(SETUP_PREFS_NAME, Context.MODE_PRIVATE)
             .getBoolean(PREF_MOD_PATCH_INTERLOCK, false);
     }
 
