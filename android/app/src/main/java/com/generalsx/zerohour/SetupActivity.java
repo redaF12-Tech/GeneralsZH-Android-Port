@@ -477,13 +477,15 @@ public class SetupActivity extends Activity {
             getString(R.string.setup_card_mod_folder), false);
         TextView modStatus = UiKit.body(mod, getModStatusText());
         modStatus.setTextIsSelectable(true);
-        UiKit.button(mod, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
+        modSelectButton = UiKit.button(mod, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
             getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
         if (getModPath() != null) {
             UiKit.button(mod, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
                 getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
         }
         UiKit.helpText(mod, getString(R.string.setup_mod_folder_help));
+        buildModCommunityPatchRow(mod);
+        refreshModCommunityPatchRow();
 
         buildGeneralsOnlineSection(page);
         buildUpdatesSection(page);
@@ -497,12 +499,93 @@ public class SetupActivity extends Activity {
         UiKit.sectionHeader(content, R.drawable.ic_gzh_sliders,
             getString(R.string.setup_card_touch_controls), false);
         UiKit.helpText(content, getString(R.string.setup_touch_controls_help));
+        // GeneralsX @feature Android touch-hotkey-home-switch 29/09/2026 The
+        // editor's "Show hotkey panel" switch, surfaced here: whether the
+        // overlay shows at all is a launcher-level choice, and the editor is
+        // a landscape screen most people only open to move buttons. Same
+        // TouchControlConfig "enabled" flag, so editor and Home agree.
+        SwitchCompat hotkey = UiKit.switchRow(content,
+            getString(R.string.setup_touch_hotkey_row),
+            getString(R.string.setup_touch_hotkey_row_desc));
+        hotkey.setChecked(TouchControlConfig.load(this).enabled);
+        hotkey.setOnCheckedChangeListener((button, checked) -> {
+            TouchControlConfig cfg = TouchControlConfig.load(this);
+            cfg.enabled = checked;
+            cfg.save(this);
+        });
         UiKit.button(content, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_sliders,
             getString(R.string.setup_button_touch_controls), this::onTouchControls);
     }
 
     private void onTouchControls() {
         startActivity(new Intent(this, TouchControlsActivity.class));
+    }
+
+    // ------------------------------------------------------------ Mod ↔ community patch interlock
+
+    // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 The
+    // mod and the community data patch both ship INI files, and the mod's
+    // whole point is to mount last with overwrite=true -- which would stomp
+    // the patch and silently break every checksum the online lobbies agree
+    // on. So a mod and the patch are mutually exclusive in practice, and the
+    // app now says so instead of letting the file system decide: picking a
+    // mod folder switches the patch off (remembering its previous state),
+    // and the switch on this card hands control back the moment the mod
+    // folder is cleared. The switch only lives here; the cross-play switch on
+    // the multiplayer screen reflects the same state through
+    // DataPackInstaller.effectivelyEnabled().
+    private androidx.appcompat.widget.SwitchCompat modPatchSwitch;
+    private View modSelectButton;
+
+    private void buildModCommunityPatchRow(LinearLayout modCard) {
+        androidx.appcompat.widget.SwitchCompat row = UiKit.switchRow(modCard,
+            getString(R.string.setup_mod_patch_switch),
+            getString(R.string.setup_mod_patch_switch_desc));
+        row.setOnCheckedChangeListener((button, checked) -> {
+            if (!DataPackInstaller.setEnabled(this, checked)) {
+                Toast.makeText(this, R.string.online_datapacks_switch_failed, Toast.LENGTH_LONG).show();
+                button.setChecked(!checked);
+            }
+        });
+        modPatchSwitch = row;
+    }
+
+    /** One place decides the row, so the four states it reads can never disagree. */
+    private void refreshModCommunityPatchRow() {
+        if (modPatchSwitch == null) {
+            return;
+        }
+        boolean modActive = getModPath() != null;
+        boolean patchInstalled = DataPackInstaller.communityPatchFile().isFile();
+        // With a mod active the switch shows WHERE the INI space went and is
+        // pinned; without one it is the patch's normal on/off switch again.
+        modPatchSwitch.setChecked(modActive || DataPackInstaller.isEnabled());
+        modPatchSwitch.setEnabled(!modActive && patchInstalled);
+    }
+
+    /**
+     * Remember the patch's enabled state when a mod takes the INI space, and
+     * switch the patch off. Returns false when the marker could not be
+     * written -- the mod is saved anyway (the engine still prefers it), but
+     * the caller says so.
+     */
+    private boolean forceCommunityPatchOffForMod() {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
+            .putBoolean(DataPackInstaller.PREF_MOD_PATCH_INTERLOCK,
+                DataPackInstaller.isEnabled())
+            .apply();
+        return DataPackInstaller.setEnabled(this, false);
+    }
+
+    /** A mod folder is gone: the patch returns to exactly where the player left it. */
+    private void restoreCommunityPatchAfterModCleared() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        boolean restore = prefs.getBoolean(DataPackInstaller.PREF_MOD_PATCH_INTERLOCK, false);
+        prefs.edit().remove(DataPackInstaller.PREF_MOD_PATCH_INTERLOCK).apply();
+        if (restore && DataPackInstaller.communityPatchFile().isFile()) {
+            DataPackInstaller.setEnabled(this, true);
+        }
+        refreshModCommunityPatchRow();
     }
 
     // ------------------------------------------------------------ Updates
@@ -889,6 +972,12 @@ public class SetupActivity extends Activity {
             case ThemeHelper.ACCENT_TEAL:   return getString(R.string.setup_accent_name_teal);
             case ThemeHelper.ACCENT_ORANGE: return getString(R.string.setup_accent_name_orange);
             case ThemeHelper.ACCENT_RED:    return getString(R.string.setup_accent_name_red);
+            case ThemeHelper.ACCENT_BLACK:  return getString(R.string.setup_accent_name_black);
+            case ThemeHelper.ACCENT_GRAY:   return getString(R.string.setup_accent_name_gray);
+            case ThemeHelper.ACCENT_GOLD:   return getString(R.string.setup_accent_name_gold);
+            case ThemeHelper.ACCENT_TRANSPARENT: return getString(R.string.setup_accent_name_transparent);
+            case ThemeHelper.ACCENT_WHITE:  return getString(R.string.setup_accent_name_white);
+            case ThemeHelper.ACCENT_YELLOW: return getString(R.string.setup_accent_name_yellow);
             default:                        return getString(R.string.setup_accent_name_default);
         }
     }
@@ -3094,10 +3183,22 @@ public class SetupActivity extends Activity {
     // gate as the game folder, but the result must NOT be judged as a game
     // folder: a mod directory is valid when it is readable and holds at least
     // one *.big directly inside it. Ported from the New-Mod-Manager branch.
+    //
+    // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 While
+    // the picker is open the mod card's select button is disabled: a second
+    // picker (or another card's folder picker reusing pendingStoragePickerRequest)
+    // must not race this one, and nothing in the folder picker itself manages
+    // that. Normal state returns in onActivityResult, whatever the result.
     private void onSelectModFolder() {
+        if (modSelectButton != null) {
+            modSelectButton.setEnabled(false);
+        }
         pendingStoragePickerRequest = REQUEST_PICK_MOD;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
+                if (modSelectButton != null) {
+                    modSelectButton.setEnabled(true);
+                }
                 Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
                 try {
                     Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
@@ -3110,6 +3211,9 @@ public class SetupActivity extends Activity {
             }
         } else if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
+            if (modSelectButton != null) {
+                modSelectButton.setEnabled(true);
+            }
             ActivityCompat.requestPermissions(this,
                 new String[] { Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE },
                 REQUEST_LEGACY_STORAGE_PERMISSION);
@@ -3153,6 +3257,11 @@ public class SetupActivity extends Activity {
     private void onClearModFolder() {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_MOD_PATH).apply();
         new File(getFilesDir(), "mod_path.txt").delete();
+        // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
+        // No mod, no reason to keep the patch parked: back to the exact
+        // previous state ("the normal way as before"), switch re-enabled by
+        // refreshModCommunityPatchRow() below.
+        restoreCommunityPatchAfterModCleared();
         Toast.makeText(this, R.string.setup_toast_mod_cleared, Toast.LENGTH_SHORT).show();
         // Only the Home card changes shape (the "clear" button disappears) --
         // rebuilding that one page is enough, and keeps the user where they
@@ -3269,7 +3378,17 @@ public class SetupActivity extends Activity {
                     Toast.makeText(this, R.string.setup_mod_folder_no_big, Toast.LENGTH_LONG).show();
                 } else {
                     saveModPath(dir.getAbsolutePath());
-                    Toast.makeText(this, getString(R.string.setup_toast_mod_saved, dir.getAbsolutePath(), bigs.length), Toast.LENGTH_LONG).show();
+                    // GeneralsX @feature Android mod-manager-patch-interlock
+                    // 29/09/2026 The mod now owns the INI space: park the
+                    // patch (remembering its previous state) and re-read the
+                    // row so the pinned switch says so. The saved toast
+                    // carries a note when the marker write failed.
+                    boolean parked = forceCommunityPatchOffForMod();
+                    Toast.makeText(this, getString(
+                            parked ? R.string.setup_toast_mod_saved
+                                   : R.string.setup_toast_mod_saved_patch_still_on,
+                            dir.getAbsolutePath(), bigs.length), Toast.LENGTH_LONG).show();
+                    refreshModCommunityPatchRow();
                     showTab(TAB_HOME);
                 }
             }

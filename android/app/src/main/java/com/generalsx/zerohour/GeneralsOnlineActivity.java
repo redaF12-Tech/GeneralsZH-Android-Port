@@ -235,6 +235,15 @@ public class GeneralsOnlineActivity extends Activity {
             getString(R.string.online_switch_datapacks_desc));
         dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
         dataPackSwitch.setOnCheckedChangeListener((button, checked) -> {
+            // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
+            // While a mod owns the INI space this switch cannot come back on
+            // here; the mod card on the Home tab is where the patch returns.
+            if (checked && DataPackInstaller.modOwnsIniSpace(this)) {
+                Toast.makeText(this, R.string.online_datapacks_switch_blocked_by_mod,
+                    Toast.LENGTH_LONG).show();
+                button.setChecked(false);
+                return;
+            }
             if (!DataPackInstaller.setEnabled(this, checked)) {
                 Toast.makeText(this, R.string.online_datapacks_switch_failed,
                     Toast.LENGTH_LONG).show();
@@ -298,6 +307,11 @@ public class GeneralsOnlineActivity extends Activity {
         };
     }
 
+    // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 The
+    // cross-play switch is gated while a mod parks the community patch; kept
+    // as a field so refreshDataPackCard can re-evaluate it without a rebuild.
+    private com.google.android.material.materialswitch.MaterialSwitch crossPlaySwitch;
+
     /**
      * One place decides what the card says, because three things feed it:
      * whether the account is signed in, whether the data is installed, and
@@ -338,7 +352,11 @@ public class GeneralsOnlineActivity extends Activity {
         // says so rather than failing quietly later.
         dataPackButton.setEnabled(signedIn && !dataPackBusy);
         dataPackDeleteButton.setEnabled(installed && !dataPackBusy);
-        dataPackSwitch.setEnabled(installed);
+        // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
+        // The patch is parked while a mod owns the INI space, so the switch
+        // is pinned off here until the mod folder is cleared on the Home tab.
+        final boolean modParksPatch = DataPackInstaller.modOwnsIniSpace(this);
+        dataPackSwitch.setEnabled(installed && !modParksPatch);
         dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
 
         if (!signedIn) {
@@ -347,6 +365,9 @@ public class GeneralsOnlineActivity extends Activity {
         } else if (!installed) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
                 R.string.online_datapacks_chip_required, R.color.gzh_status_warn);
+        } else if (DataPackInstaller.modOwnsIniSpace(this)) {
+            setChip(dataPackChip, R.drawable.ic_gzh_info,
+                R.string.online_datapacks_chip_mod_active, R.color.gzh_status_warn);
         } else if (!DataPackInstaller.isEnabled()) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
                 R.string.online_datapacks_chip_off, R.color.gzh_status_warn);
@@ -359,12 +380,22 @@ public class GeneralsOnlineActivity extends Activity {
         }
 
         if (crossPlayPatchChip != null) {
-            final boolean havePatch = DataPackInstaller.communityPatchFile().isFile();
+            // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
+            // "found" must mean "the engine would mount it": an active mod
+            // parks the patch, so file presence alone would promise a lobby
+            // checksum the device cannot compute right now. Three states:
+            // live, present-but-parked-by-mod, or missing entirely.
+            final boolean patchLive = DataPackInstaller.effectivelyEnabled(this);
+            final boolean patchPresent = DataPackInstaller.communityPatchFile().isFile();
             setChip(crossPlayPatchChip,
-                havePatch ? R.drawable.ic_gzh_check : R.drawable.ic_gzh_info,
-                havePatch ? R.string.online_crossplay_patch_found
-                          : R.string.online_crossplay_patch_missing,
-                havePatch ? R.color.gzh_status_ok : R.color.gzh_status_warn);
+                patchLive ? R.drawable.ic_gzh_check : R.drawable.ic_gzh_info,
+                patchLive ? R.string.online_crossplay_patch_found
+                          : patchPresent ? R.string.online_crossplay_patch_blocked
+                                         : R.string.online_crossplay_patch_missing,
+                patchLive ? R.color.gzh_status_ok : R.color.gzh_status_warn);
+        }
+        if (crossPlaySwitch != null) {
+            crossPlaySwitch.setEnabled(!DataPackInstaller.modOwnsIniSpace(this));
         }
     }
 
@@ -497,6 +528,12 @@ public class GeneralsOnlineActivity extends Activity {
             getString(R.string.online_switch_crossplay),
             getString(R.string.online_switch_crossplay_desc));
         sw.setChecked(marker.isFile());
+        // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
+        // Enabling cross-play while a mod keeps the community patch out of
+        // the file system can only end in refused joins, so the switch waits
+        // (refreshDataPackCard re-evaluates this on every card refresh).
+        sw.setEnabled(!DataPackInstaller.modOwnsIniSpace(this));
+        crossPlaySwitch = sw;
         sw.setOnCheckedChangeListener((button, checked) -> {
             if (checked) {
                 try {
