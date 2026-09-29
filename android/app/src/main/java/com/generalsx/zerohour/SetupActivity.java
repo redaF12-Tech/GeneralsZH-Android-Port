@@ -561,12 +561,12 @@ public class SetupActivity extends Activity {
             // cross-play chip on the multiplayer screen says why.
             Toast.makeText(this, R.string.online_datapacks_switch_blocked_by_mod,
                 Toast.LENGTH_LONG).show();
-            UiKit.setSwitchCheckedSilently(modPatchSwitch, false);
+            UiKit.setSwitchCheckedSilently(modPatchSwitch, this::onModPatchToggled, false);
             return;
         }
         if (!DataPackInstaller.setEnabled(this, checked)) {
             Toast.makeText(this, R.string.online_datapacks_switch_failed, Toast.LENGTH_LONG).show();
-            UiKit.setSwitchCheckedSilently(modPatchSwitch, !checked);
+            UiKit.setSwitchCheckedSilently(modPatchSwitch, this::onModPatchToggled, !checked);
             return;
         }
         // A manual OFF while the patch is parked must also forget the parked
@@ -590,7 +590,7 @@ public class SetupActivity extends Activity {
         // never lie on: the old "modActive ||" pinned it checked even when
         // the player had parked the patch off on the multiplayer screen.
         modPatchSwitch.setEnabled(patchInstalled);
-        UiKit.setSwitchCheckedSilently(modPatchSwitch,
+        UiKit.setSwitchCheckedSilently(modPatchSwitch, this::onModPatchToggled,
             modActive || DataPackInstaller.isEnabled());
     }
 

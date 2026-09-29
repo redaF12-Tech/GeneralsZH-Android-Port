@@ -296,6 +296,10 @@ public class GeneralsOnlineActivity extends Activity {
     // cross-play switch is gated while a mod parks the community patch; kept
     // as a field so refreshDataPackCard can re-evaluate it without a rebuild.
     private com.google.android.material.materialswitch.MaterialSwitch crossPlaySwitch;
+    // GeneralsX @bugfix Android switch-silent-set 29/09/2026 The cross-play
+    // listener is a method reference (onCrossPlayToggled) now, and it needs
+    // the marker file it creates/deletes; resolved once per card build.
+    private File crossPlayMarker;
 
     // GeneralsX @bugfix Android datapack-off-while-mod 29/09/2026 The
     // original interlock made this switch READ-ONLY while a mod parked the
@@ -308,13 +312,13 @@ public class GeneralsOnlineActivity extends Activity {
         if (checked && DataPackInstaller.modOwnsIniSpace(this)) {
             Toast.makeText(this, R.string.online_datapacks_switch_blocked_by_mod,
                 Toast.LENGTH_LONG).show();
-            UiKit.setSwitchCheckedSilently(button, false);
+            UiKit.setSwitchCheckedSilently(button, this::onDataPackToggled, false);
             return;
         }
         if (!DataPackInstaller.setEnabled(this, checked)) {
             Toast.makeText(this, R.string.online_datapacks_switch_failed,
                 Toast.LENGTH_LONG).show();
-            UiKit.setSwitchCheckedSilently(button, !checked);
+            UiKit.setSwitchCheckedSilently(button, this::onDataPackToggled, !checked);
             return;
         }
         // Same rule as the Home tab's mod card: a manual OFF while the patch
@@ -373,7 +377,8 @@ public class GeneralsOnlineActivity extends Activity {
         // also runs after programmatic changes, and a raw setChecked would
         // re-enter the toggle handler and could undo the change it reflects.
         dataPackSwitch.setEnabled(installed);
-        UiKit.setSwitchCheckedSilently(dataPackSwitch, DataPackInstaller.isEnabled());
+        UiKit.setSwitchCheckedSilently(dataPackSwitch, this::onDataPackToggled,
+            DataPackInstaller.isEnabled());
 
         if (!signedIn) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
@@ -532,7 +537,8 @@ public class GeneralsOnlineActivity extends Activity {
             havePatch ? R.color.gzh_status_ok : R.color.gzh_status_warn,
             R.color.gzh_surface_container_high);
 
-        final File marker = crossPlayMarkerFile();
+        crossPlayMarker = crossPlayMarkerFile();
+        final File marker = crossPlayMarker;
         if (marker == null) {
             UiKit.chip(card, R.drawable.ic_gzh_info,
                 getString(R.string.setup_diagnostics_no_folder),
@@ -550,41 +556,48 @@ public class GeneralsOnlineActivity extends Activity {
         // (refreshDataPackCard re-evaluates this on every card refresh).
         sw.setEnabled(!DataPackInstaller.modOwnsIniSpace(this));
         crossPlaySwitch = sw;
-        sw.setOnCheckedChangeListener((button, checked) -> {
-            if (checked) {
-                try {
-                    marker.createNewFile();
-                } catch (java.io.IOException e) {
-                    Toast.makeText(this,
-                        getString(R.string.setup_toast_options_save_failed, e.getMessage()),
-                        Toast.LENGTH_LONG).show();
-                    UiKit.setSwitchCheckedSilently(button, false);
-                    return;
-                }
-                // GeneralsX @feature Android port 15/09/2026 Cross-play is not just a
-                // checksum claim: the Windows client simulates at 60 Hz, and a 30 Hz
-                // client cannot stay in lockstep with it whatever it reports. So turning
-                // this on switches the engine too - and says so, because it costs twice
-                // the logic work per second and a slow device will feel it.
-                if (SetupActivity.getSimHz(this) != SetupActivity.SIM_HZ_CROSSPLAY) {
-                    SetupActivity.setSimHz(this, SetupActivity.SIM_HZ_CROSSPLAY);
-                    refreshCrossPlayHzChip();
-                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                        .setTitle(R.string.online_crossplay_hz_title)
-                        .setMessage(R.string.online_crossplay_hz_message)
-                        .setPositiveButton(android.R.string.ok, null)
-                        .show();
-                }
-            } else {
-                marker.delete();
-            }
-        });
+        sw.setOnCheckedChangeListener(this::onCrossPlayToggled);
 
         // The tick rate is the other half of cross-play, so show where it stands here
         // rather than making someone go and look in the graphics settings.
         crossPlayHzChip = UiKit.chip(card, R.drawable.ic_gzh_chip, "",
             R.color.gzh_on_surface, R.color.gzh_surface_container_high);
         refreshCrossPlayHzChip();
+    }
+
+    // GeneralsX @bugfix Android switch-silent-set 29/09/2026 Was a lambda on
+    // the switch above; extracted so its catch path can revert the tap
+    // SILENTLY (UiKit.setSwitchCheckedSilently) -- a raw setChecked(false)
+    // re-enters this very handler as if the player had acted again.
+    private void onCrossPlayToggled(android.widget.CompoundButton button, boolean checked) {
+        final File marker = crossPlayMarker;
+        if (checked) {
+            try {
+                marker.createNewFile();
+            } catch (java.io.IOException e) {
+                Toast.makeText(this,
+                    getString(R.string.setup_toast_options_save_failed, e.getMessage()),
+                    Toast.LENGTH_LONG).show();
+                UiKit.setSwitchCheckedSilently(button, this::onCrossPlayToggled, false);
+                return;
+            }
+            // GeneralsX @feature Android port 15/09/2026 Cross-play is not just a
+            // checksum claim: the Windows client simulates at 60 Hz, and a 30 Hz
+            // client cannot stay in lockstep with it whatever it reports. So turning
+            // this on switches the engine too - and says so, because it costs twice
+            // the logic work per second and a slow device will feel it.
+            if (SetupActivity.getSimHz(this) != SetupActivity.SIM_HZ_CROSSPLAY) {
+                SetupActivity.setSimHz(this, SetupActivity.SIM_HZ_CROSSPLAY);
+                refreshCrossPlayHzChip();
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.online_crossplay_hz_title)
+                    .setMessage(R.string.online_crossplay_hz_message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            }
+        } else {
+            marker.delete();
+        }
     }
 
     private void refreshCrossPlayHzChip() {

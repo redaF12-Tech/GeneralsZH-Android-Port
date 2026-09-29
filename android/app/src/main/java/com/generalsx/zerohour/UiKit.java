@@ -643,13 +643,14 @@ final class UiKit {
      * handler then treats the reverted value as a user action: the
      * "blocked" toast path actually wrote the patch marker off, and a
      * revert raced the very setting it was undoing. Detach, set, reattach.
+     * The listener is passed in explicitly: CompoundButton has no public
+     * getter for the attached one (javac: cannot find symbol).
      */
-    static void setSwitchCheckedSilently(android.widget.CompoundButton sw, boolean checked) {
+    static void setSwitchCheckedSilently(android.widget.CompoundButton sw,
+        android.widget.CompoundButton.OnCheckedChangeListener listener, boolean checked) {
         if (sw == null || sw.isChecked() == checked) {
             return;
         }
-        android.widget.CompoundButton.OnCheckedChangeListener listener =
-            sw.getOnCheckedChangeListener();
         sw.setOnCheckedChangeListener(null);
         sw.setChecked(checked);
         sw.setOnCheckedChangeListener(listener);
