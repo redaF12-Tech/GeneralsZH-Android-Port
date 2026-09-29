@@ -44,6 +44,28 @@ if [[ -z "${GAME_LIB}" ]]; then
     exit 1
 fi
 
+# GeneralsX @bugfix Android port 29/09/2026 A stale engine is worse than no engine.
+#
+# The Mod Manager regression shipped exactly this way: the launcher APK carried
+# the new Setup mod card while its libmain.so was built from a tree that predated
+# the GENERALSX_MOD_PATH env bridge (ArchiveFileSystem::loadMods) — selecting a
+# mod in Setup silently did nothing. build/ was stale from before the bridge, and
+# nothing checks what a .so actually contains: it is copied here fresh on every
+# run, so timestamps cannot tell a new build from an old one, only its content
+# can. The literal below is compiled into every libmain.so since the bridge
+# landed (std::getenv("GENERALSX_MOD_PATH")); its absence proves the binary is
+# too old for this tree. Kept in sync with the same check in
+# android/app/build.gradle, which catches a bare gradle build against a stale
+# stage — this script is the source of what gets staged, that one enforces it.
+if ! grep -aq "GENERALSX_MOD_PATH" "${GAME_LIB}"; then
+    echo "ERROR: ${GAME_LIB} predates the native Mod loading bridge." >&2
+    echo "       The GENERALSX_MOD_PATH literal is absent from the binary, so this" >&2
+    echo "       engine was built before the Mod Manager landed. Rebuild it (" >&2
+    echo "       ./scripts/build/android/build-dual-hz.sh) so the launcher UI and" >&2
+    echo "       the engine come from the same tree, then package again." >&2
+    exit 1
+fi
+
 rm -rf "${JNILIBS}"
 mkdir -p "${JNILIBS}"
 cp "${GAME_LIB}" "${JNILIBS}/libmain.so"
@@ -349,6 +371,33 @@ if [[ ! -f "${APK}" ]]; then
     exit 1
 fi
 echo "==> APK: ${APK}"
+
+# GeneralsX @bugfix Android port 29/09/2026 Verify the artifact, not the inputs.
+#
+# Packaging is a chain of staging steps into gitignored directories, and any
+# one of them going missing produces an APK that still builds, installs and
+# launches to a black screen (or worse: installs with an engine too old for
+# its own launcher — how the Mod Manager regression shipped). Read the APK
+# back and confirm the engine is in it, carrying the mod bridge. unzip -p
+# streams the entry without extracting the ~42MB file to disk.
+if ! command -v unzip >/dev/null 2>&1; then
+    echo "WARNING: unzip not on PATH; skipping the APK content verification."
+else
+    APK_LIB="$(unzip -p "${APK}" lib/arm64-v8a/libmain.so 2>/dev/null)"
+    if [[ -z "${APK_LIB}" ]]; then
+        echo "ERROR: the built APK does not contain lib/arm64-v8a/libmain.so." >&2
+        echo "       A packaging step was skipped: re-run this script from a tree" >&2
+        echo "       with a fresh native build under ${BUILD_DIR}." >&2
+        exit 1
+    fi
+    if ! printf '%s' "${APK_LIB}" | grep -aq "GENERALSX_MOD_PATH"; then
+        echo "ERROR: the libmain.so inside the built APK predates the native Mod" >&2
+        echo "       loading bridge. The staged jniLibs/ was stale — re-run this" >&2
+        echo "       script after a fresh engine build (build-dual-hz.sh)." >&2
+        exit 1
+    fi
+    echo "==> Verified: APK carries libmain.so with the native Mod loading bridge."
+fi
 
 if [[ $DO_INSTALL -eq 1 ]]; then
     command -v adb >/dev/null 2>&1 || { echo "ERROR: adb not found on PATH"; exit 1; }

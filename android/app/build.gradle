@@ -98,6 +98,42 @@ android {
         }
     }
 
+    // GeneralsX @bugfix Android port 29/09/2026 Refuse to package an APK whose
+    // engine library is missing or predates the native Mod loading bridge
+    // (GENERALSX_MOD_PATH, read in ArchiveFileSystem::loadMods). The engine is
+    // not built through Gradle: jniLibs/ is gitignored and staged by
+    // scripts/build/android/package-android-zh.sh from build/android-vulkan/
+    // -- so a bare "gradle assembleDebug" silently packages whatever jniLibs/
+    // happens to hold. That is exactly how the 28/09 regression shipped: the
+    // launcher carried the new Mod Manager card while its libmain.so predated
+    // the mod mount (selecting a mod in Setup did nothing), and on a clean
+    // checkout the same command produces an APK with no engine at all.
+    //
+    // The literal below is compiled into every libmain.so built since the
+    // bridge landed (std::getenv("GENERALSX_MOD_PATH")), so its absence from
+    // the staged binary proves the .so is stale regardless of timestamps --
+    // the packager copies jniLibs fresh on every run, so file mtimes cannot
+    // tell a new build from an old one, only its content can.
+    def gameLib = file('src/main/jniLibs/arm64-v8a/libmain.so')
+    if (!gameLib.isFile()) {
+        throw new GradleException(
+            'libmain.so is not staged at android/app/src/main/jniLibs/arm64-v8a/. ' +
+            'The engine is not built by Gradle: build it with ' +
+            './scripts/build/android/build-dual-hz.sh (both engines; what releases ' +
+            'ship) or ./scripts/build/android/build-android-zh.sh + ' +
+            'package-android-zh.sh, which stage jniLibs/ before packaging. ' +
+            'Packaging without the engine makes an APK that installs but cannot start the game.')
+    }
+    if (!gameLib.getText('ISO-8859-1').contains('GENERALSX_MOD_PATH')) {
+        throw new GradleException(
+            "Staged libmain.so (${gameLib.length()} bytes) predates the native Mod " +
+            'loading bridge: the GENERALSX_MOD_PATH literal is absent from the binary. ' +
+            'It was built from a tree older than the Mod Manager, so the packaged APK ' +
+            'would show the Mod Manager UI while the engine ignores the selected mod. ' +
+            'Rebuild the engine (./scripts/build/android/build-dual-hz.sh) so UI and ' +
+            'engine come from the same tree, then package again.')
+    }
+
     buildTypes {
         debug {
             // Explicit: overrides AGP's implicit per-machine debug signingConfig
