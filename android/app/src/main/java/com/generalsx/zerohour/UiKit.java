@@ -635,6 +635,26 @@ final class UiKit {
 
     // ------------------------------------------------------------------ rows
 
+    /**
+     * GeneralsX @bugfix Android switch-silent-set 29/09/2026
+     * CompoundButton.setChecked FIRES the checked-change listener, so code
+     * that merely reflects state (refresh) or reverts a rejected tap
+     * (failure paths) re-enters whatever handler is attached -- and that
+     * handler then treats the reverted value as a user action: the
+     * "blocked" toast path actually wrote the patch marker off, and a
+     * revert raced the very setting it was undoing. Detach, set, reattach.
+     */
+    static void setSwitchCheckedSilently(android.widget.CompoundButton sw, boolean checked) {
+        if (sw == null || sw.isChecked() == checked) {
+            return;
+        }
+        android.widget.CompoundButton.OnCheckedChangeListener listener =
+            sw.getOnCheckedChangeListener();
+        sw.setOnCheckedChangeListener(null);
+        sw.setChecked(checked);
+        sw.setOnCheckedChangeListener(listener);
+    }
+
     /** A title + supporting description + trailing Material switch. */
     static MaterialSwitch switchRow(LinearLayout parent, CharSequence title, CharSequence description) {
         Context c = parent.getContext();

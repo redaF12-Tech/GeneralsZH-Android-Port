@@ -31,8 +31,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.widget.SwitchCompat;
-
 import java.io.File;
 import java.util.ArrayList;
 
@@ -40,7 +38,6 @@ import java.util.ArrayList;
 public class TouchControlsActivity extends Activity {
     private TouchControlConfig config;
     private EditorCanvas editor;
-    private SwitchCompat enabledSwitch;
     private TextView selectedText;
     private TextView panValue;
     private TextView sizeValue;
@@ -55,7 +52,8 @@ public class TouchControlsActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        // This screen uses AppCompat widgets (SwitchCompat). Give it the same
+        // This screen builds Material dialogs (MaterialAlertDialogBuilder),
+        // which need an AppCompat-family theme. Give it the same
         // launcher theme/context pipeline as SetupActivity; using the raw
         // platform fullscreen theme causes an immediate crash when the first
         // AppCompat widget is inflated on some devices.
@@ -82,17 +80,20 @@ public class TouchControlsActivity extends Activity {
         InsetUtil.applySafeInsets(root);
 
         // GeneralsX @bugfix Android port 28/08/2026 Two toolbar rows: the
-        // single-row layout crammed the enable switch, the selection label,
-        // AND five action buttons into one line, so on narrow landscape
-        // phones the label shrank to nothing and buttons got clipped. The
-        // status row (switch + what-is-selected) stays fixed; the action
-        // row scrolls horizontally when it does not fit.
+        // single-row layout crammed the selection label AND five action
+        // buttons into one line, so on narrow landscape phones the label
+        // shrank to nothing and buttons got clipped. The status row
+        // (what-is-selected) stays fixed; the action row scrolls
+        // horizontally when it does not fit.
+        // GeneralsX @bugfix Android touch-editor-hotkey-switch 29/09/2026 The
+        // old "Show hotkey panel" switch here is gone: whether the overlay
+        // shows at all is a launcher-level choice, and the same flag has a
+        // switch on the Home tab's Touch Controls card (same
+        // TouchControlConfig.enabled), so the editor shipped TWO switches for
+        // one setting. The editor keeps honoring the flag -- reset/export/
+        // import/save all preserve it -- it just no longer edits it here.
         LinearLayout statusRow = new LinearLayout(this);
         statusRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        enabledSwitch = new SwitchCompat(this);
-        enabledSwitch.setText(R.string.touch_overlay_enabled);
-        enabledSwitch.setChecked(config.enabled);
-        statusRow.addView(enabledSwitch);
 
         selectedText = new TextView(this);
         selectedText.setTextColor(Color.WHITE);
@@ -416,9 +417,12 @@ public class TouchControlsActivity extends Activity {
     }
 
     private void resetDefaults() {
+        // Reset is about the LAYOUT: keep the panel on/off choice the player
+        // made on the Home tab instead of silently re-enabling the overlay.
+        boolean enabled = config.enabled;
         config = TouchControlConfig.defaults();
+        config.enabled = enabled;
         selectedIndex = -1;
-        enabledSwitch.setChecked(config.enabled);
         panSeek.setProgress(Math.round(config.panSensitivity * 100f));
         sizeSeek.setProgress(Math.round(config.buttonScale * 100f));
         opacitySeek.setProgress(Math.round(config.buttonOpacity * 100f));
@@ -427,7 +431,8 @@ public class TouchControlsActivity extends Activity {
     }
 
     private void exportControls() {
-        config.enabled = enabledSwitch.isChecked();
+        // enabled is not edited here anymore (Home tab owns it); carry the
+        // current value into the export untouched.
         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.addCategory(Intent.CATEGORY_OPENABLE);
         intent.setType("application/json");
@@ -455,7 +460,6 @@ public class TouchControlsActivity extends Activity {
                 TouchControlConfig imported = TouchControlConfig.importFrom(this, uri);
                 config = imported;
                 selectedIndex = -1;
-                enabledSwitch.setChecked(config.enabled);
                 panSeek.setProgress(Math.round(config.panSensitivity * 100f));
                 sizeSeek.setProgress(Math.round(config.buttonScale * 100f));
                 opacitySeek.setProgress(Math.round(config.buttonOpacity * 100f));
@@ -473,7 +477,8 @@ public class TouchControlsActivity extends Activity {
     }
 
     private void saveAndFinish() {
-        config.enabled = enabledSwitch.isChecked();
+        // config.enabled is whatever load/import/reset left it -- the Home
+        // tab's switch is the only editor of that flag now.
         config.save(this);
         String gamePath = SetupActivity.getSavedGamePath(this);
         if (gamePath != null) TouchControlConfig.prepareForLaunch(this, new File(gamePath));

@@ -234,22 +234,7 @@ public class GeneralsOnlineActivity extends Activity {
             getString(R.string.online_switch_datapacks),
             getString(R.string.online_switch_datapacks_desc));
         dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
-        dataPackSwitch.setOnCheckedChangeListener((button, checked) -> {
-            // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
-            // While a mod owns the INI space this switch cannot come back on
-            // here; the mod card on the Home tab is where the patch returns.
-            if (checked && DataPackInstaller.modOwnsIniSpace(this)) {
-                Toast.makeText(this, R.string.online_datapacks_switch_blocked_by_mod,
-                    Toast.LENGTH_LONG).show();
-                button.setChecked(false);
-                return;
-            }
-            if (!DataPackInstaller.setEnabled(this, checked)) {
-                Toast.makeText(this, R.string.online_datapacks_switch_failed,
-                    Toast.LENGTH_LONG).show();
-                button.setChecked(!checked);
-            }
-        });
+        dataPackSwitch.setOnCheckedChangeListener(this::onDataPackToggled);
 
         refreshDataPackCard();
         maybeAutoCheckDataPacks();
@@ -312,6 +297,35 @@ public class GeneralsOnlineActivity extends Activity {
     // as a field so refreshDataPackCard can re-evaluate it without a rebuild.
     private com.google.android.material.materialswitch.MaterialSwitch crossPlaySwitch;
 
+    // GeneralsX @bugfix Android datapack-off-while-mod 29/09/2026 The
+    // original interlock made this switch READ-ONLY while a mod parked the
+    // patch: the player could not even switch the parked patch off from
+    // here, only from the mod card on the Home tab. OFF is always allowed
+    // (removing the marker is safe whatever owns the INI space); only
+    // coming back ON waits for the mod folder to clear. Method reference
+    // instead of a lambda so silent refreshes can detach/reattach it.
+    private void onDataPackToggled(android.widget.CompoundButton button, boolean checked) {
+        if (checked && DataPackInstaller.modOwnsIniSpace(this)) {
+            Toast.makeText(this, R.string.online_datapacks_switch_blocked_by_mod,
+                Toast.LENGTH_LONG).show();
+            UiKit.setSwitchCheckedSilently(button, false);
+            return;
+        }
+        if (!DataPackInstaller.setEnabled(this, checked)) {
+            Toast.makeText(this, R.string.online_datapacks_switch_failed,
+                Toast.LENGTH_LONG).show();
+            UiKit.setSwitchCheckedSilently(button, !checked);
+            return;
+        }
+        // Same rule as the Home tab's mod card: a manual OFF while the patch
+        // is parked must forget the parked "was on" memory too, or clearing
+        // the mod folder later would resurrect the patch the player just
+        // switched off from here.
+        if (!checked && DataPackInstaller.modOwnsIniSpace(this)) {
+            DataPackInstaller.forgetParkedPatchState(this);
+        }
+    }
+
     /**
      * One place decides what the card says, because three things feed it:
      * whether the account is signed in, whether the data is installed, and
@@ -352,12 +366,14 @@ public class GeneralsOnlineActivity extends Activity {
         // says so rather than failing quietly later.
         dataPackButton.setEnabled(signedIn && !dataPackBusy);
         dataPackDeleteButton.setEnabled(installed && !dataPackBusy);
-        // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
-        // The patch is parked while a mod owns the INI space, so the switch
-        // is pinned off here until the mod folder is cleared on the Home tab.
-        final boolean modParksPatch = DataPackInstaller.modOwnsIniSpace(this);
-        dataPackSwitch.setEnabled(installed && !modParksPatch);
-        dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
+        // GeneralsX @bugfix Android datapack-off-while-mod 29/09/2026 The
+        // switch stays usable while a mod parks the patch (turning it OFF is
+        // always allowed; coming back ON is blocked in onDataPackToggled).
+        // It only mirrors isEnabled() here, silently: refreshDataPackCard
+        // also runs after programmatic changes, and a raw setChecked would
+        // re-enter the toggle handler and could undo the change it reflects.
+        dataPackSwitch.setEnabled(installed);
+        UiKit.setSwitchCheckedSilently(dataPackSwitch, DataPackInstaller.isEnabled());
 
         if (!signedIn) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
@@ -542,7 +558,7 @@ public class GeneralsOnlineActivity extends Activity {
                     Toast.makeText(this,
                         getString(R.string.setup_toast_options_save_failed, e.getMessage()),
                         Toast.LENGTH_LONG).show();
-                    button.setChecked(false);
+                    UiKit.setSwitchCheckedSilently(button, false);
                     return;
                 }
                 // GeneralsX @feature Android port 15/09/2026 Cross-play is not just a

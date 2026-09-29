@@ -131,6 +131,17 @@ final class DataPackInstaller {
             .getBoolean(PREF_MOD_PATCH_INTERLOCK, false);
     }
 
+    /**
+     * GeneralsX @bugfix Android mod-patch-off-while-mod 29/09/2026 The player
+     * switched the parked patch OFF by hand: drop the remembered "was on"
+     * state, or clearing the mod folder later would resurrect a patch they
+     * just turned off. Harmless when no interlock flag is stored.
+     */
+    static void forgetParkedPatchState(Context ctx) {
+        ctx.getSharedPreferences(SETUP_PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().remove(PREF_MOD_PATCH_INTERLOCK).apply();
+    }
+
     /** Whether the community patch is both installed and currently switched on. */
     static boolean communityPatchActive(Context ctx) {
         return communityPatchFile().isFile() && isEnabled();

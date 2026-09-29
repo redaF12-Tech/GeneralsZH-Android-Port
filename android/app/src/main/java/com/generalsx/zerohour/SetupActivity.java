@@ -541,13 +541,40 @@ public class SetupActivity extends Activity {
         androidx.appcompat.widget.SwitchCompat row = UiKit.switchRow(modCard,
             getString(R.string.setup_mod_patch_switch),
             getString(R.string.setup_mod_patch_switch_desc));
-        row.setOnCheckedChangeListener((button, checked) -> {
-            if (!DataPackInstaller.setEnabled(this, checked)) {
-                Toast.makeText(this, R.string.online_datapacks_switch_failed, Toast.LENGTH_LONG).show();
-                button.setChecked(!checked);
-            }
-        });
+        row.setOnCheckedChangeListener(this::onModPatchToggled);
         modPatchSwitch = row;
+    }
+
+    // GeneralsX @bugfix Android mod-patch-off-while-mod 29/09/2026 The
+    // original interlock PINNED this switch while a mod owned the INI space
+    // (checked, disabled): the mod must keep winning the INI files, but the
+    // patch's off-marker is a separate file the player may still want gone
+    // -- some mod loaders rewrite INIs the moment the marker disappears. So
+    // with a mod active the row keeps its ON-block (see the guard below)
+    // but becomes usable for switching the marker OFF; only turning it back
+    // ON waits for the mod folder to clear. It also never pins "checked"
+    // against isEnabled() anymore, and programmatic refreshes go through
+    // setCheckedSilently so the handler only ever runs for real user taps.
+    private void onModPatchToggled(android.widget.CompoundButton button, boolean checked) {
+        if (checked && getModPath() != null) {
+            // Back ON stays blocked while a mod owns the INI space; the
+            // cross-play chip on the multiplayer screen says why.
+            Toast.makeText(this, R.string.online_datapacks_switch_blocked_by_mod,
+                Toast.LENGTH_LONG).show();
+            UiKit.setSwitchCheckedSilently(modPatchSwitch, false);
+            return;
+        }
+        if (!DataPackInstaller.setEnabled(this, checked)) {
+            Toast.makeText(this, R.string.online_datapacks_switch_failed, Toast.LENGTH_LONG).show();
+            UiKit.setSwitchCheckedSilently(modPatchSwitch, !checked);
+            return;
+        }
+        // A manual OFF while the patch is parked must also forget the parked
+        // "was on" memory, or clearing the mod folder later would resurrect
+        // the patch the player just switched off.
+        if (!checked && getModPath() != null) {
+            DataPackInstaller.forgetParkedPatchState(this);
+        }
     }
 
     /** One place decides the row, so the four states it reads can never disagree. */
@@ -557,10 +584,14 @@ public class SetupActivity extends Activity {
         }
         boolean modActive = getModPath() != null;
         boolean patchInstalled = DataPackInstaller.communityPatchFile().isFile();
-        // With a mod active the switch shows WHERE the INI space went and is
-        // pinned; without one it is the patch's normal on/off switch again.
-        modPatchSwitch.setChecked(modActive || DataPackInstaller.isEnabled());
-        modPatchSwitch.setEnabled(!modActive && patchInstalled);
+        // With a mod active the row shows the parked state (on) and the
+        // switch can still turn the marker off; without a mod it is the
+        // patch's normal on/off switch. It must always MIRROR isEnabled(),
+        // never lie on: the old "modActive ||" pinned it checked even when
+        // the player had parked the patch off on the multiplayer screen.
+        modPatchSwitch.setEnabled(patchInstalled);
+        UiKit.setSwitchCheckedSilently(modPatchSwitch,
+            modActive || DataPackInstaller.isEnabled());
     }
 
     /**
@@ -871,21 +902,34 @@ public class SetupActivity extends Activity {
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         final int initial = ThemeHelper.getSavedAccent(this);
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        row.setBaselineAligned(false);
-        LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
+        // GeneralsX @bugfix Android accent-grid-2x6 29/09/2026 Twelve accents
+        // in ONE weighted row made every cell too narrow -- the labels
+        // wrapped over each other and the strip read as a jumble. Two rows
+        // of six give each swatch real width on every phone width.
+        LinearLayout grid = new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams gridLp = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        rowLp.topMargin = UiKit.dim(this, R.dimen.gzh_item_gap);
-        cardContent.addView(row, rowLp);
-
-        for (int i = 0; i < ThemeHelper.ACCENT_COUNT; i++) {
-            row.addView(buildAccentSwatch(i, i == initial),
-                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        gridLp.topMargin = UiKit.dim(this, R.dimen.gzh_item_gap);
+        cardContent.addView(grid, gridLp);
+        for (int rowStart = 0; rowStart < ThemeHelper.ACCENT_COUNT; rowStart += ACCENT_SWATCHES_PER_ROW) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            row.setBaselineAligned(false);
+            grid.addView(row, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            for (int i = rowStart; i < rowStart + ACCENT_SWATCHES_PER_ROW
+                    && i < ThemeHelper.ACCENT_COUNT; i++) {
+                row.addView(buildAccentSwatch(i, i == initial),
+                    new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            }
         }
-        row.setContentDescription(getString(R.string.setup_accent_picker));
+        grid.setContentDescription(getString(R.string.setup_accent_picker));
     }
+
+    /** The accent picker wraps after this many swatches (12 accents = 2 rows of 6). */
+    private static final int ACCENT_SWATCHES_PER_ROW = 6;
 
     /** One column of the accent strip: dot (both modes), label, check. */
     private View buildAccentSwatch(int index, boolean selected) {
