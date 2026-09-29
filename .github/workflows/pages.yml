@@ -15,6 +15,9 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  # Needed once by actions/configure-pages to enable Pages on the repository
+  # (build_type=workflow). Harmless afterwards.
+  administration: write
 
 concurrency:
   group: pages
@@ -29,6 +32,9 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          # Enable Pages on first run (Settings → Pages → Source: GitHub Actions).
+          enablement: true
 
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
