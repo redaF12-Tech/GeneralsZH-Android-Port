@@ -239,7 +239,7 @@
     <string name="online_datapacks_delete_no_record">Nothing to delete: there is no record of an install by this launcher.</string>
     <string name="online_datapacks_switch_failed">Could not change the setting. Check that the game data folder is writable.</string>
     <string name="online_datapacks_chip_mod_active">Paused while a Mod is active</string>
-    <string name="online_datapacks_switch_blocked_by_mod">A Mod folder is active on the Home tab — it uses the game's INI files, so the community data patch stays off until the Mod folder is cleared.</string>
+    <string name="online_datapacks_switch_blocked_by_mod">A Mod folder is active on the Home tab — it uses the game\'s INI files, so the community data patch stays off until the Mod folder is cleared.</string>
     <string name="online_card_crossplay">Cross-platform play</string>
     <string name="online_crossplay_help">Games hosted by the Windows client normally refuse this device, because the two are different programs and their EXE checksums can never match.</string>
     <string name="online_crossplay_patch_found">Community data patch installed</string>
@@ -290,7 +290,7 @@
     <!-- GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 The
          patch switch that lives on the mod card, and the parked state. -->
     <string name="setup_mod_patch_switch">Community data patch</string>
-    <string name="setup_mod_patch_switch_desc">While a Mod folder is set, the Mod takes over the game's INI files and the patch is paused automatically; clear the Mod folder to turn it back on here.</string>
+    <string name="setup_mod_patch_switch_desc">While a Mod folder is set, the Mod takes over the game\'s INI files and the patch is paused automatically; clear the Mod folder to turn it back on here.</string>
     <string name="setup_toast_mod_saved_patch_still_on">Mod folder saved: %1$s (%2$d BIG archives). Note: the community data patch could not be paused (folder not writable).</string>
     <string name="setup_mod_folder_invalid">The selected mod folder is not readable.</string>
     <string name="setup_mod_folder_no_big">No .big archives were found directly in the selected mod folder.</string>
