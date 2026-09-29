@@ -36,6 +36,130 @@
     <color name="gzh_accent_blue_secondary_container">#43455C</color>
     <color name="gzh_accent_blue_on_secondary_container">#E0E1F1</color>
 
+    <!-- GeneralsX @feature Android accent-dark-palettes 29/09/2026 Darkmode
+         halves of the six dark palettes. Grounds stay near-black with at most
+         a whisper of the hue (the neutral ones are pure grey); primaries lift
+         to light greys/metals so the darkmode on-primary text keeps its
+         contrast. "Transparent" keeps real alpha in the accent roles: on
+         darkmode surfaces a black translucent fill reads as a darker panel,
+         and the white one as a washed highlight. -->
+
+    <!-- Black -->
+    <color name="gzh_accent_black_primary">#C4C6CA</color>
+    <color name="gzh_accent_black_on_primary">#1B1C1F</color>
+    <color name="gzh_accent_black_container">#33353A</color>
+    <color name="gzh_accent_black_on_container">#E2E2E4</color>
+    <color name="gzh_accent_black_ripple">#33C4C6CA</color>
+    <color name="gzh_accent_black_background">#0E0E10</color>
+    <color name="gzh_accent_black_surface">#131316</color>
+    <color name="gzh_accent_black_container_low">#16171A</color>
+    <color name="gzh_accent_black_container_surface">#1A1B1F</color>
+    <color name="gzh_accent_black_container_high">#222328</color>
+    <color name="gzh_accent_black_container_highest">#2B2C31</color>
+    <color name="gzh_accent_black_outline">#3B3C41</color>
+    <color name="gzh_accent_black_outline_variant">#26272B</color>
+    <color name="gzh_accent_black_secondary">#C4C5C8</color>
+    <color name="gzh_accent_black_on_secondary">#2D2E32</color>
+    <color name="gzh_accent_black_secondary_container">#43454A</color>
+    <color name="gzh_accent_black_on_secondary_container">#E0E1E3</color>
+
+    <!-- Gray -->
+    <color name="gzh_accent_gray_primary">#C0C4C7</color>
+    <color name="gzh_accent_gray_on_primary">#2A2D30</color>
+    <color name="gzh_accent_gray_container">#42474B</color>
+    <color name="gzh_accent_gray_on_container">#DCE0E3</color>
+    <color name="gzh_accent_gray_ripple">#33C0C4C7</color>
+    <color name="gzh_accent_gray_background">#0E0F10</color>
+    <color name="gzh_accent_gray_surface">#131416</color>
+    <color name="gzh_accent_gray_container_low">#16181A</color>
+    <color name="gzh_accent_gray_container_surface">#1A1C1E</color>
+    <color name="gzh_accent_gray_container_high">#232528</color>
+    <color name="gzh_accent_gray_container_highest">#2C2E31</color>
+    <color name="gzh_accent_gray_outline">#3C3E41</color>
+    <color name="gzh_accent_gray_outline_variant">#27292B</color>
+    <color name="gzh_accent_gray_secondary">#C4C5C8</color>
+    <color name="gzh_accent_gray_on_secondary">#2D2E32</color>
+    <color name="gzh_accent_gray_secondary_container">#43454A</color>
+    <color name="gzh_accent_gray_on_secondary_container">#E0E1E3</color>
+
+    <!-- Gold -->
+    <color name="gzh_accent_gold_primary">#F1C448</color>
+    <color name="gzh_accent_gold_on_primary">#3F2E00</color>
+    <color name="gzh_accent_gold_container">#5C4700</color>
+    <color name="gzh_accent_gold_on_container">#F7E1A0</color>
+    <color name="gzh_accent_gold_ripple">#33F1C448</color>
+    <color name="gzh_accent_gold_background">#131209</color>
+    <color name="gzh_accent_gold_surface">#181710</color>
+    <color name="gzh_accent_gold_container_low">#1B1A13</color>
+    <color name="gzh_accent_gold_container_surface">#201E16</color>
+    <color name="gzh_accent_gold_container_high">#292720</color>
+    <color name="gzh_accent_gold_container_highest">#333028</color>
+    <color name="gzh_accent_gold_outline">#4A453A</color>
+    <color name="gzh_accent_gold_outline_variant">#2E2C25</color>
+    <color name="gzh_accent_gold_secondary">#CEC7B4</color>
+    <color name="gzh_accent_gold_on_secondary">#353022</color>
+    <color name="gzh_accent_gold_secondary_container">#4C4737</color>
+    <color name="gzh_accent_gold_on_secondary_container">#E9E3D0</color>
+
+    <!-- Transparent: same translucency over the darkmode surfaces; the
+         container here is a translucent white wash so selected states read
+         as a lighter panel, mirroring the daylight behaviour. -->
+    <color name="gzh_accent_transparent_primary">#8CFFFFFF</color>
+    <color name="gzh_accent_transparent_on_primary">#1B1B1E</color>
+    <color name="gzh_accent_transparent_container">#2EFFFFFF</color>
+    <color name="gzh_accent_transparent_on_container">#FFFFFF</color>
+    <color name="gzh_accent_transparent_ripple">#24FFFFFF</color>
+    <color name="gzh_accent_transparent_background">#0E0E10</color>
+    <color name="gzh_accent_transparent_surface">#131316</color>
+    <color name="gzh_accent_transparent_container_low">#16171A</color>
+    <color name="gzh_accent_transparent_container_surface">#1A1B1F</color>
+    <color name="gzh_accent_transparent_container_high">#222328</color>
+    <color name="gzh_accent_transparent_container_highest">#2B2C31</color>
+    <color name="gzh_accent_transparent_outline">#3B3C41</color>
+    <color name="gzh_accent_transparent_outline_variant">#26272B</color>
+    <color name="gzh_accent_transparent_secondary">#C4C5C8</color>
+    <color name="gzh_accent_transparent_on_secondary">#2D2E32</color>
+    <color name="gzh_accent_transparent_secondary_container">#43454A</color>
+    <color name="gzh_accent_transparent_on_secondary_container">#E0E1E3</color>
+
+    <!-- White -->
+    <color name="gzh_accent_white_primary">#ECECF0</color>
+    <color name="gzh_accent_white_on_primary">#1B1B1E</color>
+    <color name="gzh_accent_white_container">#D8D8DC</color>
+    <color name="gzh_accent_white_on_container">#1B1B1E</color>
+    <color name="gzh_accent_white_ripple">#33ECECF0</color>
+    <color name="gzh_accent_white_background">#0E0E10</color>
+    <color name="gzh_accent_white_surface">#131316</color>
+    <color name="gzh_accent_white_container_low">#16171A</color>
+    <color name="gzh_accent_white_container_surface">#1A1B1F</color>
+    <color name="gzh_accent_white_container_high">#222328</color>
+    <color name="gzh_accent_white_container_highest">#2B2C31</color>
+    <color name="gzh_accent_white_outline">#3B3C41</color>
+    <color name="gzh_accent_white_outline_variant">#26272B</color>
+    <color name="gzh_accent_white_secondary">#C4C5C8</color>
+    <color name="gzh_accent_white_on_secondary">#2D2E32</color>
+    <color name="gzh_accent_white_secondary_container">#43454A</color>
+    <color name="gzh_accent_white_on_secondary_container">#E0E1E3</color>
+
+    <!-- Yellow -->
+    <color name="gzh_accent_yellow_primary">#F5D53F</color>
+    <color name="gzh_accent_yellow_on_primary">#3A3000</color>
+    <color name="gzh_accent_yellow_container">#554A00</color>
+    <color name="gzh_accent_yellow_on_container">#F8E673</color>
+    <color name="gzh_accent_yellow_ripple">#33F5D53F</color>
+    <color name="gzh_accent_yellow_background">#131208</color>
+    <color name="gzh_accent_yellow_surface">#181710</color>
+    <color name="gzh_accent_yellow_container_low">#1B1A11</color>
+    <color name="gzh_accent_yellow_container_surface">#201F15</color>
+    <color name="gzh_accent_yellow_container_high">#29281F</color>
+    <color name="gzh_accent_yellow_container_highest">#33322A</color>
+    <color name="gzh_accent_yellow_outline">#4A4739</color>
+    <color name="gzh_accent_yellow_outline_variant">#2E2D26</color>
+    <color name="gzh_accent_yellow_secondary">#CEC9B2</color>
+    <color name="gzh_accent_yellow_on_secondary">#353122</color>
+    <color name="gzh_accent_yellow_secondary_container">#4C4736</color>
+    <color name="gzh_accent_yellow_on_secondary_container">#E9E4CF</color>
+
     <!-- Green -->
     <color name="gzh_accent_green_primary">#9CD67D</color>
     <color name="gzh_accent_green_on_primary">#0E3900</color>

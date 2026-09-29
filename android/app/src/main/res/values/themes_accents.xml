@@ -153,4 +153,151 @@
         <item name="colorOutline">@color/gzh_accent_red_outline</item>
         <item name="colorOutlineVariant">@color/gzh_accent_red_outline_variant</item>
     </style>
+    <!-- GeneralsX @feature Android accent-dark-palettes 29/09/2026 Six dark
+         palettes (black, gray, gold, transparent, white, yellow) following the
+         exact same role mapping as the coloured overlays above. -->
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Black" parent="">
+        <item name="colorPrimary">@color/gzh_accent_black_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_black_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_black_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_black_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_black_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_black_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_black_container</item>
+        <item name="colorSecondary">@color/gzh_accent_black_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_black_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_black_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_black_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_black_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_black_background</item>
+        <item name="colorSurface">@color/gzh_accent_black_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_black_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_black_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_black_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_black_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_black_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_black_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_black_outline_variant</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Gray" parent="">
+        <item name="colorPrimary">@color/gzh_accent_gray_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_gray_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_gray_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_gray_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_gray_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_gray_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_gray_container</item>
+        <item name="colorSecondary">@color/gzh_accent_gray_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_gray_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_gray_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_gray_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_gray_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_gray_background</item>
+        <item name="colorSurface">@color/gzh_accent_gray_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_gray_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_gray_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_gray_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_gray_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_gray_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_gray_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_gray_outline_variant</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Gold" parent="">
+        <item name="colorPrimary">@color/gzh_accent_gold_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_gold_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_gold_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_gold_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_gold_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_gold_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_gold_container</item>
+        <item name="colorSecondary">@color/gzh_accent_gold_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_gold_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_gold_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_gold_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_gold_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_gold_background</item>
+        <item name="colorSurface">@color/gzh_accent_gold_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_gold_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_gold_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_gold_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_gold_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_gold_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_gold_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_gold_outline_variant</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Transparent" parent="">
+        <item name="colorPrimary">@color/gzh_accent_transparent_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_transparent_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_transparent_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_transparent_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_transparent_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_transparent_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_transparent_container</item>
+        <item name="colorSecondary">@color/gzh_accent_transparent_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_transparent_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_transparent_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_transparent_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_transparent_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_transparent_background</item>
+        <item name="colorSurface">@color/gzh_accent_transparent_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_transparent_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_transparent_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_transparent_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_transparent_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_transparent_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_transparent_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_transparent_outline_variant</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.White" parent="">
+        <item name="colorPrimary">@color/gzh_accent_white_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_white_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_white_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_white_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_white_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_white_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_white_container</item>
+        <item name="colorSecondary">@color/gzh_accent_white_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_white_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_white_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_white_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_white_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_white_background</item>
+        <item name="colorSurface">@color/gzh_accent_white_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_white_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_white_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_white_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_white_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_white_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_white_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_white_outline_variant</item>
+    </style>
+
+    <style name="ThemeOverlay.GeneralsZH.Accent.Yellow" parent="">
+        <item name="colorPrimary">@color/gzh_accent_yellow_primary</item>
+        <item name="colorOnPrimary">@color/gzh_accent_yellow_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_accent_yellow_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_accent_yellow_on_container</item>
+        <item name="colorAccent">@color/gzh_accent_yellow_primary</item>
+        <item name="colorPrimaryDark">@color/gzh_accent_yellow_on_container</item>
+        <item name="android:textColorHighlight">@color/gzh_accent_yellow_container</item>
+        <item name="colorSecondary">@color/gzh_accent_yellow_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_accent_yellow_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_accent_yellow_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_accent_yellow_on_secondary_container</item>
+        <item name="android:colorBackground">@color/gzh_accent_yellow_background</item>
+        <item name="android:windowBackground">@color/gzh_accent_yellow_background</item>
+        <item name="colorSurface">@color/gzh_accent_yellow_surface</item>
+        <item name="colorSurfaceContainerLow">@color/gzh_accent_yellow_container_low</item>
+        <item name="colorSurfaceContainer">@color/gzh_accent_yellow_container_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/gzh_accent_yellow_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/gzh_accent_yellow_container_highest</item>
+        <item name="colorSurfaceVariant">@color/gzh_accent_yellow_container_high</item>
+        <item name="colorOutline">@color/gzh_accent_yellow_outline</item>
+        <item name="colorOutlineVariant">@color/gzh_accent_yellow_outline_variant</item>
+    </style>
 </resources>

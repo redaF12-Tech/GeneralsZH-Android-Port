@@ -75,8 +75,20 @@ final class ThemeHelper {
     static final int ACCENT_TEAL = 3;
     static final int ACCENT_ORANGE = 4;
     static final int ACCENT_RED = 5;
+    // GeneralsX @feature Android accent-dark-palettes 29/09/2026 Six dark
+    // neutrals/metals requested for the Interface tab: black, gray, gold,
+    // transparent (a translucent, tint-free accent), white and yellow. The
+    // "transparent" palette expresses itself through alpha-carrying accent
+    // colours (ghost buttons, washed highlights) over untinted surfaces; the
+    // others are dark enough in daylight that text on them is always light.
+    static final int ACCENT_BLACK = 6;
+    static final int ACCENT_GRAY = 7;
+    static final int ACCENT_GOLD = 8;
+    static final int ACCENT_TRANSPARENT = 9;
+    static final int ACCENT_WHITE = 10;
+    static final int ACCENT_YELLOW = 11;
     /** Same order everywhere: storage, the segmented picker, the previews. */
-    static final int ACCENT_COUNT = 6;
+    static final int ACCENT_COUNT = 12;
 
     private ThemeHelper() {}
 
@@ -135,6 +147,12 @@ final class ThemeHelper {
         R.style.ThemeOverlay_GeneralsZH_Accent_Teal,
         R.style.ThemeOverlay_GeneralsZH_Accent_Orange,
         R.style.ThemeOverlay_GeneralsZH_Accent_Red,
+        R.style.ThemeOverlay_GeneralsZH_Accent_Black,
+        R.style.ThemeOverlay_GeneralsZH_Accent_Gray,
+        R.style.ThemeOverlay_GeneralsZH_Accent_Gold,
+        R.style.ThemeOverlay_GeneralsZH_Accent_Transparent,
+        R.style.ThemeOverlay_GeneralsZH_Accent_White,
+        R.style.ThemeOverlay_GeneralsZH_Accent_Yellow,
     };
 
     // The picker's swatch dots. These are literal hexes rather than resource
@@ -146,9 +164,11 @@ final class ThemeHelper {
     // in sync with those when a palette changes.
     private static final int[] ACCENT_PREVIEW_DAYLIGHT = {
         0xFF6750A4, 0xFF1565C0, 0xFF386A20, 0xFF006A60, 0xFF8B5000, 0xFFB3261E,
+        0xFF36383B, 0xFF5A5F64, 0xFF7A5900, 0x66000000, 0xFFFBFBFB, 0xFF705E00,
     };
     private static final int[] ACCENT_PREVIEW_DARK = {
         0xFFB9AEEA, 0xFFA8C8FF, 0xFF9CD67D, 0xFF80D5C7, 0xFFFFB86B, 0xFFFFB4AB,
+        0xFFC4C6CA, 0xFFC0C4C7, 0xFFF1C448, 0x66FFFFFF, 0xFFECECF0, 0xFFF5D53F,
     };
 
     static int getSavedAccent(Context ctx) {

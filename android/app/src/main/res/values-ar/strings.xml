@@ -233,6 +233,9 @@
     <string name="setup_mod_status_not_set">لم يتم اختيار مجلد مود.</string>
     <string name="setup_mod_status_set">مجلد المود: %1$s\nأرشيفات BIG: %2$d</string>
     <string name="setup_mod_folder_help">يتم تحميل أرشيفات ‎.big الخاصة بالمود بعد Zero Hour وGenerals الأساسية، لذلك تكون أولوية المود هي الأعلى: المود > GeneralsZH > Generals الأساسية.</string>
+    <string name="setup_mod_patch_switch">حزمة بيانات المجتمع</string>
+    <string name="setup_mod_patch_switch_desc">عند اختيار مجلد المود يصبح المود مسيطرًا على ملفات INI وتتوقف حزمة بيانات المجتمع تلقائيًا؛ امسح مجلد المود لتعود لتعمل من هنا.</string>
+    <string name="setup_toast_mod_saved_patch_still_on">تم حفظ مجلد المود: %1$s (%2$d من أرشيفات BIG). تنبيه: تعذّر إيقاف حزمة بيانات المجتمع (المجلد غير قابل للكتابة).</string>
     <string name="setup_mod_folder_invalid">مجلد المود المحدد غير قابل للقراءة.</string>
     <string name="setup_mod_folder_no_big">لم يتم العثور على أي أرشيف ‎.big مباشرة داخل مجلد المود المحدد.</string>
     <string name="setup_toast_mod_saved">تم حفظ مجلد المود: %1$s (%2$d من أرشيفات BIG).</string>
@@ -277,10 +280,13 @@
     <string name="online_datapacks_deleted">تم حذف %1$d ملفاً.</string>
     <string name="online_datapacks_delete_no_record">لا شيء لحذفه: لا يوجد سجل تثبيت من هذا المشغّل.</string>
     <string name="online_datapacks_switch_failed">تعذّر تغيير الإعداد. تحقق من إمكانية الكتابة في مجلد البيانات.</string>
+    <string name="online_datapacks_chip_mod_active">موقوفة مؤقتًا بسبب مود نشط</string>
+    <string name="online_datapacks_switch_blocked_by_mod">مجلد المود نشط من تبويب الصفحة الرئيسية — إنه يستخدم ملفات INI، لذا تبقى حزمة بيانات المجتمع متوقفة حتى تُمسح مجلد المود.</string>
     <string name="online_card_crossplay">اللعب عبر المنصات</string>
     <string name="online_crossplay_help">المباريات التي يستضيفها عميل ويندوز ترفض هذا الجهاز عادةً: فهما برنامجان مختلفان ولا يمكن لمجموعَي تحقّق EXE أن يتطابقا أبدًا.</string>
     <string name="online_crossplay_patch_found">حزمة بيانات المجتمع مثبّتة</string>
     <string name="online_crossplay_patch_missing">حزمة بيانات المجتمع مفقودة — اضغط «تحديث»</string>
+    <string name="online_crossplay_patch_blocked">حزمة بيانات المجتمع موقوفة بسبب مود نشط</string>
     <string name="online_switch_crossplay">اللعب مع لاعبي الحاسوب</string>
     <string name="online_switch_crossplay_desc">يُبلغ عن مجموع تحقّق EXE الخاص بعميل ويندوز كي تقبلك مبارياته. هذا المجموع ليس مضادًا للغش: وظيفته منع جهازين يحسبان المباراة بطريقتين مختلفتين من اللعب معًا، لذا قد يُفسد ذلك المباراة على الجميع في الردهة. فعّله لحاسوب تملكه، وبعد نسخ بيانات INI منه إلى مجلد اللعبة هذا فقط.</string>
     <string name="replaycheck_title">فحص الإعادة</string>
@@ -348,8 +354,16 @@
     <string name="setup_accent_name_teal">فيروزي</string>
     <string name="setup_accent_name_orange">برتقالي</string>
     <string name="setup_accent_name_red">أحمر</string>
+    <string name="setup_accent_name_black">أسود</string>
+    <string name="setup_accent_name_gray">رمادي</string>
+    <string name="setup_accent_name_gold">ذهبي</string>
+    <string name="setup_accent_name_transparent">شفاف</string>
+    <string name="setup_accent_name_white">أبيض</string>
+    <string name="setup_accent_name_yellow">أصفر</string>
     <string name="setup_card_touch_controls">التحكم باللمس</string>
     <string name="setup_button_touch_controls">تهيئة عناصر التحكم باللمس</string>
+    <string name="setup_touch_hotkey_row">إظهار لوحة الاختصارات</string>
+    <string name="setup_touch_hotkey_row_desc">تُظهر أزرار الاختصارات المخصّصة فوق الخريطة أثناء اللعب. تعديل التوزيع الكامل يبقى في المحرّر أدناه.</string>
     <string name="setup_touch_controls_help">أنشئ لوحة اختصارات خاصة بك داخل اللعبة: أضف الأزرار أو احذفها، واختر مفاتيح لوحة المفاتيح مع Ctrl أو Shift أو Alt، واسحب كل زر إلى موضعه المفضل على الشاشة، واضبط سرعة تحريك الكاميرا وحجم الأزرار وشفافيتها.</string>
     <string name="touch_editor_title">محرر عناصر التحكم باللمس</string>
     <string name="touch_overlay_enabled">إظهار لوحة الاختصارات</string>
@@ -391,6 +405,6 @@
     <string name="touch_shape_oval">بيضاوي</string>
     <string name="touch_colors_note">تُكتب الألوان بصيغة #RRGGBB أو #AARRGGBB</string>
     <string name="setup_card_community">المجتمع</string>
-    <string name="setup_community_row_telegram">مجموعة تيليجرام</string>
+    <string name="setup_community_row_telegram">قناة تيليجرام</string>
     <string name="setup_community_telegram_note">أخبار ودعم ولقاءات اللعب الجماعي لمنفذ الأندرويد.</string>
 </resources>

@@ -109,6 +109,28 @@ final class DataPackInstaller {
     private static final String DISABLE_MARKER = "gx_no_community_patch.txt";
 
     /**
+     * GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 Mod
+     * and community-patch exclusivity, shared with SetupActivity's mod card
+     * and GeneralsOnlineActivity's cross-play switch. The PREFS_NAME of the
+     * setup prefs, re-declared locally: DataPackInstaller already sits below
+     * SetupActivity (which imports nothing from it in that direction), and a
+     * string is cheaper and clearer than widening that dependency graph.
+     */
+    static final String PREFS_NAME = "generalszh_setup";
+    static final String PREF_MOD_PATCH_INTERLOCK = "mod_patch_interlock";
+
+    /** Whether the mod folder currently owns the INI space (see PREF_MOD_PATCH_INTERLOCK). */
+    static boolean modOwnsIniSpace(Context ctx) {
+        return ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(PREF_MOD_PATCH_INTERLOCK, false);
+    }
+
+    /** Whether the community patch is both installed and currently switched on. */
+    static boolean communityPatchActive(Context ctx) {
+        return communityPatchFile().isFile() && isEnabled();
+    }
+
+    /**
      * What the last install actually wrote, so uninstalling removes that and
      * nothing else. Deleting Maps/ wholesale would take the player's own maps
      * with it -- they share the directory.
@@ -132,6 +154,18 @@ final class DataPackInstaller {
         // A recorded version with the file gone is worse than no record: it
         // would report "installed" for data the player has since deleted.
         return communityPatchFile().isFile() ? version : null;
+    }
+
+    /**
+     * GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
+     * Whether the engine would mount the community patch right now. A mod
+     * that owns the INI space forces the patch off; the disable marker then
+     * agrees with it. GeneralsOnlineActivity reads this instead of raw file
+     * presence so its cross-play status line cannot say "patch found" while
+     * an active mod is silently keeping the patch out of the file system.
+     */
+    static boolean effectivelyEnabled(Context ctx) {
+        return isEnabled() && !modOwnsIniSpace(ctx);
     }
 
     static boolean isEnabled() {

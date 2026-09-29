@@ -238,10 +238,13 @@
     <string name="online_datapacks_deleted">Deleted %1$d files.</string>
     <string name="online_datapacks_delete_no_record">Nothing to delete: there is no record of an install by this launcher.</string>
     <string name="online_datapacks_switch_failed">Could not change the setting. Check that the game data folder is writable.</string>
+    <string name="online_datapacks_chip_mod_active">Paused while a Mod is active</string>
+    <string name="online_datapacks_switch_blocked_by_mod">A Mod folder is active on the Home tab — it uses the game's INI files, so the community data patch stays off until the Mod folder is cleared.</string>
     <string name="online_card_crossplay">Cross-platform play</string>
     <string name="online_crossplay_help">Games hosted by the Windows client normally refuse this device, because the two are different programs and their EXE checksums can never match.</string>
     <string name="online_crossplay_patch_found">Community data patch installed</string>
     <string name="online_crossplay_patch_missing">Community data patch missing — tap Update</string>
+    <string name="online_crossplay_patch_blocked">Community data patch paused by an active Mod</string>
     <string name="online_switch_crossplay">Play with PC players</string>
     <string name="online_switch_crossplay_desc">Reports the Windows client\'s EXE checksum so its games will accept you. That checksum is not anti-cheat — it is what keeps two machines that would compute the match differently from playing it together, so this can desync the game for everyone in the lobby. Turn it on for a PC you own, and only after copying that PC\'s INI data into this game folder so the two really do match.</string>
     <string name="online_button_sign_in">Sign In</string>
@@ -284,6 +287,11 @@
     <string name="setup_mod_status_not_set">No mod folder selected.</string>
     <string name="setup_mod_status_set">Mod folder: %1$s\nBIG archives: %2$d</string>
     <string name="setup_mod_folder_help">Mod *.big archives are loaded after Zero Hour and Base Generals, so the Mod has the highest priority: Mod > GeneralsZH > Base Generals.</string>
+    <!-- GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 The
+         patch switch that lives on the mod card, and the parked state. -->
+    <string name="setup_mod_patch_switch">Community data patch</string>
+    <string name="setup_mod_patch_switch_desc">While a Mod folder is set, the Mod takes over the game's INI files and the patch is paused automatically; clear the Mod folder to turn it back on here.</string>
+    <string name="setup_toast_mod_saved_patch_still_on">Mod folder saved: %1$s (%2$d BIG archives). Note: the community data patch could not be paused (folder not writable).</string>
     <string name="setup_mod_folder_invalid">The selected mod folder is not readable.</string>
     <string name="setup_mod_folder_no_big">No .big archives were found directly in the selected mod folder.</string>
     <string name="setup_toast_mod_saved">Mod folder saved: %1$s (%2$d BIG archives).</string>
@@ -355,8 +363,19 @@
     <string name="setup_accent_name_teal">Teal</string>
     <string name="setup_accent_name_orange">Orange</string>
     <string name="setup_accent_name_red">Red</string>
+    <string name="setup_accent_name_black">Black</string>
+    <string name="setup_accent_name_gray">Gray</string>
+    <string name="setup_accent_name_gold">Gold</string>
+    <string name="setup_accent_name_transparent">Transparent</string>
+    <string name="setup_accent_name_white">White</string>
+    <string name="setup_accent_name_yellow">Yellow</string>
     <string name="setup_card_touch_controls">Mobile Controls</string>
     <string name="setup_button_touch_controls">Configure Touch Controls</string>
+    <!-- GeneralsX @feature Android touch-hotkey-home-switch 29/09/2026 The
+         hotkey overlay's own switch lives inside the landscape editor; this
+         surfaces the same config on the Home tab. -->
+    <string name="setup_touch_hotkey_row">Show hotkey panel</string>
+    <string name="setup_touch_hotkey_row_desc">Shows the custom on-map shortcut buttons while you play. Full layout editing stays in the editor below.</string>
     <string name="setup_touch_controls_help">Build your own in-game hotkey panel: add or remove buttons, choose keyboard keys and Ctrl/Shift/Alt modifiers, drag every button to its preferred screen position, and tune camera-pan speed, button size, and transparency.</string>
     <string name="touch_editor_title">Touch Controls Editor</string>
     <string name="touch_overlay_enabled">Show hotkey panel</string>
@@ -401,6 +420,6 @@
     <string name="touch_shape_oval">Oval</string>
     <string name="touch_colors_note">Colors use #RRGGBB or #AARRGGBB</string>
     <string name="setup_card_community">Community</string>
-    <string name="setup_community_row_telegram">Telegram group</string>
+    <string name="setup_community_row_telegram">Telegram channel</string>
     <string name="setup_community_telegram_note">News, support and multiplayer meetups for the Android port.</string>
 </resources>
