@@ -24,6 +24,7 @@
 #include "Common/GlobalData.h"
 #include "GameClient/View.h"
 #include "GameNetwork/GeneralsOnline/NextGenMP_defines.h"
+#include "GXTrace.h"
 
 NGMPGameSlot::NGMPGameSlot()
 {
@@ -552,6 +553,17 @@ void NGMPGame::launchGame(void)
 	// Set the random seed
 	InitRandom(getSeed());
 	DEBUG_LOG(("InitGameLogicRandom( %d )\n", getSeed()));
+
+	// GeneralsX @bugfix Android port 30/09/2026 Permanent match-start record, in release
+	// too. Every desync report needs three facts that no live log used to carry: which
+	// seed this device actually started with (the lobby's rng_seed via SyncWithLobby, or
+	// a GetTickCount() fallback if that path ever breaks -- those are opposite bugs),
+	// which client build hosts the match, and which checksum signature this side will
+	// sign with (tryStartNewGame, GameLogic.cpp). A mismatch report without these is
+	// unanswerable; with them, the seed can be replayed offline through rngsim.py.
+	GX_NET_TRACE("match start: seed=%d exe_crc=%u ini_crc=%u crc_interval=%d\n",
+		(int)getSeed(), (unsigned)getExeCRC(), (unsigned)getIniCRC(),
+		(int)getCRCInterval());
 
 	// mark us as "Loading" in the buddy list
 	// TODO_NGMP
