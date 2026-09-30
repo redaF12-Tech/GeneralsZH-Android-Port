@@ -545,16 +545,15 @@ public class SetupActivity extends Activity {
         modPatchSwitch = row;
     }
 
-    // GeneralsX @bugfix Android mod-patch-off-while-mod 29/09/2026 The
-    // original interlock PINNED this switch while a mod owned the INI space
-    // (checked, disabled): the mod must keep winning the INI files, but the
-    // patch's off-marker is a separate file the player may still want gone
-    // -- some mod loaders rewrite INIs the moment the marker disappears. So
-    // with a mod active the row keeps its ON-block (see the guard below)
-    // but becomes usable for switching the marker OFF; only turning it back
-    // ON waits for the mod folder to clear. It also never pins "checked"
-    // against isEnabled() anymore, and programmatic refreshes go through
-    // setCheckedSilently so the handler only ever runs for real user taps.
+    // GeneralsX @bugfix Android mod-patch-switch-state 30/09/2026 The switch
+    // rules, back to the strict reading of the interlock: while a mod owns
+    // the INI space the patch row reads FALSE and is DISABLED (the patch is
+    // parked, and the row must say so, not pretend it is waiting); clearing
+    // the mod folder restores the row to the patch's real state, enabled.
+    // The ON-block below stays as a guard for any programmatic/raced ON
+    // attempt, and every programmatic refresh goes through
+    // UiKit.setSwitchCheckedSilently so the handler only ever runs for real
+    // user taps (a raw setChecked here would re-enter it).
     private void onModPatchToggled(android.widget.CompoundButton button, boolean checked) {
         if (checked && getModPath() != null) {
             // Back ON stays blocked while a mod owns the INI space; the
@@ -569,29 +568,24 @@ public class SetupActivity extends Activity {
             UiKit.setSwitchCheckedSilently(modPatchSwitch, this::onModPatchToggled, !checked);
             return;
         }
-        // A manual OFF while the patch is parked must also forget the parked
-        // "was on" memory, or clearing the mod folder later would resurrect
-        // the patch the player just switched off.
-        if (!checked && getModPath() != null) {
-            DataPackInstaller.forgetParkedPatchState(this);
-        }
     }
 
-    /** One place decides the row, so the four states it reads can never disagree. */
+    /**
+     * One place decides the row, so the states it reads can never disagree:
+     * while a mod is active the patch is PARKED — checked=false, switch
+     * disabled (the strict interlock state the player asked for). Without a
+     * mod it is the patch's normal on/off switch, mirroring isEnabled()
+     * silently, enabled while the patch file exists.
+     */
     private void refreshModCommunityPatchRow() {
         if (modPatchSwitch == null) {
             return;
         }
         boolean modActive = getModPath() != null;
         boolean patchInstalled = DataPackInstaller.communityPatchFile().isFile();
-        // With a mod active the row shows the parked state (on) and the
-        // switch can still turn the marker off; without a mod it is the
-        // patch's normal on/off switch. It must always MIRROR isEnabled(),
-        // never lie on: the old "modActive ||" pinned it checked even when
-        // the player had parked the patch off on the multiplayer screen.
-        modPatchSwitch.setEnabled(patchInstalled);
+        modPatchSwitch.setEnabled(!modActive && patchInstalled);
         UiKit.setSwitchCheckedSilently(modPatchSwitch, this::onModPatchToggled,
-            modActive || DataPackInstaller.isEnabled());
+            DataPackInstaller.isEnabled());
     }
 
     /**
@@ -3381,6 +3375,16 @@ public class SetupActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        // GeneralsX @bugfix Android mod-picker-button-rearm 30/09/2026 The mod
+        // card's select button is disabled while its picker is open; every
+        // return path must re-enable it. onActivityResult IS the return path
+        // for cancel AND for the invalid/no-.big rejection paths below, but
+        // nothing re-enabled the button there -- one cancelled pick left the
+        // button dead until an app restart. Only the paths that rebuild the
+        // card (saveModPath/showTab) restore it themselves.
+        if (requestCode == REQUEST_PICK_MOD && modSelectButton != null) {
+            modSelectButton.setEnabled(true);
+        }
         if (requestCode == 1001 && resultCode == Activity.RESULT_OK && data != null) {
             String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
             if (path != null) {

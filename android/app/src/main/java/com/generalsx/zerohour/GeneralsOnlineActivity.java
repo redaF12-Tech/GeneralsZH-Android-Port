@@ -142,6 +142,19 @@ public class GeneralsOnlineActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 The card's
+        // switch state now depends on the mod interlock, and the mod folder is
+        // cleared on the HOME tab -- i.e. in another screen. Without this, a
+        // GeneralsOnline screen left open stayed on stale (disabled, false)
+        // switch state after the mod was cleared, or stayed enabled after a
+        // mod was picked elsewhere. refreshDataPackCard reads the interlock
+        // and re-arms the cross-play chip/switch with it.
+        refreshDataPackCard();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         // Only when the screen is really being left. A bare recreation --
@@ -301,12 +314,10 @@ public class GeneralsOnlineActivity extends Activity {
     // the marker file it creates/deletes; resolved once per card build.
     private File crossPlayMarker;
 
-    // GeneralsX @bugfix Android datapack-off-while-mod 29/09/2026 The
-    // original interlock made this switch READ-ONLY while a mod parked the
-    // patch: the player could not even switch the parked patch off from
-    // here, only from the mod card on the Home tab. OFF is always allowed
-    // (removing the marker is safe whatever owns the INI space); only
-    // coming back ON waits for the mod folder to clear. Method reference
+    // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 While a mod
+    // owns the INI space the patch stays parked: this switch is disabled and
+    // reads false (refreshDataPackCard), and the ON-block below is the guard
+    // for any programmatic/raced attempt to force it on. Method reference
     // instead of a lambda so silent refreshes can detach/reattach it.
     private void onDataPackToggled(android.widget.CompoundButton button, boolean checked) {
         if (checked && DataPackInstaller.modOwnsIniSpace(this)) {
@@ -321,13 +332,9 @@ public class GeneralsOnlineActivity extends Activity {
             UiKit.setSwitchCheckedSilently(button, this::onDataPackToggled, !checked);
             return;
         }
-        // Same rule as the Home tab's mod card: a manual OFF while the patch
-        // is parked must forget the parked "was on" memory too, or clearing
-        // the mod folder later would resurrect the patch the player just
-        // switched off from here.
-        if (!checked && DataPackInstaller.modOwnsIniSpace(this)) {
-            DataPackInstaller.forgetParkedPatchState(this);
-        }
+        // Same strict rule as the Home tab's mod card: while a mod owns the
+        // INI space this switch never reaches ON here (refreshDataPackCard
+        // keeps it disabled and false); the guard above is the backstop.
     }
 
     /**
@@ -370,13 +377,13 @@ public class GeneralsOnlineActivity extends Activity {
         // says so rather than failing quietly later.
         dataPackButton.setEnabled(signedIn && !dataPackBusy);
         dataPackDeleteButton.setEnabled(installed && !dataPackBusy);
-        // GeneralsX @bugfix Android datapack-off-while-mod 29/09/2026 The
-        // switch stays usable while a mod parks the patch (turning it OFF is
-        // always allowed; coming back ON is blocked in onDataPackToggled).
-        // It only mirrors isEnabled() here, silently: refreshDataPackCard
-        // also runs after programmatic changes, and a raw setChecked would
-        // re-enter the toggle handler and could undo the change it reflects.
-        dataPackSwitch.setEnabled(installed);
+        // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 While a
+        // mod parks the patch the switch reads FALSE and is DISABLED, same
+        // rule as the Home tab's mod card; clearing the mod folder re-enables
+        // it (refreshDataPackCard runs on every card refresh). It mirrors
+        // isEnabled() silently: a raw setChecked here would re-enter the
+        // toggle handler and could undo the change it reflects.
+        dataPackSwitch.setEnabled(installed && !DataPackInstaller.modOwnsIniSpace(this));
         UiKit.setSwitchCheckedSilently(dataPackSwitch, this::onDataPackToggled,
             DataPackInstaller.isEnabled());
 

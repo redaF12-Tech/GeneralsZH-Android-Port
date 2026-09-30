@@ -83,11 +83,15 @@
     <color name="gzh_accent_gray_on_secondary_container">#E0E1E3</color>
 
     <!-- Gold -->
-    <color name="gzh_accent_gold_primary">#F1C448</color>
+    <!-- GeneralsX @bugfix Android accent-gold-D4AF37 30/09/2026 The night
+         half used #F1C448 (a brighter, yellower gold) while the picker dots
+         and the user's requested metallic gold is #D4AF37: one gold, both
+         modes. Ripple re-derived; on-primary keeps its dark pairing. -->
+    <color name="gzh_accent_gold_primary">#D4AF37</color>
     <color name="gzh_accent_gold_on_primary">#3F2E00</color>
     <color name="gzh_accent_gold_container">#5C4700</color>
     <color name="gzh_accent_gold_on_container">#F7E1A0</color>
-    <color name="gzh_accent_gold_ripple">#33F1C448</color>
+    <color name="gzh_accent_gold_ripple">#33D4AF37</color>
     <color name="gzh_accent_gold_background">#131209</color>
     <color name="gzh_accent_gold_surface">#181710</color>
     <color name="gzh_accent_gold_container_low">#1B1A13</color>

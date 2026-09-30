@@ -94,11 +94,17 @@
     <color name="gzh_accent_gray_on_secondary_container">#1B1B1E</color>
 
     <!-- Gold -->
-    <color name="gzh_accent_gold_primary">#7A5900</color>
-    <color name="gzh_accent_gold_on_primary">#FFFFFF</color>
+    <!-- GeneralsX @bugfix Android accent-gold-D4AF37 30/09/2026 The primary
+         was #7A5900, a dark amber that read as BROWN in the picker and on
+         every primary button, not the metallic gold (#D4AF37) the palette
+         was asked for. #D4AF37 is a mid-bright gold, so its on-primary flips
+         to dark (#3F2E00, the pairing the night palette already proved) and
+         the ripple re-derives from the new primary. -->
+    <color name="gzh_accent_gold_primary">#D4AF37</color>
+    <color name="gzh_accent_gold_on_primary">#3F2E00</color>
     <color name="gzh_accent_gold_container">#F7E1A0</color>
     <color name="gzh_accent_gold_on_container">#241A00</color>
-    <color name="gzh_accent_gold_ripple">#337A5900</color>
+    <color name="gzh_accent_gold_ripple">#33D4AF37</color>
     <color name="gzh_accent_gold_background">#FBF8EF</color>
     <color name="gzh_accent_gold_surface">#FEFBF2</color>
     <color name="gzh_accent_gold_container_low">#F5F1E4</color>

@@ -164,11 +164,11 @@ final class ThemeHelper {
     // in sync with those when a palette changes.
     private static final int[] ACCENT_PREVIEW_DAYLIGHT = {
         0xFF6750A4, 0xFF1565C0, 0xFF386A20, 0xFF006A60, 0xFF8B5000, 0xFFB3261E,
-        0xFF36383B, 0xFF5A5F64, 0xFF7A5900, 0x66000000, 0xFFFBFBFB, 0xFF705E00,
+        0xFF36383B, 0xFF5A5F64, 0xFFD4AF37, 0x66000000, 0xFFFBFBFB, 0xFF705E00,
     };
     private static final int[] ACCENT_PREVIEW_DARK = {
         0xFFB9AEEA, 0xFFA8C8FF, 0xFF9CD67D, 0xFF80D5C7, 0xFFFFB86B, 0xFFFFB4AB,
-        0xFFC4C6CA, 0xFFC0C4C7, 0xFFF1C448, 0x66FFFFFF, 0xFFECECF0, 0xFFF5D53F,
+        0xFFC4C6CA, 0xFFC0C4C7, 0xFFD4AF37, 0x66FFFFFF, 0xFFECECF0, 0xFFF5D53F,
     };
 
     static int getSavedAccent(Context ctx) {
