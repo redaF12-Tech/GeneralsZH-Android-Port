@@ -1165,9 +1165,21 @@ static void StartPressed()
 
 	if(isReady)
 	{
+// GeneralsX @bugfix Android port 02/10/2026 The "full mesh connectivity check" cannot succeed
+// in this build, so it must not gate starting. P2P transport (NetworkMesh) is deferred
+// (see NGMP_include.h), which means every client -- this one, and the PC peers it can never
+// connect to -- answers the server's FULL_MESH_CONNECTIVITY_CHECK with an empty connectivity
+// map (OnlineServices_RoomsInterface.cpp carries the matching #if). The server therefore
+// always replies mesh_complete=false, the host only ever saw "Mesh is not fully connected
+// yet! Please try again soon" with both directions of every player pair listed missing, and
+// PLAY GAME could never start a lobby match at all. The check is kept for a future
+// P2P-enabled build; without the mesh this host falls through to the start countdown below,
+// which is what the check's own success branch runs in this configuration.
+#if defined(GENERALS_ONLINE_ENABLE_P2P_TRANSPORT)
 		// start full mesh connection check
 		UnicodeString strInform = UnicodeString(L"Starting full mesh connectivity checks...");
 		GadgetListBoxAddEntryText(listboxGameSetupChat, strInform, GameMakeColor(255, 194, 15, 255), -1, -1);
+#endif
 
 		std::shared_ptr<WebSocket>  pWS = NGMP_OnlineServicesManager::GetWebSocket();
 		if (pWS != nullptr)
@@ -1184,6 +1196,7 @@ static void StartPressed()
 				buttonStart->winEnable(FALSE);
 			}
 
+#if defined(GENERALS_ONLINE_ENABLE_P2P_TRANSPORT)
 			pWS->SendData_StartFullMeshConnectivityCheck([=](bool bMeshFullyConnected, std::list<std::pair<int64_t, int64_t>> missingConnections)
 				{
 					if (bMeshFullyConnected)
@@ -1276,6 +1289,35 @@ static void StartPressed()
 					}
 					
 				});
+#else
+			// GeneralsX @bugfix Android port 02/10/2026 No P2P mesh in this build, so the
+			// connectivity check above cannot even be sent: take its success path directly.
+			// This mirrors the countdown-enabled branch of that success handler (the buttons
+			// were disabled above); when the countdown expires, the menu tick sends
+			// SendData_StartGame() and the server broadcasts START_GAME to every client.
+			{
+				// reset autostart just incase
+				pLobbyInterface->ClearAutoReadyCountdown();
+				if (TheNGMPGame && TheNGMPGame->IsCountdownStarted())
+					TheNGMPGame->StopCountdown();
+
+#if defined(GENERALS_ONLINE_ENABLE_MATCH_START_COUNTDOWN)
+				if (TheNGMPGame != nullptr && !TheNGMPGame->IsCountdownStarted())
+				{
+					// remote msg
+					UnicodeString strInform;
+					strInform.format(TheGameText->fetch("LAN:GameStartTimerPlural"), TheNGMPGame->GetTotalCountdownDuration());
+					pLobbyInterface->SendAnnouncementMessageToCurrentLobby(strInform, true);
+
+					TheNGMPGame->StartCountdown();
+				}
+#else
+#error "With the P2P mesh deferred there is no start channel left; keep GENERALS_ONLINE_ENABLE_MATCH_START_COUNTDOWN enabled"
+#endif
+
+				GameSpyCloseOverlay(GSOVERLAY_BUDDY);
+			}
+#endif // GENERALS_ONLINE_ENABLE_P2P_TRANSPORT
 		}
 	}
 	else if (allHaveMap)
