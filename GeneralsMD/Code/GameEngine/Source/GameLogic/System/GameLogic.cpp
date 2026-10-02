@@ -121,10 +121,6 @@
 #include "GameNetwork/GameSpy/ThreadUtils.h"
 #include "GameNetwork/LANAPICallbacks.h"
 #include "GameNetwork/NetworkInterface.h"
-// GeneralsX @bugfix Android port 30/09/2026 Live-match CRC signing: NGMPGame carries the
-// host's exe_crc (set from the lobby JSON in SyncWithLobby), which identifies the client
-// build on the other side before the first checksum leaves this device. The header and
-// TheNGMPGame are declared below under GENERALS_ONLINE.
 #include "GameNetwork/GameSpy/PersistentStorageThread.h"
 #if defined(GENERALS_ONLINE)
 #include "GameNetwork/GeneralsOnline/NGMPGame.h"
@@ -1343,51 +1339,6 @@ void GameLogic::tryStartNewGame( Bool loadingSaveGame )
 			// game object for an internet match on this fork.
 #if defined(GENERALS_ONLINE)
 			TheGameInfo = TheNGMPGame ? static_cast<GameInfo*>(TheNGMPGame) : TheGameSpyGame;
-
-			// GeneralsX @bugfix Android port 30/09/2026 Pick the checksum signature from the
-			// host's exe_crc, before this device's first checksum leaves.
-			//
-			// Since 23/09 this port signs every checksum with the GeneralsOnline revision tag
-			// (GameLogic::getCRC, "MARKER:OfficialLogicCRCRevision"), which the current PC
-			// client (092226_QFE1, exe_crc 524577083) also does. The 28/08 client (082826_QFE1,
-			// exe_crc 3118172181) ends its stream at TheAI and compares raw values. The replay
-			// path adopts whichever variant a recording uses at its first checkpoint
-			// (RecorderClass::handleCRCMessage), but a live match has no such reconciliation:
-			// both sides compare raw numbers at the first interval, so a phone playing the
-			// signed stream against an older PC client showed "Mismatch Occurred" on the very
-			// first checkpoint with bit-identical simulations underneath (proven to frame
-			// 81100 by the replay work).
-			//
-			// The lobby JSON already tells us which client hosts the match: SyncWithLobby
-			// copies exe_crc into TheNGMPGame before the game starts. An older host means
-			// they expect untagged checksums, so this side signs the same way for the whole
-			// match. A current host (or a game we cannot classify) keeps the tag. The same
-			// choice is applied on both sides of the wire -- the PC computes its own stream
-			// its own way; this only decides which variant THIS device reports -- so it cannot
-			// desync a matching pair of clients.
-			if (TheNGMPGame != nullptr)
-			{
-				// Blacklist, not whitelist: only the one client known to compare raw
-				// checksums flips the tag. The current PC client (524577083), every
-				// Android build (4265514697), and anything unrecognised all sign or
-				// expect the tagged form, so they keep it. The fallback below in
-				// processCommandList covers any client this list does not know yet.
-				static const UnsignedInt OLD_PC_CLIENT_EXE_CRC = 3118172181UL; // 082826_QFE1
-				const UnsignedInt hostExeCrc = TheNGMPGame->getExeCRC();
-				if (hostExeCrc == OLD_PC_CLIENT_EXE_CRC)
-				{
-					s_logicCRCRevision = 0;
-					GX_NET_TRACE("live crc: host exe_crc=%u is the 28/08 PC client; signing checksums without the revision tag\n",
-						(unsigned)hostExeCrc);
-				}
-				else
-				{
-					s_logicCRCRevision = GO_LOGIC_CRC_REVISION;
-					GX_NET_TRACE("live crc: host exe_crc=%u signs or expects the tagged checksum form\n",
-						(unsigned)hostExeCrc);
-				}
-				fflush(stderr);
-			}
 #else
 			TheGameInfo = TheGameSpyGame;	/// @todo: MDC add back in after demo
 #endif
@@ -2882,51 +2833,6 @@ void GameLogic::processCommandList( CommandList *list )
 
 					if (referenceCRC != crc)
 					{
-						// GeneralsX @bugfix Android port 30/09/2026 Try the other checksum signature
-					// before declaring a live desync.
-					//
-					// tryStartNewGame picks the signature from the host's exe_crc, but a lobby
-					// list can be stale. Both variants of this device's checksum are kept per
-					// frame (getCRC), so if the value we disagree with matches our other
-					// variant, the other side is on the other GeneralsOnline revision and this
-					// device switches -- exactly what the replay path does at its first
-					// checkpoint. A genuine simulation divergence matches neither variant and
-					// is still reported below.
-					Bool reconciled = FALSE;
-					if (adoptLogicCRCRevisionFrom(referenceCRC, nullptr) || adoptLogicCRCRevisionFrom(crc, nullptr))
-					{
-						// The signing choice has flipped once. Rewrite OUR OWN value in the
-						// map to the other variant straight from the ring (getCRC stores both
-						// variants of this frame side by side); peers' values are what they
-						// sent and cannot be converted. Calling adoptLogicCRCRevisionFrom
-						// again here would flip the choice back, so the lookup is direct.
-						const Int localPlayerIndex = ThePlayerList->getLocalPlayer()->getPlayerIndex();
-						CachedCRCMap::iterator ownIt = m_cachedCRCs.find(localPlayerIndex);
-						if (ownIt != m_cachedCRCs.end())
-						{
-							for (Int i = 0; i < CRC_VARIANT_RING; ++i)
-							{
-								if (m_crcWithRevision[i] == ownIt->second)
-								{
-									ownIt->second = m_crcWithoutRevision[i];
-									break;
-								}
-								if (m_crcWithoutRevision[i] == ownIt->second)
-								{
-									ownIt->second = m_crcWithRevision[i];
-									break;
-								}
-							}
-							referenceCRC = ownIt->second;
-						}
-						reconciled = TRUE;
-						GX_NET_TRACE("live crc at frame %u: peer is on the other GeneralsOnline revision; switching to %s for the rest of the match\n",
-							(unsigned)m_frame, s_logicCRCRevision ? "0x474F0001 (23/09+)" : "none (28/08)");
-						fflush(stderr);
-					}
-
-					if (!reconciled || referenceCRC != crc)
-					{
 						DEBUG_CRASH(("CRC mismatch!"));
 						sawCRCMismatch = TRUE;
 
@@ -2937,7 +2843,6 @@ void GameLogic::processCommandList( CommandList *list )
 					}
 				}
 			}
-		}
 		}
 
 		if (sawCRCMismatch)

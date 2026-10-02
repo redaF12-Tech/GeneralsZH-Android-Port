@@ -230,8 +230,11 @@ Host: Linux or macOS.
 # One-time
 git clone <this repo> && cd <repo>
 git submodule update --init references/fbraz3-dxvk
-# meson + ninja + pkg-config via pip/brew/apt
+git clone https://github.com/microsoft/vcpkg ~/vcpkg && ~/vcpkg/bootstrap-vcpkg.sh
+export VCPKG_ROOT=~/vcpkg
 # Android Studio SDK Manager (or cmdline-tools): install NDK 26+, platform 35, build-tools
+export ANDROID_NDK_HOME=~/Android/Sdk/ndk/<version>
+# meson + ninja + pkg-config via pip/brew/apt
 
 # Build native code (game -> libmain.so, DXVK -> libdxvk_d3d8/9.so) and verify
 ./scripts/build/android/build-android-zh.sh
@@ -242,38 +245,6 @@ git submodule update --init references/fbraz3-dxvk
 
 The first configure builds vcpkg deps (ffmpeg, curl+openssl, freetype…) for
 `arm64-android` — expect 30–60 minutes cold.
-
-#### Nothing to export (02/10/2026)
-
-Neither `VCPKG_ROOT` nor `ANDROID_NDK_HOME` has to be set. Both are looked up
-by the build, in this order:
-
-| Tool | Searched, first hit wins |
-|------|--------------------------|
-| vcpkg | `VCPKG_ROOT` (CMake var), `$VCPKG_ROOT`, `$VCPKG_INSTALLATION_ROOT`, `~/vcpkg`, `/opt/vcpkg` |
-| NDK  | `ANDROID_NDK`, `ANDROID_NDK_HOME`, `ANDROID_NDK_ROOT` (each as CMake var and env var), then the **newest** NDK under `$ANDROID_SDK_ROOT/ndk/` and `$ANDROID_HOME/ndk/` |
-
-The lookups live in `cmake/toolchains/vcpkg-toolchain.cmake`,
-`cmake/toolchains/android-ndk-toolchain.cmake` (for the CMake configure) and
-`scripts/build/android/android-ndk-env.sh` (for the scripts, which need the
-paths before CMake runs). A checkout counts as vcpkg only if it has both
-`.vcpkg-root` and `scripts/buildsystems/vcpkg.cmake`. Export the variables only
-to *pin* a specific version.
-
-If you are cloning vcpkg by hand, it must be a **full** (non-shallow) clone —
-`vcpkg.json` pins a `builtin-baseline` commit that a shallow clone may not
-contain:
-
-```sh
-git clone https://github.com/microsoft/vcpkg ~/vcpkg && ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
-```
-
-Both resolvers report **every location they searched** when they come up empty.
-This replaced a failure that named a path nobody typed: an unexported variable
-expanded to the empty string, so the preset asked CMake for the toolchain file
-at `/scripts/buildsystems/vcpkg.cmake`, and CMake answered `Could not find
-toolchain file: /scripts/buildsystems/vcpkg.cmake` — no hint that
-`VCPKG_ROOT` was the missing thing.
 
 ## 4. Game data and first run — the in-app Setup flow (no adb, no PC needed)
 

@@ -52,7 +52,6 @@
 #include "Common/LocalFileSystem.h"
 #include "Common/AsciiString.h"
 #include "Common/PerfTimer.h"
-#include <cstdlib>
 
 
 //----------------------------------------------------------------------------
@@ -341,27 +340,6 @@ void ArchiveFileSystem::loadMods()
 		(void)ret;
 		DEBUG_ASSERTLOG(ret, ("loadBigFilesFromDirectory(%s) returned FALSE!", TheGlobalData->m_modDir.str()));
 	}
-
-#if defined(__ANDROID__)
-	// GeneralsX @feature Android Mod Manager 28/09/2026 SetupActivity persists
-	// the selected mod directory in the GENERALSX_MOD_PATH environment bridge
-	// before GameMain() (SDL3Main.cpp). Do not write TheGlobalData->m_modDir
-	// here: in this build TheGlobalData is exposed as const. Mounted LAST, with
-	// overwrite=TRUE, so the mod's entries land at the front of each file list
-	// and outrank everything already mounted above -- the community patch, the
-	// retail archives, and the base Generals archives alike (Mod > GeneralsZH >
-	// Base Generals). Deliberately after the community-patch block: a user mod
-	// overriding the patch is the expected precedence; the reverse would make
-	// the patch unshippable.
-	const char *androidModPath = std::getenv("GENERALSX_MOD_PATH");
-	if (androidModPath != nullptr && androidModPath[0] != '\0')
-	{
-		MAYBE_UNUSED Bool ret = loadBigFilesFromDirectory(AsciiString(androidModPath), "*.big", TRUE);
-		(void)ret;
-		DEBUG_ASSERTLOG(ret, ("loadBigFilesFromDirectory(%s) returned FALSE!", androidModPath));
-		DEBUG_LOG(("ArchiveFileSystem::loadMods - Android Mod Manager directory: %s", androidModPath));
-	}
-#endif
 }
 
 Bool ArchiveFileSystem::doesFileExist(const Char *filename, FileInstance instance) const

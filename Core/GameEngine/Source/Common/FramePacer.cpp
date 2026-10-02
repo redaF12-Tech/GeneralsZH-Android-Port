@@ -68,16 +68,7 @@ void FramePacer::setFramesPerSecondLimit( Int fps )
 {
 	DEBUG_LOG(("FramePacer::setFramesPerSecondLimit() - setting max fps to %d (TheGlobalData->m_useFpsLimit == %d)", fps, TheGlobalData->m_useFpsLimit));
 	// clamp FPS to at least render at same as logic
-	// GeneralsX @fixup Generals base game 02/10/2026 The clamp floor is the
-	// logic rate. GENERALS_ONLINE_HIGH_FPS_LIMIT is a Zero Hour build define
-	// (top-level CMakeLists.txt); LOGICFRAMES_PER_SECOND is WWSyncPerSecond,
-	// which is 30 in the base game. Naming the logic rate states the intent --
-	// "never clamp below the logic rate" -- and reads the same in both engines.
-#if defined(GENERALS_ONLINE_HIGH_FPS_LIMIT)
 	fps = std::max<int>(fps, GENERALS_ONLINE_HIGH_FPS_LIMIT);
-#else
-	fps = std::max<int>(fps, LOGICFRAMES_PER_SECOND);
-#endif
 
 	m_maxFPS = fps;
 }

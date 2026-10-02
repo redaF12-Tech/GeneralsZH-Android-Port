@@ -865,42 +865,6 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		// GeneralsX @feature Android Mod Manager 28/09/2026 Persist the mod
-		// directory the Setup app selected (mod_path.txt, same plain-text marker
-		// arrangement as gamedata_path.txt above). Do NOT chdir here: the game
-		// folder stays the process working directory and the primary asset root,
-		// while ArchiveFileSystem::loadMods() mounts the mod BIGs separately with
-		// overwrite=true so they override lower-priority archives. Unlike the two
-		// markers above, absence of the marker is meaningful (no mod selected), so
-		// every branch that fails to produce a path explicitly clears the
-		// variable instead of leaving a stale value from an earlier launch.
-		if (internalPath != nullptr) {
-			char modPathMarker[1024];
-			snprintf(modPathMarker, sizeof(modPathMarker), "%s/mod_path.txt", internalPath);
-			FILE *modMarker = fopen(modPathMarker, "r");
-			if (modMarker != nullptr) {
-				char modPath[900] = { 0 };
-				if (fgets(modPath, sizeof(modPath), modMarker) != nullptr) {
-					size_t len = strlen(modPath);
-					while (len > 0 && (modPath[len - 1] == '\n' || modPath[len - 1] == '\r')) {
-						modPath[--len] = '\0';
-					}
-					if (len > 0 && access(modPath, R_OK) == 0) {
-						setenv("GENERALSX_MOD_PATH", modPath, 1);
-						fprintf(stderr, "INFO: Android Mod Manager folder (Setup-selected): %s\n", modPath);
-					} else {
-						unsetenv("GENERALSX_MOD_PATH");
-						fprintf(stderr, "WARNING: Android Mod Manager folder '%s' is not readable; no mod BIGs will be mounted\n", modPath);
-					}
-				}
-				fclose(modMarker);
-			} else {
-				unsetenv("GENERALSX_MOD_PATH");
-			}
-		} else {
-			unsetenv("GENERALSX_MOD_PATH");
-		}
-
 		// GeneralsX @feature Android port 30/07/2026 Opt-in Vulkan validation
 		// layer, same UX as gx_trace.txt: a tester drops a file named
 		// dxvk_validation.txt into the game data folder (no adb, no rebuild)

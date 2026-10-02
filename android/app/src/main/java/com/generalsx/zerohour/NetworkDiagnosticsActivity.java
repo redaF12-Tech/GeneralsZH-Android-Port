@@ -60,14 +60,11 @@ public class NetworkDiagnosticsActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(ThemeHelper.wrap(LocaleHelper.wrap(newBase)));
+        super.attachBaseContext(LocaleHelper.wrap(newBase));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // GeneralsX @feature Android port accent-colors 21/09/2026 Accent
-        // before views -- same reasoning as SetupActivity.onCreate().
-        ThemeHelper.applyAccentTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.netdiag_title);
 

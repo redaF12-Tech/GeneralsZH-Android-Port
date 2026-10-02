@@ -137,32 +137,8 @@ jobs:
         with:
           path: /opt/android-sdk
           key: android-sdk-${{ env.CMDLINE_TOOLS_VERSION }}-ndk${{ env.NDK_VERSION }}-p35-bt35
-      # GeneralsX @bugfix Android CI 02/10/2026 A restored cache is not trusted
-      # on its own. The save step below is gated on `always()`, so a run that
-      # died BEFORE this sdkmanager call (checkout failure, a transient network
-      # error on the cmdline-tools zip, a cancelled job) still published
-      # whatever was in /opt/android-sdk at that moment -- typically an empty
-      # or partial directory -- under the same key. Every run after that
-      # restored that entry, saw cache-hit=true, skipped the install, and died
-      # on "NDK toolchain file missing after install" -- with the install
-      # skipped, nothing could ever repair it. That is a self-poisoning cache,
-      # and it is what made this workflow fail on 02/10 and on 13:19 the same
-      # day, on two different commits.
-      #
-      # So: verify the restored tree, and install whenever it is not actually
-      # usable. The save step is gated the same way, which stops a bad run from
-      # publishing a bad cache in the first place.
-      - name: Check restored Android SDK
-        id: sdk-usable
-        run: |
-          if [ -f "/opt/android-sdk/ndk/${{ env.NDK_VERSION }}/build/cmake/android.toolchain.cmake" ]; then
-            echo "usable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "usable=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Android SDK cache is present but has no NDK ${{ env.NDK_VERSION }} -- reinstalling."
-          fi
       - name: Install Android SDK (cmdline-tools + NDK + platform + build-tools)
-        if: steps.cache-android-sdk.outputs.cache-hit != 'true' || steps.sdk-usable.outputs.usable != 'true'
+        if: steps.cache-android-sdk.outputs.cache-hit != 'true'
         run: |
           set -euo pipefail
           curl -fL --retry 3 -o /tmp/cmdline-tools.zip \
@@ -178,25 +154,13 @@ jobs:
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --install "ndk;${{ env.NDK_VERSION }}" "platforms;android-35" "build-tools;35.0.0" "platform-tools"
       - name: Export Android SDK environment
-        id: export-sdk-env
         run: |
           set -euo pipefail
           echo "ANDROID_HOME=/opt/android-sdk" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=/opt/android-sdk" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_HOME=/opt/android-sdk/ndk/${{ env.NDK_VERSION }}" >> "$GITHUB_ENV"
-          if [ -f "/opt/android-sdk/ndk/${{ env.NDK_VERSION }}/build/cmake/android.toolchain.cmake" ]; then
-            # Re-checked HERE, after the install step, not before it: this is
-            # the only point at which the tree is known good, and it is what
-            # the save step below keys off. Reading the earlier
-            # "Check restored Android SDK" result instead would report a cold
-            # cache as unusable after a perfectly good install, and the cache
-            # would then never be written at all.
-            echo "usable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "usable=false" >> "$GITHUB_OUTPUT"
-            echo "::error::NDK toolchain file missing after install"
-            exit 1
-          fi
+          test -f "/opt/android-sdk/ndk/${{ env.NDK_VERSION }}/build/cmake/android.toolchain.cmake" \
+            || { echo "::error::NDK toolchain file missing after install"; exit 1; }
 
       # Gradle: this project intentionally doesn't commit a wrapper (binary jar),
       # so use Gradle's own official action, which downloads + verifies the
@@ -658,11 +622,7 @@ jobs:
       # why plain actions/cache can't do this). Guard each save so a run that
       # restored an exact-key hit doesn't fail trying to re-save it.
       - name: Save Android SDK cache
-        # `always()` alone would republish a half-installed SDK after a failed
-        # run -- the failure mode described at "Check restored Android SDK".
-        # Keyed on the POST-install check (export-sdk-env), so a good install
-        # is cached and a failed one is not.
-        if: always() && steps.cache-android-sdk.outputs.cache-hit != 'true' && steps.export-sdk-env.outputs.usable == 'true'
+        if: always() && steps.cache-android-sdk.outputs.cache-hit != 'true'
         uses: actions/cache/save@v5
         with:
           path: /opt/android-sdk

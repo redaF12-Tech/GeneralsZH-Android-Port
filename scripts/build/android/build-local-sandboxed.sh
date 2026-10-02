@@ -51,17 +51,7 @@ fi
 export ANDROID_HOME=/opt/android-sdk
 export ANDROID_SDK_ROOT=/opt/android-sdk
 export ANDROID_NDK_HOME="/opt/android-sdk/ndk/${NDK_VERSION}"
-# GeneralsX @build Android port 02/10/2026 Fall back to whichever NDK actually
-# landed under the SDK root when the pinned one is not there. The pin exists so
-# a build does not silently change toolchain between machines, but sdkmanager
-# quietly serving a different (or an extra) NDK version should not stop the
-# build outright -- the resolver picks the newest one present and says so.
-# shellcheck source=scripts/build/android/android-ndk-env.sh
-if ! . "${REPO}/scripts/build/android/android-ndk-env.sh"; then
-    echo "NDK toolchain file missing under /opt/android-sdk/ndk"
-    exit 1
-fi
-echo "NDK: ${ANDROID_NDK_HOME}"
+test -f "${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake" || { echo "NDK toolchain file missing"; exit 1; }
 
 echo "=== [3/8] ccache config ==="
 export CCACHE_DIR="$HOME/.cache/ccache"
@@ -166,17 +156,7 @@ echo "Artifacts verified: AArch64 libmain.so + DXVK with SDL3 WSI"
 # task fails silently on all our custom-built libraries for an unrelated
 # reason ("Unable to strip ... packaging them as they are"), so an unstripped
 # libmain.so alone (282MB) otherwise ships straight into the APK.
-# GeneralsX @build Android port 02/10/2026 Match the host triple directory the
-# rest of this file already globs for (readelf above, and package-android-zh.sh),
-# rather than assuming linux-x86_64: on an Apple-silicon or aarch64 Linux host
-# the strip binary lives under a different prebuilt/<host> name, and a hardcoded
-# path made this line fail with "No such file or directory" after a build that
-# had otherwise succeeded.
-STRIP="$(ls "${ANDROID_NDK_HOME}"/toolchains/llvm/prebuilt/*/bin/llvm-strip 2>/dev/null | head -1)"
-if [ -z "${STRIP}" ]; then
-    echo "ERROR: llvm-strip not found under ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt"
-    exit 1
-fi
+STRIP="${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-strip"
 # GeneralsX @feature Android port 23/09/2026 Keep the symbol table (not the DWARF) of the
 # game library before stripping it, when asked, so addresses printed by a device log
 # (the "[GX-NET] math site" lines) can be turned back into function names. One copy per

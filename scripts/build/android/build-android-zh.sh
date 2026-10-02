@@ -5,11 +5,8 @@
 # with the SDL3 WSI compiled in ("trust no successful exit code").
 #
 # Prerequisites:
-#   - Android NDK r26+          found automatically under ~/Android/Sdk/ndk or
-#                               $ANDROID_SDK_ROOT/ndk; export ANDROID_NDK_HOME
-#                               only to pin a specific version
-#   - vcpkg (FULL clone)        found automatically at ~/vcpkg; export
-#                               VCPKG_ROOT to override
+#   - Android NDK r26+          export ANDROID_NDK_HOME=~/Android/Sdk/ndk/<ver>
+#   - vcpkg (FULL clone)        export VCPKG_ROOT=~/vcpkg
 #   - cmake >= 3.25, ninja, meson, pkg-config, git
 #   - git submodule update --init references/fbraz3-dxvk
 #
@@ -30,29 +27,20 @@ done
 
 # --- dependency checks -------------------------------------------------------
 fail=0
-# GeneralsX @build Android port 02/10/2026 Resolve the NDK and vcpkg instead of
-# demanding both environment variables. Both are looked up the same way
-# cmake/toolchains/{android-ndk,vcpkg}-toolchain.cmake look them up, and both
-# scripts fall back to ~/vcpkg and to the newest NDK under the SDK root, so
-# "I installed the NDK in Android Studio and never exported anything" is no
-# longer a dead end. The CMake toolchain resolvers do the same job for the
-# configure itself; these two calls exist because the checks below (and the
-# readelf/strip lookups further down) need the paths before CMake runs.
-# shellcheck source=scripts/build/android/android-ndk-env.sh
-if ! . "${SCRIPT_DIR}/android-ndk-env.sh"; then
+if [[ -z "${ANDROID_NDK_HOME:-}" || ! -d "${ANDROID_NDK_HOME}" ]]; then
+    echo "ERROR: ANDROID_NDK_HOME is unset or not a directory."
+    echo "       Install the NDK (Android Studio SDK Manager or dl.google.com/android/repository)"
+    echo "       and: export ANDROID_NDK_HOME=<sdk>/ndk/<version>"
+    fail=1
+elif [[ ! -f "${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake" ]]; then
+    echo "ERROR: ${ANDROID_NDK_HOME} does not look like an NDK (no build/cmake/android.toolchain.cmake)"
     fail=1
 fi
 if [[ -z "${VCPKG_ROOT:-}" || ! -f "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" ]]; then
-    if [[ -f "${HOME}/vcpkg/scripts/buildsystems/vcpkg.cmake" ]]; then
-        export VCPKG_ROOT="${HOME}/vcpkg"
-    elif [[ -f "/opt/vcpkg/scripts/buildsystems/vcpkg.cmake" ]]; then
-        export VCPKG_ROOT="/opt/vcpkg"
-    else
-        echo "ERROR: no vcpkg installation found (searched \$VCPKG_ROOT, ~/vcpkg, /opt/vcpkg)."
-        echo "       git clone https://github.com/microsoft/vcpkg ~/vcpkg && ~/vcpkg/bootstrap-vcpkg.sh"
-        echo "       (FULL clone — a shallow clone breaks manifest baselines)"
-        fail=1
-    fi
+    echo "ERROR: VCPKG_ROOT is unset or has no scripts/buildsystems/vcpkg.cmake."
+    echo "       git clone https://github.com/microsoft/vcpkg ~/vcpkg && ~/vcpkg/bootstrap-vcpkg.sh"
+    echo "       (FULL clone — a shallow clone breaks manifest baselines)"
+    fail=1
 fi
 for tool in cmake ninja meson pkg-config git; do
     if ! command -v "$tool" >/dev/null 2>&1; then

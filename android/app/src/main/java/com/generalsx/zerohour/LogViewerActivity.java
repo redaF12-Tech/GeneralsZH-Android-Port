@@ -44,7 +44,7 @@
 package com.generalsx.zerohour;
 
 import android.app.Activity;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Intent;
@@ -92,14 +92,11 @@ public class LogViewerActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(ThemeHelper.wrap(LocaleHelper.wrap(newBase)));
+        super.attachBaseContext(LocaleHelper.wrap(newBase));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // GeneralsX @feature Android port accent-colors 21/09/2026 Accent
-        // before views -- same reasoning as SetupActivity.onCreate().
-        ThemeHelper.applyAccentTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.logviewer_title);
 
@@ -111,7 +108,7 @@ public class LogViewerActivity extends Activity {
         // the app having failed to draw anything.
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(UiKit.backgroundColor(this));
+        root.setBackgroundColor(UiKit.color(this, R.color.gzh_background));
 
         UiKit.appBar(root, getString(R.string.setup_window_title),
             getString(R.string.logviewer_title), 0, null, null);
@@ -146,7 +143,7 @@ public class LogViewerActivity extends Activity {
         MaterialCardView logCard = new MaterialCardView(this);
         logCard.setRadius(UiKit.dim(this, R.dimen.gzh_radius_card));
         logCard.setCardElevation(0f);
-        logCard.setCardBackgroundColor(UiKit.surfaceContainerColor(this));
+        logCard.setCardBackgroundColor(UiKit.color(this, R.color.gzh_surface_container));
         logCard.setStrokeWidth(0);
         logCard.setUseCompatPadding(false);
         logCard.setPreventCornerOverlap(false);
@@ -213,7 +210,7 @@ public class LogViewerActivity extends Activity {
     }
 
     private void confirmClearLogs() {
-        new MaterialAlertDialogBuilder(this)
+        new AlertDialog.Builder(this)
             .setTitle(R.string.logviewer_dialog_clear_title)
             .setMessage(R.string.logviewer_dialog_clear_message)
             .setPositiveButton(R.string.logviewer_dialog_clear_confirm, (dialog, which) -> clearLogs())
