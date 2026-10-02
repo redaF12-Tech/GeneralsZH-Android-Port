@@ -96,16 +96,52 @@ include(cmake/config.cmake)
 # (htree.cpp, FrameRateLimit.cpp, ParticleSys.cpp, seglinerenderer.cpp, ...) use them and Core
 # cannot include a GeneralsMD header. Upstream solves this by having WWCommon.h reach across
 # into GeneralsMD with a relative path; defining them here keeps the dependency one-way.
-if(SAGE_HIGH_FPS_SIM)
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_SERVER=1)
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_LIMIT=60)
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_FRAME_MULTIPLIER=2)
-else()
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_LIMIT=30)
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_FRAME_MULTIPLIER=1)
+# GeneralsX @bugfix Generals base game 02/10/2026 The whole
+# GENERALS_ONLINE_HIGH_FPS_* family below is a Zero Hour feature, so it is
+# defined only when Zero Hour is part of the build.
+#
+# The members it selects (GameClient::getFrameLegacy / getFrameLegacyLast /
+# HasLegacyFrameAdvanced and their m_frameLegacy fields) are declared only in
+# GeneralsMD's GameClient.h and GameLogic.h; the base game declares neither.
+# Core is shared between the two engines, and every Core file that uses those
+# members (ParticleSys.cpp, htree.cpp, FrameRateLimit.cpp,
+# seglinerenderer.cpp, ...) already guards each site:
+#
+#     #if defined(GENERALS_ONLINE_HIGH_FPS_RENDER)
+#         ...getFrameLegacy()...
+#     #else
+#         ...getFrame()...
+#     #endif
+#
+# The base game therefore has correct code waiting in its `#else` branch and
+# never reached it: with the macro set globally it took the Zero Hour branch
+# and failed on "class GameClient has no member named 'getFrameLegacy'" --
+# seven sites in ParticleSys.cpp alone. The define was asserting a capability
+# the base game's GameClient does not have.
+#
+# An earlier attempt at this added `-D<macro>` followed by `-U<macro>` through
+# add_compile_options() to undefine the macros per target. That does not work:
+# the `-D` still wins on the command line, confirmed by building a two-line
+# test case that still saw both macros defined. Not defining them in the first
+# place is both correct and simpler.
+#
+# Decided here rather than inside GeneralsMD/ because Core is configured before
+# GeneralsMD, and the requirement above stands: Core and GeneralsMD must agree
+# on the value, so the macro must be visible when Core's sources are compiled.
+# A base-game-only build therefore compiles Core's non-Zero-Hour branches,
+# which is the configuration they were written for.
+if(RTS_BUILD_ZEROHOUR)
+    if(SAGE_HIGH_FPS_SIM)
+        add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_SERVER=1)
+        add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_LIMIT=60)
+        add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_FRAME_MULTIPLIER=2)
+    else()
+        add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_LIMIT=30)
+        add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_FRAME_MULTIPLIER=1)
+    endif()
+    # Unlocks the render framerate. Required at 60 Hz, optional but desirable at 30.
+    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_RENDER=1)
 endif()
-# Unlocks the render framerate. Required at 60 Hz, optional but desirable at 30.
-add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_RENDER=1)
 
 include(cmake/gamespy.cmake)
 include(cmake/lzhl.cmake)
