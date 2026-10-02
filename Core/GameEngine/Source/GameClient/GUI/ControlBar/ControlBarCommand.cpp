@@ -547,7 +547,21 @@ static Bool canBeOrderedToForceAttack( const Object *obj )
 	for( ContainedItemsList::const_iterator it = passengers->begin(); it != passengers->end(); ++it )
 	{
 		const Object *passenger = *it;
+		// GeneralsX @fixup 02/10/2026 The ObjectID argument exists only in
+		// Zero Hour: its ContainModuleInterface declares
+		//     isPassengerAllowedToFire( ObjectID id = INVALID_ID ) const
+		// while the base game's declares
+		//     isPassengerAllowedToFire() const
+		// so a shared call site can only name one of them. The argument asks
+		// "is this specific passenger cleared to fire"; the base game's
+		// container answers the container-wide question, which is the closest
+		// equivalent it has. Passing nothing is therefore the correct call for
+		// the base game, not a silent loss of a check.
+#if RTS_GENERALS
+		if( passenger && hasForceAttackWeapon( passenger ) && contain->isPassengerAllowedToFire() )
+#else
 		if( passenger && hasForceAttackWeapon( passenger ) && contain->isPassengerAllowedToFire( passenger->getID() ) )
+#endif
 			return TRUE;
 	}
 	return FALSE;

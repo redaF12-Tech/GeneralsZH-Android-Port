@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GeneralsX @feature Android port daylight-darkmode 20/09/2026 The
+         DARKMODE overrides of the per-mode resources in values/themes.xml.
+         The main Theme.GeneralsZHSettings style itself is NOT re-declared
+         here: every colour it names resolves through the palette split
+         (values-night/colors.xml) and the status-bar flag through the bool
+         below, so only the resources that genuinely differ per mode are
+         overridden.
+
+         GeneralsX @bugfix Android port accent-tinted-surfaces 21/09/2026
+         The dark variant of Theme.GeneralsZH.AlertDialog that used to stand
+         here is gone with its daylight twin: every launcher dialog builds
+         through MaterialAlertDialogBuilder now, whose theme resolves the
+         palette (default or accent-overlayed) from the overlaid activity
+         theme without a per-mode style pair. -->
+
+    <!-- Dark content on the transparent system bars, over the near-black
+         ground. -->
+    <bool name="gzh_light_system_bars">false</bool>
+</resources>

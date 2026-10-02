@@ -126,16 +126,32 @@ public class GeneralsOnlineActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(LocaleHelper.wrap(newBase));
+        super.attachBaseContext(ThemeHelper.wrap(LocaleHelper.wrap(newBase)));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // GeneralsX @feature Android port accent-colors 21/09/2026 Accent
+        // before views -- same reasoning as SetupActivity.onCreate().
+        ThemeHelper.applyAccentTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.online_window_title);
         buildUi();
         refreshStatus();
         maybeSilentReauth();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 The card's
+        // switch state now depends on the mod interlock, and the mod folder is
+        // cleared on the HOME tab -- i.e. in another screen. Without this, a
+        // GeneralsOnline screen left open stayed on stale (disabled, false)
+        // switch state after the mod was cleared, or stayed enabled after a
+        // mod was picked elsewhere. refreshDataPackCard reads the interlock
+        // and re-arms the cross-play chip/switch with it.
+        refreshDataPackCard();
     }
 
     @Override
@@ -156,7 +172,7 @@ public class GeneralsOnlineActivity extends Activity {
     private void buildUi() {
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
-        shell.setBackgroundColor(UiKit.color(this, R.color.gzh_background));
+        shell.setBackgroundColor(UiKit.backgroundColor(this));
         setContentView(shell);
         InsetUtil.applySafeInsets(shell);
 
@@ -231,13 +247,7 @@ public class GeneralsOnlineActivity extends Activity {
             getString(R.string.online_switch_datapacks),
             getString(R.string.online_switch_datapacks_desc));
         dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
-        dataPackSwitch.setOnCheckedChangeListener((button, checked) -> {
-            if (!DataPackInstaller.setEnabled(this, checked)) {
-                Toast.makeText(this, R.string.online_datapacks_switch_failed,
-                    Toast.LENGTH_LONG).show();
-                button.setChecked(!checked);
-            }
-        });
+        dataPackSwitch.setOnCheckedChangeListener(this::onDataPackToggled);
 
         refreshDataPackCard();
         maybeAutoCheckDataPacks();
@@ -295,6 +305,38 @@ public class GeneralsOnlineActivity extends Activity {
         };
     }
 
+    // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 The
+    // cross-play switch is gated while a mod parks the community patch; kept
+    // as a field so refreshDataPackCard can re-evaluate it without a rebuild.
+    private com.google.android.material.materialswitch.MaterialSwitch crossPlaySwitch;
+    // GeneralsX @bugfix Android switch-silent-set 29/09/2026 The cross-play
+    // listener is a method reference (onCrossPlayToggled) now, and it needs
+    // the marker file it creates/deletes; resolved once per card build.
+    private File crossPlayMarker;
+
+    // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 While a mod
+    // owns the INI space the patch stays parked: this switch is disabled and
+    // reads false (refreshDataPackCard), and the ON-block below is the guard
+    // for any programmatic/raced attempt to force it on. Method reference
+    // instead of a lambda so silent refreshes can detach/reattach it.
+    private void onDataPackToggled(android.widget.CompoundButton button, boolean checked) {
+        if (checked && DataPackInstaller.modOwnsIniSpace(this)) {
+            Toast.makeText(this, R.string.online_datapacks_switch_blocked_by_mod,
+                Toast.LENGTH_LONG).show();
+            UiKit.setSwitchCheckedSilently(button, this::onDataPackToggled, false);
+            return;
+        }
+        if (!DataPackInstaller.setEnabled(this, checked)) {
+            Toast.makeText(this, R.string.online_datapacks_switch_failed,
+                Toast.LENGTH_LONG).show();
+            UiKit.setSwitchCheckedSilently(button, this::onDataPackToggled, !checked);
+            return;
+        }
+        // Same strict rule as the Home tab's mod card: while a mod owns the
+        // INI space this switch never reaches ON here (refreshDataPackCard
+        // keeps it disabled and false); the guard above is the backstop.
+    }
+
     /**
      * One place decides what the card says, because three things feed it:
      * whether the account is signed in, whether the data is installed, and
@@ -335,8 +377,15 @@ public class GeneralsOnlineActivity extends Activity {
         // says so rather than failing quietly later.
         dataPackButton.setEnabled(signedIn && !dataPackBusy);
         dataPackDeleteButton.setEnabled(installed && !dataPackBusy);
-        dataPackSwitch.setEnabled(installed);
-        dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
+        // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 While a
+        // mod parks the patch the switch reads FALSE and is DISABLED, same
+        // rule as the Home tab's mod card; clearing the mod folder re-enables
+        // it (refreshDataPackCard runs on every card refresh). It mirrors
+        // isEnabled() silently: a raw setChecked here would re-enter the
+        // toggle handler and could undo the change it reflects.
+        dataPackSwitch.setEnabled(installed && !DataPackInstaller.modOwnsIniSpace(this));
+        UiKit.setSwitchCheckedSilently(dataPackSwitch, this::onDataPackToggled,
+            DataPackInstaller.isEnabled());
 
         if (!signedIn) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
@@ -344,6 +393,9 @@ public class GeneralsOnlineActivity extends Activity {
         } else if (!installed) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
                 R.string.online_datapacks_chip_required, R.color.gzh_status_warn);
+        } else if (DataPackInstaller.modOwnsIniSpace(this)) {
+            setChip(dataPackChip, R.drawable.ic_gzh_info,
+                R.string.online_datapacks_chip_mod_active, R.color.gzh_status_warn);
         } else if (!DataPackInstaller.isEnabled()) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
                 R.string.online_datapacks_chip_off, R.color.gzh_status_warn);
@@ -356,12 +408,22 @@ public class GeneralsOnlineActivity extends Activity {
         }
 
         if (crossPlayPatchChip != null) {
-            final boolean havePatch = DataPackInstaller.communityPatchFile().isFile();
+            // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
+            // "found" must mean "the engine would mount it": an active mod
+            // parks the patch, so file presence alone would promise a lobby
+            // checksum the device cannot compute right now. Three states:
+            // live, present-but-parked-by-mod, or missing entirely.
+            final boolean patchLive = DataPackInstaller.effectivelyEnabled(this);
+            final boolean patchPresent = DataPackInstaller.communityPatchFile().isFile();
             setChip(crossPlayPatchChip,
-                havePatch ? R.drawable.ic_gzh_check : R.drawable.ic_gzh_info,
-                havePatch ? R.string.online_crossplay_patch_found
-                          : R.string.online_crossplay_patch_missing,
-                havePatch ? R.color.gzh_status_ok : R.color.gzh_status_warn);
+                patchLive ? R.drawable.ic_gzh_check : R.drawable.ic_gzh_info,
+                patchLive ? R.string.online_crossplay_patch_found
+                          : patchPresent ? R.string.online_crossplay_patch_blocked
+                                         : R.string.online_crossplay_patch_missing,
+                patchLive ? R.color.gzh_status_ok : R.color.gzh_status_warn);
+        }
+        if (crossPlaySwitch != null) {
+            crossPlaySwitch.setEnabled(!DataPackInstaller.modOwnsIniSpace(this));
         }
     }
 
@@ -400,7 +462,7 @@ public class GeneralsOnlineActivity extends Activity {
             return;
         }
         dataPackPrompted = true;
-        new android.app.AlertDialog.Builder(this)
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.online_card_datapacks)
             .setMessage(R.string.online_datapacks_prompt)
             .setPositiveButton(R.string.online_button_datapacks_update,
@@ -410,7 +472,7 @@ public class GeneralsOnlineActivity extends Activity {
     }
 
     private void onDeleteDataPacks() {
-        new android.app.AlertDialog.Builder(this)
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.online_button_datapacks_delete)
             .setMessage(R.string.online_datapacks_delete_confirm)
             .setPositiveButton(R.string.online_button_datapacks_delete, (dialog, which) -> {
@@ -482,7 +544,8 @@ public class GeneralsOnlineActivity extends Activity {
             havePatch ? R.color.gzh_status_ok : R.color.gzh_status_warn,
             R.color.gzh_surface_container_high);
 
-        final File marker = crossPlayMarkerFile();
+        crossPlayMarker = crossPlayMarkerFile();
+        final File marker = crossPlayMarker;
         if (marker == null) {
             UiKit.chip(card, R.drawable.ic_gzh_info,
                 getString(R.string.setup_diagnostics_no_folder),
@@ -494,41 +557,54 @@ public class GeneralsOnlineActivity extends Activity {
             getString(R.string.online_switch_crossplay),
             getString(R.string.online_switch_crossplay_desc));
         sw.setChecked(marker.isFile());
-        sw.setOnCheckedChangeListener((button, checked) -> {
-            if (checked) {
-                try {
-                    marker.createNewFile();
-                } catch (java.io.IOException e) {
-                    Toast.makeText(this,
-                        getString(R.string.setup_toast_options_save_failed, e.getMessage()),
-                        Toast.LENGTH_LONG).show();
-                    button.setChecked(false);
-                    return;
-                }
-                // GeneralsX @feature Android port 15/09/2026 Cross-play is not just a
-                // checksum claim: the Windows client simulates at 60 Hz, and a 30 Hz
-                // client cannot stay in lockstep with it whatever it reports. So turning
-                // this on switches the engine too - and says so, because it costs twice
-                // the logic work per second and a slow device will feel it.
-                if (SetupActivity.getSimHz(this) != SetupActivity.SIM_HZ_CROSSPLAY) {
-                    SetupActivity.setSimHz(this, SetupActivity.SIM_HZ_CROSSPLAY);
-                    refreshCrossPlayHzChip();
-                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                        .setTitle(R.string.online_crossplay_hz_title)
-                        .setMessage(R.string.online_crossplay_hz_message)
-                        .setPositiveButton(android.R.string.ok, null)
-                        .show();
-                }
-            } else {
-                marker.delete();
-            }
-        });
+        // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
+        // Enabling cross-play while a mod keeps the community patch out of
+        // the file system can only end in refused joins, so the switch waits
+        // (refreshDataPackCard re-evaluates this on every card refresh).
+        sw.setEnabled(!DataPackInstaller.modOwnsIniSpace(this));
+        crossPlaySwitch = sw;
+        sw.setOnCheckedChangeListener(this::onCrossPlayToggled);
 
         // The tick rate is the other half of cross-play, so show where it stands here
         // rather than making someone go and look in the graphics settings.
         crossPlayHzChip = UiKit.chip(card, R.drawable.ic_gzh_chip, "",
             R.color.gzh_on_surface, R.color.gzh_surface_container_high);
         refreshCrossPlayHzChip();
+    }
+
+    // GeneralsX @bugfix Android switch-silent-set 29/09/2026 Was a lambda on
+    // the switch above; extracted so its catch path can revert the tap
+    // SILENTLY (UiKit.setSwitchCheckedSilently) -- a raw setChecked(false)
+    // re-enters this very handler as if the player had acted again.
+    private void onCrossPlayToggled(android.widget.CompoundButton button, boolean checked) {
+        final File marker = crossPlayMarker;
+        if (checked) {
+            try {
+                marker.createNewFile();
+            } catch (java.io.IOException e) {
+                Toast.makeText(this,
+                    getString(R.string.setup_toast_options_save_failed, e.getMessage()),
+                    Toast.LENGTH_LONG).show();
+                UiKit.setSwitchCheckedSilently(button, this::onCrossPlayToggled, false);
+                return;
+            }
+            // GeneralsX @feature Android port 15/09/2026 Cross-play is not just a
+            // checksum claim: the Windows client simulates at 60 Hz, and a 30 Hz
+            // client cannot stay in lockstep with it whatever it reports. So turning
+            // this on switches the engine too - and says so, because it costs twice
+            // the logic work per second and a slow device will feel it.
+            if (SetupActivity.getSimHz(this) != SetupActivity.SIM_HZ_CROSSPLAY) {
+                SetupActivity.setSimHz(this, SetupActivity.SIM_HZ_CROSSPLAY);
+                refreshCrossPlayHzChip();
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.online_crossplay_hz_title)
+                    .setMessage(R.string.online_crossplay_hz_message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+            }
+        } else {
+            marker.delete();
+        }
     }
 
     private void refreshCrossPlayHzChip() {

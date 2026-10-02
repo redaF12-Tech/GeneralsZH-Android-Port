@@ -41,11 +41,25 @@
 #include "wwmemlog.h"
 #include "dx8wrapper.h"
 #include "GXTrace.h"
+// GeneralsX @bugfix Android port 02/10/2026 std::vector is not optional.
+//
+// <vector> used to sit inside the __ANDROID__ guard below, added with the
+// draw-category hooks, but the file uses std::vector unconditionally from
+// Shape_Arabic (line ~214) onwards -- Prepare_RTL_Text, the Arabic shaping
+// helpers and their callers. Every non-Android build therefore compiled
+// without it and died on "'vector' is not a member of 'std'", which took out
+// the Linux Flatpak and macOS jobs on main as well as on this branch. It
+// happened to keep working on Android because that is the only configuration
+// whose guard let the header through, so the platform the include was added
+// for hid the damage from the one platform that was actually being tested.
+//
+// <chrono> stays inside the guard: its only user is GxUiTimer, which is
+// genuinely Android-only.
+#include <vector>
 #if defined(__ANDROID__)
 // GeneralsX @perf Android port 09/05/2026 - draw-category / UI-timing hooks
 #include "d3d8gles.h"
 #include <chrono>
-#include <vector>
 #endif
 
 

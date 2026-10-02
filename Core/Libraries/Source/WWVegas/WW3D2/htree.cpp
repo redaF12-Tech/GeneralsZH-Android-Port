@@ -611,7 +611,18 @@ void HTreeClass::Anim_Update_Without_Interpolation(const Matrix3D & root,HRawAni
 	{
 		// TheSuperHackers @tweak Keep the animation frame step in sync with the ww3d frame step if they can align.
 		// @todo This needs improving if the WWSyncPerSecond is changed or the animation frame rates can be larger.
+		// GeneralsX @fixup Generals base game 02/10/2026 GENERALS_ONLINE_HIGH_FPS_LIMIT
+		// is a Zero Hour build define (see the top-level CMakeLists.txt), so the
+		// base game cannot name it here. The assertion's meaning carries over
+		// unchanged: WWSyncPerSecond must equal the frame rate this file's
+		// hand-tuned step was written against. WWSyncPerSecond is 30 in the base
+		// game -- GENERALS_ONLINE_HIGH_FPS_SERVER, which selects 60, is likewise
+		// Zero Hour-only (Core/.../WWCommon.h) -- so 30 is that rate here.
+#if defined(GENERALS_ONLINE_HIGH_FPS_LIMIT)
 		static_assert(WWSyncPerSecond == GENERALS_ONLINE_HIGH_FPS_LIMIT, "This is currently catered to a 60/30 fps sync (depending on define)");
+#else
+		static_assert(WWSyncPerSecond == 30, "This is currently catered to a 30 fps sync");
+#endif
 		return;
 	}
 
