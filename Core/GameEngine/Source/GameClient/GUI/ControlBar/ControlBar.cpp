@@ -1157,6 +1157,19 @@ void ControlBar::init()
 				groupRow->winHide(TRUE);
 			}
 
+			// GeneralsX @fixup 02/10/2026 Zero Hour only. This file is shared
+			// by both engines, but GroupPanelCalibrateFollowOffset and
+			// GroupPanelFollowControlBar are defined in Zero Hour's own
+			// GUI/GUICallbacks/GroupPanel.cpp and declared in Zero Hour's own
+			// GUICallbacks.h. The base game has no GroupPanel.cpp and no such
+			// declarations, so these calls never compiled there -- the symbol
+			// appears in the base game's build only inside this comment, which
+			// is what made the breakage easy to miss. Guard on RTS_GENERALS
+			// (defined only for the base game, Generals/Code/CMakeLists.txt),
+			// matching how other shared files in Core/ branch per engine.
+			// Backporting the panel itself would mean writing the base game's
+			// GroupPanel from scratch, which is not this commit's business.
+#if !RTS_GENERALS
 			// GeneralsX @bugfix Android port 03/08/2026 Calibrate the
 			// panel-to-bar follow offset right here, before the real bar has
 			// ever run a show/hide slide animation -- see
@@ -1167,6 +1180,7 @@ void ControlBar::init()
 			Int barX, barY;
 			m_contextParent[ CP_MASTER ]->winGetScreenPosition(&barX, &barY);
 			GroupPanelCalibrateFollowOffset(barX, barY);
+#endif
 		}
 
 		m_contextParent[ CP_PURCHASE_SCIENCE ] = TheWindowManager->winGetWindowFromId( nullptr, id );//m_scienceLayout->getFirstWindow();
@@ -1506,6 +1520,10 @@ void ControlBar::update()
 		m_groupPanelLayout->hide(!groupPanelVisible);
 
 		if (controlBarRoot) {
+			// GeneralsX @fixup 02/10/2026 Zero Hour only -- see the matching
+			// note at the calibration call in init(). Both functions live in
+			// Zero Hour's GroupPanel.cpp, which the base game does not have.
+#if !RTS_GENERALS
 			// GeneralsX @bugfix Android port 03/08/2026 The offset is
 			// calibrated once, permanently, in init() (see
 			// GroupPanelCalibrateFollowOffset) -- so this just tracks the
@@ -1518,6 +1536,7 @@ void ControlBar::update()
 			Int barX, barY;
 			controlBarRoot->winGetScreenPosition(&barX, &barY);
 			GroupPanelFollowControlBar(barX, barY, groupPanelVisible);
+#endif
 		}
 
 		// GeneralsX @feature Android port 03/08/2026 hold-gesture (add/clear
