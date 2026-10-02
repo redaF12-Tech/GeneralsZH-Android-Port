@@ -141,13 +141,18 @@ for name in "${ADRENOTOOLS_HOOK_LIBS[@]}"; do
 done
 
 # libc++_shared.so from the NDK (ANDROID_STL=c++_shared)
-if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
-    echo "ERROR: ANDROID_NDK_HOME must be set (for libc++_shared.so)."
-    exit 1
-fi
+# GeneralsX @build Android port 02/10/2026 Resolve the NDK the same way
+# build-android-zh.sh does, rather than requiring ANDROID_NDK_HOME to still be
+# exported in whatever shell reached this script: this one is routinely run on
+# its own, and a build that worked minutes ago should not fail here purely
+# because the environment was not carried over.
+# shellcheck source=scripts/build/android/android-ndk-env.sh
+. "${SCRIPT_DIR}/android-ndk-env.sh"
 LIBCXX="$(ls "${ANDROID_NDK_HOME}"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)"
 if [[ -z "${LIBCXX}" ]]; then
-    echo "ERROR: libc++_shared.so not found in the NDK sysroot."
+    echo "ERROR: libc++_shared.so not found in the NDK sysroot under ${ANDROID_NDK_HOME}."
+    echo "       It ships with every NDK r19+; a directory that has the NDK's"
+    echo "       toolchain file but no sysroot copy is not a usable NDK."
     exit 1
 fi
 cp "${LIBCXX}" "${JNILIBS}/"
