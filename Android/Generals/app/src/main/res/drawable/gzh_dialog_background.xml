@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Core/Generals 02/10/2026 Rounded dark panel behind the plain
+     android.app.AlertDialogs the launcher still uses. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/gzh_surface_container_high" />
+    <corners android:radius="28dp" />
+</shape>

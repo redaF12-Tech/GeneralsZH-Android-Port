@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Core/Generals 02/10/2026 The launcher's Material 3 theme — same
+         palette and roles as Theme.GeneralsZHSettings in
+         android/app/src/main/res/values/themes.xml, renamed here so the two
+         apps never share a resource name (they never share a process either,
+         but keeping the namespaces clean avoids confusion when diffing).
+
+         Applied per-Activity in AndroidManifest.xml (Launcher / Folder
+         Picker). GeneralsGameActivity (the game surface) keeps the plain
+         fullscreen framework theme and must never pick any of this up.
+
+         Deliberately Theme.Material3.Dark rather than .DayNight: this
+         launcher draws on a dark ground and its accent palette is designed
+         for one. -->
+    <style name="Theme.GeneralsSettings" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- M3 colour roles -->
+        <item name="colorPrimary">@color/gzh_primary</item>
+        <item name="colorOnPrimary">@color/gzh_on_primary</item>
+        <item name="colorPrimaryContainer">@color/gzh_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/gzh_on_primary_container</item>
+        <item name="colorSecondary">@color/gzh_secondary</item>
+        <item name="colorOnSecondary">@color/gzh_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/gzh_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/gzh_on_secondary_container</item>
+        <item name="colorTertiary">@color/gzh_tertiary</item>
+        <item name="colorOnTertiary">@color/gzh_on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/gzh_tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/gzh_on_tertiary_container</item>
+        <item name="colorError">@color/gzh_error</item>
+        <item name="colorOnError">@color/gzh_on_error</item>
+        <item name="colorErrorContainer">@color/gzh_error_container</item>
+        <item name="colorOnErrorContainer">@color/gzh_on_error_container</item>
+        <item name="colorSurface">@color/gzh_surface</item>
+        <item name="colorOnSurface">@color/gzh_on_surface</item>
+        <item name="colorSurfaceVariant">@color/gzh_surface_container_high</item>
+        <item name="colorOnSurfaceVariant">@color/gzh_on_surface_variant</item>
+        <item name="colorOutline">@color/gzh_outline</item>
+        <item name="android:colorBackground">@color/gzh_background</item>
+        <item name="colorOnBackground">@color/gzh_on_surface</item>
+
+        <!-- Framework slots the plain android.* widgets (AlertDialog, Toast
+             anchors, ListView, EditText) still read. -->
+        <item name="colorPrimaryDark">@color/gzh_primary_dark</item>
+        <item name="colorAccent">@color/gzh_accent</item>
+        <item name="android:windowBackground">@color/gzh_background</item>
+        <item name="android:textColorPrimary">@color/gzh_on_surface</item>
+        <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
+        <item name="android:textColorTertiary">@color/gzh_on_surface_faint</item>
+        <item name="android:textColorHint">@color/gzh_on_surface_faint</item>
+        <item name="android:textColorHighlight">@color/gzh_primary_container</item>
+
+        <!-- Edge-to-edge: targetSdk 35 draws behind the bars anyway, and the
+             activities pad their content out from under them with
+             WindowInsetsCompat. Painting the bars transparent lets the page
+             colour run all the way to the physical edges. -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Plain android.app.AlertDialogs (permission rationale, confirm
+             dialogs) get the same ground and text colours so they don't
+             flash a light-grey Holo box on a near-black screen. -->
+        <item name="android:alertDialogTheme">@style/Theme.Generals.AlertDialog</item>
+    </style>
+
+    <style name="Theme.Generals.AlertDialog" parent="android:Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/gzh_dialog_background</item>
+        <item name="android:colorAccent">@color/gzh_primary</item>
+        <item name="android:textColorPrimary">@color/gzh_on_surface</item>
+        <item name="android:textColorSecondary">@color/gzh_on_surface_variant</item>
+        <item name="android:textColorAlertDialogListItem">@color/gzh_on_surface</item>
+    </style>
+</resources>

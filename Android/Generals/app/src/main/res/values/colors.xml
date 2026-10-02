@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Core/Generals 02/10/2026 Design tokens: the SAME distinctive palette
+         as the Zero Hour launcher (android/app/src/main/res/values/colors.xml
+         — the M3 dark colour-role set: near-black ground, surface-container
+         ladder, soft lavender primary, muted pastel for destructive
+         actions). Kept byte-identical on purpose so both apps read as one
+         product family while remaining separate installs.
+
+         GeneralsGameActivity (the game surface itself) never references any
+         of these — it stays on its own plain fullscreen theme. -->
+
+    <!-- Ground + surface ladder (M3 surface container roles) -->
+    <color name="gzh_background">#0E0E11</color>
+    <color name="gzh_surface">#131318</color>
+    <color name="gzh_surface_container_low">#16161C</color>
+    <color name="gzh_surface_container">#1A1A21</color>
+    <color name="gzh_surface_container_high">#22222B</color>
+    <color name="gzh_surface_container_highest">#2B2B36</color>
+
+    <!-- Content on those surfaces -->
+    <color name="gzh_on_surface">#ECEBF2</color>
+    <color name="gzh_on_surface_variant">#A5A2B4</color>
+    <!-- The faintest tier still has to clear WCAG AA (4.5:1) at 12sp against
+         gzh_surface_container. -->
+    <color name="gzh_on_surface_faint">#8F8CA0</color>
+    <color name="gzh_outline">#3A3846</color>
+    <color name="gzh_outline_variant">#26252F</color>
+
+    <!-- Primary: the soft lavender accent (headings, active nav item,
+         selected segment, hero action). -->
+    <color name="gzh_primary">#B9AEEA</color>
+    <color name="gzh_on_primary">#231B3F</color>
+    <color name="gzh_primary_container">#38305C</color>
+    <color name="gzh_on_primary_container">#E4DDFF</color>
+    <color name="gzh_primary_dark">#0E0E11</color>
+    <color name="gzh_accent">#B9AEEA</color>
+
+    <!-- Secondary: a desaturated companion for tonal chips/containers. -->
+    <color name="gzh_secondary">#C9C4DC</color>
+    <color name="gzh_on_secondary">#302C42</color>
+    <color name="gzh_secondary_container">#393450</color>
+    <color name="gzh_on_secondary_container">#E6E1F6</color>
+
+    <!-- Tertiary: the muted pastel used for destructive / "clear" actions. -->
+    <color name="gzh_tertiary">#F3C9C6</color>
+    <color name="gzh_on_tertiary">#4A2523</color>
+    <color name="gzh_tertiary_container">#5C3835</color>
+    <color name="gzh_on_tertiary_container">#FFDAD7</color>
+
+    <color name="gzh_error">#FFB4AB</color>
+    <color name="gzh_on_error">#690005</color>
+    <color name="gzh_error_container">#93000A</color>
+    <color name="gzh_on_error_container">#FFDAD6</color>
+
+    <!-- Disabled state (M3: 38% of on-surface for content, 12% for containers) -->
+    <color name="gzh_on_surface_disabled">#61ECEBF2</color>
+    <color name="gzh_container_disabled">#1FECEBF2</color>
+    <color name="gzh_ripple_light">#1FECEBF2</color>
+    <color name="gzh_ripple_primary">#33B9AEEA</color>
+
+    <!-- Semantic status colours for the game-folder validity line — same
+         values as the Zero Hour launcher so "valid folder" reads the same
+         way in both apps. -->
+    <color name="gzh_status_ok">#7FDCA4</color>
+    <color name="gzh_status_warn">#F2C97D</color>
+    <color name="gzh_status_error">#FFB4AB</color>
+</resources>

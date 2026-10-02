@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Core/Generals 02/10/2026 Adaptive launcher icon. minSdk is 28, so the
+     anydpi-v26 XML alone covers every supported device — no density-specific
+     PNGs needed. Deliberately its own artwork (dark plate + lavender
+     four-point star mark in the shared accent) so the drawer shows a distinct
+     icon next to the Zero Hour app's. -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+</adaptive-icon>

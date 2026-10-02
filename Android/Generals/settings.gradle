@@ -1,0 +1,25 @@
+// GeneralsX original Generals — Android shell project (Core/Generals).
+//
+// Separate Gradle project from android/ (the Zero Hour app): different
+// applicationId (com.generalsx.generals), different launcher, its own staged
+// native libraries. The C++ engine builds with CMake (preset android-vulkan,
+// -DRTS_BUILD_GENERALS=ON -DRTS_BUILD_ZEROHOUR=OFF) OUTSIDE Gradle; this
+// project only compiles the thin Java shell (SDLActivity + folder-picker
+// launcher) and packages the staged native libraries into an APK. See
+// scripts/build/android/package-android-generals.sh for the full pipeline.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "GeneralsXGenerals"
+include ':app'

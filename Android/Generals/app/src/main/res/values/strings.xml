@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Generals</string>
+    <string name="launcher_title">Command &amp; Conquer Generals</string>
+    <string name="launcher_subtitle">Original Generals engine — Android (arm64)</string>
+
+    <string name="launcher_folder_label">Game folder</string>
+    <string name="launcher_status_none">No game folder selected yet.</string>
+    <string name="launcher_status_valid">Game folder looks valid — all required archives found.</string>
+    <string name="launcher_status_partial">Game folder is incomplete: found %1$d of %2$d required archives.</string>
+    <string name="launcher_status_invalid">Game folder is not valid — INI.big is missing.</string>
+    <string name="launcher_default_folder_note">Using this app\'s own files dir by default; copy your game files there or pick another folder.</string>
+
+    <string name="launcher_button_pick">Choose game folder…</string>
+    <string name="launcher_button_launch">Launch game</string>
+    <string name="launcher_button_launch_disabled">Launch game (choose a valid folder first)</string>
+
+    <string name="launcher_required_title">Required archives (original Generals)</string>
+    <string name="launcher_required_body">INI.big · Terrain.big · Textures.big · W3D.big · Window.big · Audio.big · Music.big · English.big · maps.big · shaders.big · gensec.big · Speech.big · Patch.big · AudioEnglish.big · SpeechEnglish.big\n\nCopy them with their original filenames and directory structure from your own legally owned install. Zero Hour (*ZH.big) archives are not used by this app.</string>
+
+    <string name="launcher_extracting">Preparing bundled fonts and defaults…</string>
+    <string name="launcher_extract_failed">Could not prepare bundled files: %1$s</string>
+    <string name="launcher_permission_needed">All-files access is required so the engine can read your game folder.</string>
+
+    <string name="folderpicker_title">Choose the game folder</string>
+    <string name="folderpicker_hint_valid">This folder contains the required Generals archives.</string>
+    <string name="folderpicker_hint_invalid">Pick the folder that contains your Generals .big archives.</string>
+    <string name="folderpicker_up_entry">.. (up)</string>
+    <string name="folderpicker_button_use">Use this folder</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="folderpicker_toast_cant_read">Cannot read this folder — grant "All files access" in Settings.</string>
+    <string name="folderpicker_toast_cant_read_legacy">Cannot read this folder — grant storage permission in Settings.</string>
+</resources>
