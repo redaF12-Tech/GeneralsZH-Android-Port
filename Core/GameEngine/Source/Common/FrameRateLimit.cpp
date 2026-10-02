@@ -132,7 +132,17 @@ const UnsignedInt RenderFpsPreset::s_fpsValues[] = {
 	30, 50, 56, 60, 65, 70, 72, 75, 80, 85, 90, 100, 110, 120, 144, 240, 480, UncappedFpsValue };
 #endif
 
+// GeneralsX @fixup Generals base game 02/10/2026 GENERALS_ONLINE_HIGH_FPS_LIMIT
+// is a Zero Hour build define (top-level CMakeLists.txt). LOGICFRAMES_PER_SECOND
+// is WWSyncPerSecond, which is 30 in the base game, so the assertion keeps its
+// meaning: the lowest selectable FPS must not sit above the logic rate, or the
+// list's first entry would be unusable. Checked both ways -- it holds at 30 and
+// still fires for a higher rate.
+#if defined(GENERALS_ONLINE_HIGH_FPS_LIMIT)
 static_assert(LOGICFRAMES_PER_SECOND <= GENERALS_ONLINE_HIGH_FPS_LIMIT, "Min FPS values need to be revisited!");
+#else
+static_assert(LOGICFRAMES_PER_SECOND <= 30, "Min FPS values need to be revisited!");
+#endif
 
 UnsignedInt RenderFpsPreset::getNextFpsValue(UnsignedInt value)
 {
