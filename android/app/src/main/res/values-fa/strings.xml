@@ -322,20 +322,4 @@
     <string name="online_network_settings">تنظیمات شبکه (سرورها، سازگاری با رایانه): مورخ %1$s، به‌طور خودکار از GitHub پروژه به‌روز و امضا می‌شوند.</string>
     <string name="online_network_settings_builtin">تنظیمات شبکه (سرورها، سازگاری با رایانه): درون این نسخه؛ نسخه‌های تازه به‌طور خودکار از GitHub پروژه می‌آیند.</string>
     <string name="online_datapacks_chip_update">به‌روزرسانی موجود است</string>
-    <string name="setup_card_appearance">پوسته</string>
-    <string name="setup_appearance_status">پوسته: %1$s</string>
-    <string name="setup_appearance_mode_system">مثل سیستم</string>
-    <string name="setup_appearance_mode_daylight">روشن</string>
-    <string name="setup_appearance_mode_darkmode">تاریک</string>
-    <string name="setup_appearance_help">رنگ‌های این برنامهٔ تنظیمات، نمایشگر لاگ، مرورگر پوشه و صفحهٔ حساب را عوض می‌کند. «مثل سیستم» از ظاهر گوشی و حالت ذخیرهٔ باتری پیروی می‌کند. نمایش خود بازی جدا است و هرگز تغییر نمی‌کند.</string>
-    <string name="setup_card_accent">رنگ تأکیدی</string>
-    <string name="setup_accent_help">رنگ تأکیدی این برنامهٔ تنظیمات، نمایشگر گزارش‌ها، مرورگر پوشه‌ها و صفحهٔ حساب را انتخاب می‌کند. با هر دو پوستهٔ بالا کار می‌کند.</string>
-    <string name="setup_accent_picker">رنگ تأکیدی</string>
-    <string name="setup_accent_option">تأکیدی: %1$s</string>
-    <string name="setup_accent_name_default">بنفش</string>
-    <string name="setup_accent_name_blue">آبی</string>
-    <string name="setup_accent_name_green">سبز</string>
-    <string name="setup_accent_name_teal">فیروزه‌ای</string>
-    <string name="setup_accent_name_orange">نارنجی</string>
-    <string name="setup_accent_name_red">قرمز</string>
 </resources>

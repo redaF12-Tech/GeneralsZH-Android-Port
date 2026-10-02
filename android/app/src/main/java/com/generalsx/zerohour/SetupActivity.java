@@ -47,7 +47,6 @@ import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
-import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.Menu;
 import android.view.View;
@@ -112,13 +111,6 @@ public class SetupActivity extends Activity {
     // will not find on its own.
     static final String PREF_BASE_GENERALS_PATH = "base_generals_path";
 
-    // GeneralsX @feature Android Mod Manager 28/09/2026 Optional highest-priority
-    // BIG folder, ported from the New-Mod-Manager branch. Kept separate from the
-    // game folder on purpose: mods must mount with overwrite=true AFTER every
-    // retail and community-patch archive, which is a different rule than any of
-    // the other folders this screen manages.
-    static final String PREF_MOD_PATH = "mod_path";
-
     // TheSuperHackers @bugfix Android port 07/07/2026 SharedPreferences and
     // getFilesDir() both live under /data/data/<pkg>/ and are wiped the
     // moment the app is uninstalled -- which is exactly what a sideloaded
@@ -137,17 +129,11 @@ public class SetupActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(ThemeHelper.wrap(LocaleHelper.wrap(newBase)));
+        super.attachBaseContext(LocaleHelper.wrap(newBase));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // GeneralsX @feature Android port accent-colors 21/09/2026 The saved
-        // accent rides on this activity's theme before any view, dialog or
-        // colour read happens; see ThemeHelper.applyAccentTheme() for why it
-        // is an applyStyle rather than a context wrap.
-        ThemeHelper.applyAccentTheme(this);
-
         // GeneralsX @bugfix Android port 31/07/2026 No longer forced to
         // landscape here -- see the matching AndroidManifest.xml comment.
         // This screen now starts portrait-first like every other non-game
@@ -282,7 +268,7 @@ public class SetupActivity extends Activity {
 
         LinearLayout shell = new LinearLayout(this);
         shell.setOrientation(LinearLayout.VERTICAL);
-        shell.setBackgroundColor(UiKit.backgroundColor(this));
+        shell.setBackgroundColor(UiKit.color(this, R.color.gzh_background));
         setContentView(shell);
         // Edge-to-edge still handled the same way: pad the outermost view by
         // the system bars/cutout so the app bar clears the status bar and the
@@ -319,22 +305,20 @@ public class SetupActivity extends Activity {
         nav.setLayoutDirection(android.view.View.LAYOUT_DIRECTION_LTR);
         nav.setTextDirection(android.view.View.TEXT_DIRECTION_LOCALE);
 
-        nav.setBackgroundColor(UiKit.surfaceContainerLowColor(this));
+        nav.setBackgroundColor(UiKit.color(this, R.color.gzh_surface_container_low));
         nav.setElevation(0f);
         nav.setLabelVisibilityMode(NavigationBarView.LABEL_VISIBILITY_LABELED);
         nav.setItemIconSize(UiKit.dp(this, 22));
         // Checked/unchecked pair: the selected item is the one sitting in the
-        // active-indicator pill, so it takes the on-container colour. Both
-        // colours read through the theme so the pill follows the accent
-        // picked on the Interface tab (accent-colors 21/09/2026).
+        // active-indicator pill, so it takes the on-container colour.
         android.content.res.ColorStateList itemTint = new android.content.res.ColorStateList(
             new int[][] { new int[] { android.R.attr.state_checked }, new int[0] },
-            new int[] { UiKit.accentOnContainer(this),
+            new int[] { UiKit.color(this, R.color.gzh_on_primary_container),
                         UiKit.color(this, R.color.gzh_on_surface_faint) });
         nav.setItemIconTintList(itemTint);
         nav.setItemTextColor(itemTint);
-        nav.setItemActiveIndicatorColor(UiKit.accentContainerTint(this));
-        nav.setItemRippleColor(UiKit.accentRippleTint(this));
+        nav.setItemActiveIndicatorColor(UiKit.tint(this, R.color.gzh_primary_container));
+        nav.setItemRippleColor(UiKit.tint(this, R.color.gzh_ripple_primary));
 
         Menu menu = nav.getMenu();
         menu.add(Menu.NONE, TAB_HOME, 0, R.string.nav_tab_home).setIcon(R.drawable.ic_gzh_home);
@@ -395,7 +379,6 @@ public class SetupActivity extends Activity {
                 }
                 break;
             case TAB_INTERFACE:
-                buildAppearanceSection(page);
                 buildLanguageSection(page);
                 buildUiScaleSection(page);
                 break;
@@ -441,11 +424,6 @@ public class SetupActivity extends Activity {
         UiKit.button(page, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_play,
             getString(R.string.setup_button_launch_game), this::onLaunchGame);
 
-        // GeneralsX @feature Android touch controls: Configure Controls is a
-        // primary launcher action, so keep it on Home rather than burying it
-        // under the Interface tab.
-        buildTouchControlsSection(page);
-
         LinearLayout folder = UiKit.card(page);
         UiKit.sectionHeader(folder, R.drawable.ic_gzh_folder,
             getString(R.string.setup_card_game_folder), false);
@@ -468,149 +446,8 @@ public class SetupActivity extends Activity {
         // settings -- signing into GeneralsOnline is a primary action most
         // people want right after picking their game folder, not something to
         // bury under settings most players never touch.
-        // GeneralsX @feature Android Mod Manager 28/09/2026 Ported from the
-        // New-Mod-Manager branch: select/clear a folder of *.big archives that
-        // native BIG loading mounts last with overwrite=true, giving the mod the
-        // highest virtual-file priority (Mod > GeneralsZH > Base Generals).
-        LinearLayout mod = UiKit.card(page);
-        UiKit.sectionHeader(mod, R.drawable.ic_gzh_folder,
-            getString(R.string.setup_card_mod_folder), false);
-        TextView modStatus = UiKit.body(mod, getModStatusText());
-        modStatus.setTextIsSelectable(true);
-        modSelectButton = UiKit.button(mod, UiKit.BTN_TONAL, R.drawable.ic_gzh_folder,
-            getString(R.string.setup_button_select_mod_folder), this::onSelectModFolder);
-        if (getModPath() != null) {
-            UiKit.button(mod, UiKit.BTN_DANGER, R.drawable.ic_gzh_broom,
-                getString(R.string.setup_button_clear_mod_folder), this::onClearModFolder);
-        }
-        UiKit.helpText(mod, getString(R.string.setup_mod_folder_help));
-        buildModCommunityPatchRow(mod);
-        refreshModCommunityPatchRow();
-
         buildGeneralsOnlineSection(page);
         buildUpdatesSection(page);
-    }
-
-    // GeneralsX @feature Android touch controls: the v123 Configure Controls
-    // entry is adapted to the current Material/UiKit launcher. The editor
-    // remains a separate landscape activity so the existing launcher stays intact.
-    private void buildTouchControlsSection(LinearLayout root) {
-        LinearLayout content = UiKit.card(root);
-        UiKit.sectionHeader(content, R.drawable.ic_gzh_sliders,
-            getString(R.string.setup_card_touch_controls), false);
-        UiKit.helpText(content, getString(R.string.setup_touch_controls_help));
-        // GeneralsX @feature Android touch-hotkey-home-switch 29/09/2026 The
-        // editor's "Show hotkey panel" switch, surfaced here: whether the
-        // overlay shows at all is a launcher-level choice, and the editor is
-        // a landscape screen most people only open to move buttons. Same
-        // TouchControlConfig "enabled" flag, so editor and Home agree.
-        SwitchCompat hotkey = UiKit.switchRow(content,
-            getString(R.string.setup_touch_hotkey_row),
-            getString(R.string.setup_touch_hotkey_row_desc));
-        hotkey.setChecked(TouchControlConfig.load(this).enabled);
-        hotkey.setOnCheckedChangeListener((button, checked) -> {
-            TouchControlConfig cfg = TouchControlConfig.load(this);
-            cfg.enabled = checked;
-            cfg.save(this);
-        });
-        UiKit.button(content, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_sliders,
-            getString(R.string.setup_button_touch_controls), this::onTouchControls);
-    }
-
-    private void onTouchControls() {
-        startActivity(new Intent(this, TouchControlsActivity.class));
-    }
-
-    // ------------------------------------------------------------ Mod ↔ community patch interlock
-
-    // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 The
-    // mod and the community data patch both ship INI files, and the mod's
-    // whole point is to mount last with overwrite=true -- which would stomp
-    // the patch and silently break every checksum the online lobbies agree
-    // on. So a mod and the patch are mutually exclusive in practice, and the
-    // app now says so instead of letting the file system decide: picking a
-    // mod folder switches the patch off (remembering its previous state),
-    // and the switch on this card hands control back the moment the mod
-    // folder is cleared. The switch only lives here; the cross-play switch on
-    // the multiplayer screen reflects the same state through
-    // DataPackInstaller.effectivelyEnabled().
-    private androidx.appcompat.widget.SwitchCompat modPatchSwitch;
-    private View modSelectButton;
-
-    private void buildModCommunityPatchRow(LinearLayout modCard) {
-        androidx.appcompat.widget.SwitchCompat row = UiKit.switchRow(modCard,
-            getString(R.string.setup_mod_patch_switch),
-            getString(R.string.setup_mod_patch_switch_desc));
-        row.setOnCheckedChangeListener(this::onModPatchToggled);
-        modPatchSwitch = row;
-    }
-
-    // GeneralsX @bugfix Android mod-patch-switch-state 30/09/2026 The switch
-    // rules, back to the strict reading of the interlock: while a mod owns
-    // the INI space the patch row reads FALSE and is DISABLED (the patch is
-    // parked, and the row must say so, not pretend it is waiting); clearing
-    // the mod folder restores the row to the patch's real state, enabled.
-    // The ON-block below stays as a guard for any programmatic/raced ON
-    // attempt, and every programmatic refresh goes through
-    // UiKit.setSwitchCheckedSilently so the handler only ever runs for real
-    // user taps (a raw setChecked here would re-enter it).
-    private void onModPatchToggled(android.widget.CompoundButton button, boolean checked) {
-        if (checked && getModPath() != null) {
-            // Back ON stays blocked while a mod owns the INI space; the
-            // cross-play chip on the multiplayer screen says why.
-            Toast.makeText(this, R.string.online_datapacks_switch_blocked_by_mod,
-                Toast.LENGTH_LONG).show();
-            UiKit.setSwitchCheckedSilently(modPatchSwitch, this::onModPatchToggled, false);
-            return;
-        }
-        if (!DataPackInstaller.setEnabled(this, checked)) {
-            Toast.makeText(this, R.string.online_datapacks_switch_failed, Toast.LENGTH_LONG).show();
-            UiKit.setSwitchCheckedSilently(modPatchSwitch, this::onModPatchToggled, !checked);
-            return;
-        }
-    }
-
-    /**
-     * One place decides the row, so the states it reads can never disagree:
-     * while a mod is active the patch is PARKED — checked=false, switch
-     * disabled (the strict interlock state the player asked for). Without a
-     * mod it is the patch's normal on/off switch, mirroring isEnabled()
-     * silently, enabled while the patch file exists.
-     */
-    private void refreshModCommunityPatchRow() {
-        if (modPatchSwitch == null) {
-            return;
-        }
-        boolean modActive = getModPath() != null;
-        boolean patchInstalled = DataPackInstaller.communityPatchFile().isFile();
-        modPatchSwitch.setEnabled(!modActive && patchInstalled);
-        UiKit.setSwitchCheckedSilently(modPatchSwitch, this::onModPatchToggled,
-            DataPackInstaller.isEnabled());
-    }
-
-    /**
-     * Remember the patch's enabled state when a mod takes the INI space, and
-     * switch the patch off. Returns false when the marker could not be
-     * written -- the mod is saved anyway (the engine still prefers it), but
-     * the caller says so.
-     */
-    private boolean forceCommunityPatchOffForMod() {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
-            .putBoolean(DataPackInstaller.PREF_MOD_PATCH_INTERLOCK,
-                DataPackInstaller.isEnabled())
-            .apply();
-        return DataPackInstaller.setEnabled(this, false);
-    }
-
-    /** A mod folder is gone: the patch returns to exactly where the player left it. */
-    private void restoreCommunityPatchAfterModCleared() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        boolean restore = prefs.getBoolean(DataPackInstaller.PREF_MOD_PATCH_INTERLOCK, false);
-        prefs.edit().remove(DataPackInstaller.PREF_MOD_PATCH_INTERLOCK).apply();
-        if (restore && DataPackInstaller.communityPatchFile().isFile()) {
-            DataPackInstaller.setEnabled(this, true);
-        }
-        refreshModCommunityPatchRow();
     }
 
     // ------------------------------------------------------------ Updates
@@ -714,43 +551,13 @@ public class SetupActivity extends Activity {
         UiKit.sectionHeader(about, R.drawable.ic_gzh_info,
             getString(R.string.setup_window_title), false);
         UiKit.supporting(about, getString(R.string.setup_subtitle));
-        // 0/0 = chip() resolves text through the theme accent on the neutral
-        // surface tint, so the version badge follows the picked accent too.
-        UiKit.chip(about, R.drawable.ic_gzh_check, versionLabel(), 0, 0);
+        UiKit.chip(about, R.drawable.ic_gzh_check, versionLabel(),
+            R.color.gzh_primary, R.color.gzh_surface_container_high);
 
         LinearLayout help = UiKit.card(page);
         UiKit.sectionHeader(help, R.drawable.ic_gzh_doc,
             getString(R.string.setup_card_how_it_works), false);
         UiKit.supporting(help, getString(R.string.setup_how_it_works_body));
-
-        buildCommunitySection(page);
-    }
-
-    // GeneralsX @feature Android port telegram-community-link 28/09/2026 The
-    // community's Telegram group, one tap from the Help tab. The in-game main
-    // menu's buttons live in the retail window layouts inside the BIG archives,
-    // so the launcher's Help tab is where a community link belongs -- same
-    // place users already come to look for help.
-    private static final String TELEGRAM_GROUP_URL = "https://t.me/Generals_Universal";
-
-    private void buildCommunitySection(LinearLayout page) {
-        LinearLayout community = UiKit.card(page);
-        UiKit.sectionHeader(community, R.drawable.ic_gzh_telegram,
-            getString(R.string.setup_card_community), false);
-        UiKit.listRow(community, R.drawable.ic_gzh_telegram,
-            getString(R.string.setup_community_row_telegram),
-            getString(R.string.setup_community_telegram_note),
-            this::onOpenTelegramGroup);
-    }
-
-    private void onOpenTelegramGroup() {
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(TELEGRAM_GROUP_URL)));
-        } catch (Exception e) {
-            // Same "no browser" handling as the GeneralsOnline sign-in flow:
-            // nothing else on the device can open an https link.
-            Toast.makeText(this, getString(R.string.online_toast_no_browser, e.getMessage()), Toast.LENGTH_LONG).show();
-        }
     }
 
     // The build's own version, as the manifest carries it -- no new string
@@ -818,217 +625,6 @@ public class SetupActivity extends Activity {
             getString(R.string.setup_button_download_langpack), this::onDownloadLanguagePack);
 
         UiKit.helpText(content, getString(R.string.setup_language_help));
-    }
-
-    // GeneralsX @feature Android port daylight-darkmode 20/09/2026 In-app
-    // Daylight/Darkmode choice for every launcher screen (Setup, folder
-    // picker, log viewer, GeneralsOnline account), mirroring the language
-    // card's pattern: the current answer is the header value, the control is
-    // a segmented row, and applying it is recreate() -- every Activity
-    // re-wraps its base context in attachBaseContext(), so a recreate is the
-    // whole switch. The game surface never sees any of this.
-    private void buildAppearanceSection(LinearLayout root) {
-        LinearLayout content = UiKit.card(root);
-        TextView value = UiKit.sectionHeader(content, R.drawable.ic_gzh_daynight,
-            getString(R.string.setup_card_appearance), true);
-        value.setText(appearanceDisplayName(ThemeHelper.getSavedUiMode(this)));
-        // The full "Theme: X" sentence is still what a screen reader hears.
-        content.setContentDescription(getString(R.string.setup_appearance_status,
-            appearanceDisplayName(ThemeHelper.getSavedUiMode(this))));
-
-        CharSequence[] labels = new CharSequence[] {
-            getString(R.string.setup_appearance_mode_system),
-            getString(R.string.setup_appearance_mode_daylight),
-            getString(R.string.setup_appearance_mode_darkmode),
-        };
-        final int initial = ThemeHelper.getSavedUiMode(this);
-        com.google.android.material.button.MaterialButtonToggleGroup group =
-            UiKit.segmented(content, labels, initial, index -> {
-            // Segmented index and ThemeHelper mode share one order:
-            // 0=system, 1=daylight, 2=darkmode.
-            if (index == initial) {
-                return;  // programmatic/no-op selection: nothing to save
-            }
-            ThemeHelper.setSavedUiMode(this, index);
-            recreate();
-        });
-        // Keeps the picker's own (translated) prompt as what a screen reader
-        // announces for the row of three choices.
-        group.setContentDescription(getString(R.string.setup_card_appearance));
-
-        UiKit.supporting(content, getString(R.string.setup_appearance_status,
-            appearanceDisplayName(initial)));
-        UiKit.helpText(content, getString(R.string.setup_appearance_help));
-
-        buildAccentSection(content);  // second half of the same card
-    }
-
-    // GeneralsX @feature Android port accent-colors 21/09/2026 The second
-    // half of the Theme card: six accent colours. Each choice is a 32dp dot
-    // showing the accent as BOTH modes render it (daylight half on top,
-    // darkmode half below), the label underneath, and a check mark on the
-    // picked one. Selection applies by folding the accent's ThemeOverlay into
-    // every launcher activity's theme (ThemeHelper.applyAccentTheme) and
-    // recreating -- the same apply-by-recreate flow as the mode row above;
-    // unlike the mode row there is no "system" option because an accent is a
-    // pure look choice with no system equivalent.
-    private void buildAccentSection(LinearLayout cardContent) {
-        UiKit.divider(cardContent);
-
-        TextView accentHeader = new TextView(this);
-        accentHeader.setText(getString(R.string.setup_card_accent));
-        accentHeader.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-            UiKit.dim(this, R.dimen.gzh_text_title));
-        accentHeader.setTypeface(Typeface.DEFAULT_BOLD);
-        accentHeader.setTextColor(UiKit.color(this, R.color.gzh_on_surface));
-        cardContent.addView(accentHeader, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        // The translated help line, styled like UiKit.supporting() (kept
-        // inline rather than via UiKit so this stays inside the same card).
-        TextView accentHelp = new TextView(this);
-        accentHelp.setText(getString(R.string.setup_accent_help));
-        accentHelp.setTextSize(TypedValue.COMPLEX_UNIT_PX,
-            UiKit.dim(this, R.dimen.gzh_text_body));
-        accentHelp.setTextColor(UiKit.color(this, R.color.gzh_on_surface_variant));
-        accentHelp.setLineSpacing(0f, 1.25f);
-        cardContent.addView(accentHelp, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        final int initial = ThemeHelper.getSavedAccent(this);
-        // GeneralsX @bugfix Android accent-grid-2x6 29/09/2026 Twelve accents
-        // in ONE weighted row made every cell too narrow -- the labels
-        // wrapped over each other and the strip read as a jumble. Two rows
-        // of six give each swatch real width on every phone width.
-        LinearLayout grid = new LinearLayout(this);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams gridLp = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        gridLp.topMargin = UiKit.dim(this, R.dimen.gzh_item_gap);
-        cardContent.addView(grid, gridLp);
-        for (int rowStart = 0; rowStart < ThemeHelper.ACCENT_COUNT; rowStart += ACCENT_SWATCHES_PER_ROW) {
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            row.setBaselineAligned(false);
-            grid.addView(row, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-            for (int i = rowStart; i < rowStart + ACCENT_SWATCHES_PER_ROW
-                    && i < ThemeHelper.ACCENT_COUNT; i++) {
-                row.addView(buildAccentSwatch(i, i == initial),
-                    new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-            }
-        }
-        grid.setContentDescription(getString(R.string.setup_accent_picker));
-    }
-
-    /** The accent picker wraps after this many swatches (12 accents = 2 rows of 6). */
-    private static final int ACCENT_SWATCHES_PER_ROW = 6;
-
-    /** One column of the accent strip: dot (both modes), label, check. */
-    private View buildAccentSwatch(int index, boolean selected) {
-        LinearLayout cell = new LinearLayout(this);
-        cell.setOrientation(LinearLayout.VERTICAL);
-        cell.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-        cell.setClickable(true);
-        cell.setFocusable(true);
-        cell.setPadding(UiKit.dp(this, 2), UiKit.dp(this, 2), UiKit.dp(this, 2), UiKit.dp(this, 2));
-        cell.setContentDescription(getString(R.string.setup_accent_option,
-            accentDisplayName(index)));
-        cell.setSelected(selected);
-        if (selected) {
-            android.graphics.drawable.GradientDrawable selection =
-                new android.graphics.drawable.GradientDrawable();
-            selection.setCornerRadius(UiKit.dp(this, 10));
-            selection.setStroke(Math.max(1, UiKit.dp(this, 1)), UiKit.accentColor(this));
-            cell.setBackground(selection);
-        }
-
-        View dot = new View(this);
-        android.graphics.drawable.GradientDrawable dotShape =
-            new android.graphics.drawable.GradientDrawable();
-        dotShape.setShape(android.graphics.drawable.GradientDrawable.OVAL);
-        dotShape.setColor(ThemeHelper.previewColor(this, index));
-        dotShape.setStroke(Math.max(1, UiKit.dp(this, 1)),
-            UiKit.outlineVariantColor(this));
-        dot.setBackground(dotShape);
-        LinearLayout.LayoutParams dotLp = new LinearLayout.LayoutParams(
-            UiKit.dp(this, 30), UiKit.dp(this, 30));
-        dotLp.topMargin = UiKit.dp(this, 2);
-        cell.addView(dot, dotLp);
-
-        View half = new View(this);
-        android.graphics.drawable.GradientDrawable halfShape =
-            new android.graphics.drawable.GradientDrawable();
-        halfShape.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-        halfShape.setCornerRadii(new float[] {
-            0f, 0f, 0f, 0f, UiKit.dp(this, 7), UiKit.dp(this, 7), UiKit.dp(this, 7), UiKit.dp(this, 7)});
-        halfShape.setColor(ThemeHelper.previewColorOtherMode(this, index));
-        half.setBackground(halfShape);
-        LinearLayout.LayoutParams halfLp = new LinearLayout.LayoutParams(
-            UiKit.dp(this, 30), UiKit.dp(this, 7));
-        halfLp.topMargin = -UiKit.dp(this, 4);  // overlaps the dot's bottom
-        cell.addView(half, halfLp);
-
-        TextView label = new TextView(this);
-        label.setText(accentDisplayName(index));
-        label.setTextSize(TypedValue.COMPLEX_UNIT_PX, UiKit.dim(this, R.dimen.gzh_text_caption));
-        label.setTextColor(UiKit.color(this, selected
-            ? R.color.gzh_on_surface : R.color.gzh_on_surface_variant));
-        label.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
-        label.setMaxLines(2);
-        label.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        label.setTypeface(selected ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
-        label.setPadding(UiKit.dp(this, 2), UiKit.dp(this, 4), UiKit.dp(this, 2), 0);
-        cell.addView(label, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-
-        if (selected) {
-            android.widget.ImageView check = new android.widget.ImageView(this);
-            check.setImageDrawable(ContextCompat.getDrawable(this, R.drawable.ic_gzh_check));
-            check.setImageTintList(UiKit.accentTint(this));
-            LinearLayout.LayoutParams checkLp = new LinearLayout.LayoutParams(
-                UiKit.dp(this, 14), UiKit.dp(this, 14));
-            checkLp.topMargin = UiKit.dp(this, 2);
-            cell.addView(check, checkLp);
-        }
-
-        cell.setOnClickListener(v -> {
-            if (ThemeHelper.getSavedAccent(this) == index) {
-                return;  // already the current accent: nothing to apply
-            }
-            ThemeHelper.setSavedAccent(this, index);
-            recreate();
-        });
-        return cell;
-    }
-
-    private String accentDisplayName(int accent) {
-        switch (accent) {
-            case ThemeHelper.ACCENT_BLUE:   return getString(R.string.setup_accent_name_blue);
-            case ThemeHelper.ACCENT_GREEN:  return getString(R.string.setup_accent_name_green);
-            case ThemeHelper.ACCENT_TEAL:   return getString(R.string.setup_accent_name_teal);
-            case ThemeHelper.ACCENT_ORANGE: return getString(R.string.setup_accent_name_orange);
-            case ThemeHelper.ACCENT_RED:    return getString(R.string.setup_accent_name_red);
-            case ThemeHelper.ACCENT_BLACK:  return getString(R.string.setup_accent_name_black);
-            case ThemeHelper.ACCENT_GRAY:   return getString(R.string.setup_accent_name_gray);
-            case ThemeHelper.ACCENT_GOLD:   return getString(R.string.setup_accent_name_gold);
-            case ThemeHelper.ACCENT_TRANSPARENT: return getString(R.string.setup_accent_name_transparent);
-            case ThemeHelper.ACCENT_WHITE:  return getString(R.string.setup_accent_name_white);
-            case ThemeHelper.ACCENT_YELLOW: return getString(R.string.setup_accent_name_yellow);
-            default:                        return getString(R.string.setup_accent_name_default);
-        }
-    }
-
-    private String appearanceDisplayName(int mode) {
-        switch (mode) {
-            case ThemeHelper.MODE_DAYLIGHT:
-                return getString(R.string.setup_appearance_mode_daylight);
-            case ThemeHelper.MODE_DARK:
-                return getString(R.string.setup_appearance_mode_darkmode);
-            default:
-                return getString(R.string.setup_appearance_mode_system);
-        }
     }
 
     // GeneralsX @feature Android port 13/07/2026 GitHub issue #4 follow-up:
@@ -1171,7 +767,7 @@ public class SetupActivity extends Activity {
                 break;
             }
         }
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        new android.app.AlertDialog.Builder(this)
             .setTitle(R.string.setup_game_text_dialog_title)
             .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                 LocaleHelper.setGameTextToken(this, which == 0 ? "" : tokens.get(which - 1));
@@ -1197,7 +793,7 @@ public class SetupActivity extends Activity {
                 break;
             }
         }
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        new android.app.AlertDialog.Builder(this)
             .setTitle(R.string.setup_language_dialog_title)
             .setSingleChoiceItems(labels, currentIndex, (dialog, which) -> {
                 LocaleHelper.setSavedLanguageTag(this, tags[which]);
@@ -1334,10 +930,10 @@ public class SetupActivity extends Activity {
         // The floating bubble would show a bare untranslated number on top of
         // the value the header already spells out properly.
         uiScaleSlider.setLabelBehavior(LabelFormatter.LABEL_GONE);
-        uiScaleSlider.setTrackActiveTintList(UiKit.accentTint(this));
-        uiScaleSlider.setTrackInactiveTintList(UiKit.surfaceContainerHighestTint(this));
-        uiScaleSlider.setThumbTintList(UiKit.accentTint(this));
-        uiScaleSlider.setHaloTintList(UiKit.accentRippleTint(this));
+        uiScaleSlider.setTrackActiveTintList(UiKit.tint(this, R.color.gzh_primary));
+        uiScaleSlider.setTrackInactiveTintList(UiKit.tint(this, R.color.gzh_surface_container_highest));
+        uiScaleSlider.setThumbTintList(UiKit.tint(this, R.color.gzh_primary));
+        uiScaleSlider.setHaloTintList(UiKit.tint(this, R.color.gzh_ripple_primary));
         updateUiScaleLabel(startPercent);
         uiScaleSlider.addOnChangeListener((slider, value, fromUser) -> updateUiScaleLabel((int) value));
         LinearLayout.LayoutParams sliderLp = new LinearLayout.LayoutParams(
@@ -1596,7 +1192,7 @@ public class SetupActivity extends Activity {
         if (!gpu.isEmpty()) {
             UiKit.chip(content, R.drawable.ic_gzh_chip,
                 getString(R.string.setup_render_backend_gpu, gpu),
-                0, 0);  // theme-accent text on the theme-surface wash
+                R.color.gzh_on_surface, R.color.gzh_surface_container_high);
         }
 
         UiKit.helpText(content, getString(R.string.setup_render_backend_help));
@@ -1644,11 +1240,6 @@ public class SetupActivity extends Activity {
     private static final String DEFAULT_DRIVER_ASSET_DIR = "default_driver";
     private static final int REQUEST_IMPORT_DRIVER = 1002;
     private static final int REQUEST_PICK_BASE_GENERALS = 1003;
-    // GeneralsX @feature Android Mod Manager 28/09/2026 request code for the
-    // mod-folder picker; pendingStoragePickerRequest reuses the permission
-    // callback for whichever picker started it (game folder or mod folder).
-    private static final int REQUEST_PICK_MOD = 1004;
-    private int pendingStoragePickerRequest = 1001;
 
     private TextView customDriverStatusView;
 
@@ -2002,7 +1593,7 @@ public class SetupActivity extends Activity {
             new ContextThemeWrapper(this, R.style.ThemeOverlay_GeneralsZH_OutlinedField);
         TextInputLayout field = new TextInputLayout(fieldContext);
         field.setHint(R.string.setup_card_dxvk_config);
-        field.setBoxStrokeColor(UiKit.accentColor(this));
+        field.setBoxStrokeColor(UiKit.color(this, R.color.gzh_primary));
         field.setHintTextColor(UiKit.tint(this, R.color.gzh_on_surface_variant));
         // Keep the label in its floated position even when the box is empty:
         // loadDxvkConfigIntoEditor() puts the "select a game folder first"
@@ -2173,7 +1764,7 @@ public class SetupActivity extends Activity {
 
         diagnosticsNoFolderHint = UiKit.chip(content, R.drawable.ic_gzh_info,
             getString(R.string.setup_diagnostics_no_folder),
-            R.color.gzh_status_warn, 0);  // warn text on the theme-surface wash
+            R.color.gzh_status_warn, R.color.gzh_surface_container_high);
 
         // GeneralsX @feature Android port 27/09/2026 Master switch: when off, nothing is logged in
         // the background -- not the engine's stderr mirror, not crash.log, not GeneralsOnline.log,
@@ -2474,8 +2065,7 @@ public class SetupActivity extends Activity {
     // can be pointed at wherever they already live. Offer that here rather
     // than leaving it to be discovered among the buttons further down.
     private void showFolderProblemDialog(String message, boolean offerBasePicker) {
-        com.google.android.material.dialog.MaterialAlertDialogBuilder b =
-            new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+        android.app.AlertDialog.Builder b = new android.app.AlertDialog.Builder(this)
             .setTitle(R.string.setup_dialog_folder_problem_title)
             .setMessage(message)
             .setPositiveButton(android.R.string.ok, null);
@@ -3190,7 +2780,6 @@ public class SetupActivity extends Activity {
     private static final int REQUEST_LEGACY_STORAGE_PERMISSION = 1003;
 
     private void onSelectGameFolder() {
-        pendingStoragePickerRequest = 1001;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
                 Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
@@ -3214,97 +2803,7 @@ public class SetupActivity extends Activity {
                 REQUEST_LEGACY_STORAGE_PERMISSION);
             return;
         }
-        startActivityForResult(new Intent(this, FolderPickerActivity.class), pendingStoragePickerRequest);
-    }
-
-    // GeneralsX @feature Android Mod Manager 28/09/2026 Same storage-permission
-    // gate as the game folder, but the result must NOT be judged as a game
-    // folder: a mod directory is valid when it is readable and holds at least
-    // one *.big directly inside it. Ported from the New-Mod-Manager branch.
-    //
-    // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026 While
-    // the picker is open the mod card's select button is disabled: a second
-    // picker (or another card's folder picker reusing pendingStoragePickerRequest)
-    // must not race this one, and nothing in the folder picker itself manages
-    // that. Normal state returns in onActivityResult, whatever the result.
-    private void onSelectModFolder() {
-        if (modSelectButton != null) {
-            modSelectButton.setEnabled(false);
-        }
-        pendingStoragePickerRequest = REQUEST_PICK_MOD;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                if (modSelectButton != null) {
-                    modSelectButton.setEnabled(true);
-                }
-                Toast.makeText(this, R.string.setup_toast_grant_all_files, Toast.LENGTH_LONG).show();
-                try {
-                    Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                    intent.setData(Uri.parse("package:" + getPackageName()));
-                    startActivity(intent);
-                } catch (Exception e) {
-                    startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
-                }
-                return;
-            }
-        } else if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            if (modSelectButton != null) {
-                modSelectButton.setEnabled(true);
-            }
-            ActivityCompat.requestPermissions(this,
-                new String[] { Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE },
-                REQUEST_LEGACY_STORAGE_PERMISSION);
-            return;
-        }
-        startActivityForResult(new Intent(this, FolderPickerActivity.class), REQUEST_PICK_MOD);
-    }
-
-    private String getModPath() {
-        String path = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getString(PREF_MOD_PATH, null);
-        if (path == null || path.trim().isEmpty()) return null;
-        File dir = new File(path);
-        return (dir.isDirectory() && dir.canRead()) ? dir.getAbsolutePath() : null;
-    }
-
-    private String getModStatusText() {
-        String path = getModPath();
-        if (path == null) return getString(R.string.setup_mod_status_not_set);
-        File dir = new File(path);
-        File[] bigs = dir.listFiles((d, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big"));
-        int count = bigs == null ? 0 : bigs.length;
-        return getString(R.string.setup_mod_status_set, path, count);
-    }
-
-    private void saveModPath(String path) {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString(PREF_MOD_PATH, path).apply();
-        // SDL3Main.cpp reads this plain-text marker on the next launch and turns
-        // it into GENERALSX_MOD_PATH, which ArchiveFileSystem::loadMods() mounts
-        // with overwrite=true. Native code cannot read SharedPreferences, hence
-        // the file -- same arrangement as gamedata_path.txt and
-        // generals_base_path.txt.
-        File marker = new File(getFilesDir(), "mod_path.txt");
-        try (java.io.FileWriter w = new java.io.FileWriter(marker, false)) {
-            w.write(path);
-            w.write("\n");
-        } catch (java.io.IOException e) {
-            Toast.makeText(this, getString(R.string.setup_toast_marker_save_failed, e.getMessage()), Toast.LENGTH_LONG).show();
-        }
-    }
-
-    private void onClearModFolder() {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_MOD_PATH).apply();
-        new File(getFilesDir(), "mod_path.txt").delete();
-        // GeneralsX @feature Android mod-manager-patch-interlock 29/09/2026
-        // No mod, no reason to keep the patch parked: back to the exact
-        // previous state ("the normal way as before"), switch re-enabled by
-        // refreshModCommunityPatchRow() below.
-        restoreCommunityPatchAfterModCleared();
-        Toast.makeText(this, R.string.setup_toast_mod_cleared, Toast.LENGTH_SHORT).show();
-        // Only the Home card changes shape (the "clear" button disappears) --
-        // rebuilding that one page is enough, and keeps the user where they
-        // are instead of restarting the whole Activity.
-        showTab(TAB_HOME);
+        startActivityForResult(new Intent(this, FolderPickerActivity.class), 1001);
     }
 
     // GeneralsX @feature Android port 06/09/2026 Second picker, same browser,
@@ -3352,7 +2851,7 @@ public class SetupActivity extends Activity {
         if (requestCode == REQUEST_LEGACY_STORAGE_PERMISSION) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
             if (granted) {
-                startActivityForResult(new Intent(this, FolderPickerActivity.class), pendingStoragePickerRequest);
+                startActivityForResult(new Intent(this, FolderPickerActivity.class), 1001);
             } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
                 // GeneralsX @bugfix Android port 24/09/2026 Issue #22: after "Don't ask again" the
                 // system denies without showing a prompt, so retrying from here can never work.
@@ -3375,16 +2874,6 @@ public class SetupActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        // GeneralsX @bugfix Android mod-picker-button-rearm 30/09/2026 The mod
-        // card's select button is disabled while its picker is open; every
-        // return path must re-enable it. onActivityResult IS the return path
-        // for cancel AND for the invalid/no-.big rejection paths below, but
-        // nothing re-enabled the button there -- one cancelled pick left the
-        // button dead until an app restart. Only the paths that rebuild the
-        // card (saveModPath/showTab) restore it themselves.
-        if (requestCode == REQUEST_PICK_MOD && modSelectButton != null) {
-            modSelectButton.setEnabled(true);
-        }
         if (requestCode == 1001 && resultCode == Activity.RESULT_OK && data != null) {
             String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
             if (path != null) {
@@ -3410,34 +2899,6 @@ public class SetupActivity extends Activity {
                     } else {
                         Toast.makeText(this, R.string.setup_toast_folder_saved, Toast.LENGTH_LONG).show();
                     }
-                }
-            }
-        } else if (requestCode == REQUEST_PICK_MOD && resultCode == Activity.RESULT_OK && data != null) {
-            // GeneralsX @feature Android Mod Manager 28/09/2026 A mod folder is
-            // judged on readability and on having *.big archives directly
-            // inside it -- deliberately unlike the game-folder check above.
-            String path = data.getStringExtra(FolderPickerActivity.EXTRA_SELECTED_PATH);
-            if (path != null) {
-                File dir = new File(path);
-                File[] bigs = dir.isDirectory() ? dir.listFiles((d, name) -> name.toLowerCase(java.util.Locale.ROOT).endsWith(".big")) : null;
-                if (!dir.isDirectory() || !dir.canRead()) {
-                    Toast.makeText(this, R.string.setup_mod_folder_invalid, Toast.LENGTH_LONG).show();
-                } else if (bigs == null || bigs.length == 0) {
-                    Toast.makeText(this, R.string.setup_mod_folder_no_big, Toast.LENGTH_LONG).show();
-                } else {
-                    saveModPath(dir.getAbsolutePath());
-                    // GeneralsX @feature Android mod-manager-patch-interlock
-                    // 29/09/2026 The mod now owns the INI space: park the
-                    // patch (remembering its previous state) and re-read the
-                    // row so the pinned switch says so. The saved toast
-                    // carries a note when the marker write failed.
-                    boolean parked = forceCommunityPatchOffForMod();
-                    Toast.makeText(this, getString(
-                            parked ? R.string.setup_toast_mod_saved
-                                   : R.string.setup_toast_mod_saved_patch_still_on,
-                            dir.getAbsolutePath(), bigs.length), Toast.LENGTH_LONG).show();
-                    refreshModCommunityPatchRow();
-                    showTab(TAB_HOME);
                 }
             }
         } else if (requestCode == REQUEST_PICK_BASE_GENERALS && resultCode == Activity.RESULT_OK && data != null) {

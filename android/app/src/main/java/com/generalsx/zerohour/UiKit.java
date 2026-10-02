@@ -96,124 +96,6 @@ final class UiKit {
             new int[] { color(c, checkedRes), color(c, uncheckedRes) });
     }
 
-    // GeneralsX @feature Android port accent-colors 21/09/2026 The ACCENT
-    // reads through the THEME, not through a colour resource: launcher
-    // activities fold an accent ThemeOverlay into their theme in onCreate()
-    // (ThemeHelper.applyAccentTheme), so ?attr/colorPrimary is what follows
-    // the Interface-tab pick -- a resource read would always resolve the
-    // default violet. Every widget below tints accent-coloured parts through
-    // these helpers, and the fallback keeps non-theme contexts working.
-
-    private static int themeColor(Context c, int attr) {
-        TypedValue tv = new TypedValue();
-        return c.getTheme().resolveAttribute(attr, tv, true) ? tv.data : 0;
-    }
-
-    /** The accent itself. */
-    static int accentColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorPrimary);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_primary);
-    }
-
-    static ColorStateList accentTint(Context c) {
-        return ColorStateList.valueOf(accentColor(c));
-    }
-
-    /** The readable colour that sits on the accent. */
-    private static int onAccentColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorOnPrimary);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_on_primary);
-    }
-
-    /** The soft accent wash (container role) behind selected states. */
-    static int accentContainer(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorPrimaryContainer);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_primary_container);
-    }
-
-    static ColorStateList accentContainerTint(Context c) {
-        return ColorStateList.valueOf(accentContainer(c));
-    }
-
-    /** The readable colour that sits on the soft accent wash. */
-    static int accentOnContainer(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorOnPrimaryContainer);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_on_primary_container);
-    }
-
-    // GeneralsX @feature Android port accent-tinted-surfaces 21/09/2026
-    // Surface and outline reads go through the theme for the same reason the
-    // accent does: the accent overlays re-point the whole surface ladder, so
-    // a resource read would keep painting the default palette inside an
-    // accented activity. Values/themes.xml carries the same attribute set.
-
-    static int surfaceColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurface);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface);
-    }
-
-    static int backgroundColor(Context c) {
-        int fromTheme = themeColor(c, android.R.attr.colorBackground);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_background);
-    }
-
-    static int surfaceContainerColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurfaceContainer);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface_container);
-    }
-
-    static int surfaceContainerLowColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurfaceContainerLow);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface_container_low);
-    }
-
-    static int surfaceContainerHighColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurfaceContainerHigh);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface_container_high);
-    }
-
-    static int surfaceContainerHighestColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorSurfaceContainerHighest);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_surface_container_highest);
-    }
-
-    static ColorStateList surfaceContainerHighestTint(Context c) {
-        return ColorStateList.valueOf(surfaceContainerHighestColor(c));
-    }
-
-    static int outlineVariantColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorOutlineVariant);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_outline_variant);
-    }
-
-    static int outlineColor(Context c) {
-        int fromTheme = themeColor(c, com.google.android.material.R.attr.colorOutline);
-        return fromTheme != 0 ? fromTheme : color(c, R.color.gzh_outline);
-    }
-
-    /** The accent at Material's 0x33 ripple alpha. */
-    static int accentRipple(Context c) {
-        return (accentColor(c) & 0x00FFFFFF) | 0x33000000;
-    }
-
-    static ColorStateList accentRippleTint(Context c) {
-        return ColorStateList.valueOf(accentRipple(c));
-    }
-
-    /** enabled/disabled pair of literal colours. */
-    private static ColorStateList tint(int enabled, int disabled) {
-        return new ColorStateList(
-            new int[][] { new int[] { -android.R.attr.state_enabled }, new int[0] },
-            new int[] { disabled, enabled });
-    }
-
-    /** checked/unchecked pair of literal colours. */
-    private static ColorStateList checkedTint(int checked, int unchecked) {
-        return new ColorStateList(
-            new int[][] { new int[] { android.R.attr.state_checked }, new int[0] },
-            new int[] { checked, unchecked });
-    }
-
     // ------------------------------------------------------------ page shell
 
     /**
@@ -298,7 +180,7 @@ final class UiKit {
         button.setContentDescription(description);
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(surfaceContainerHighColor(c));
+        bg.setColor(color(c, R.color.gzh_surface_container_high));
         button.setBackground(bg);
         button.setClickable(true);
         button.setFocusable(true);
@@ -320,7 +202,7 @@ final class UiKit {
         MaterialCardView card = new MaterialCardView(c);
         card.setRadius(dim(c, R.dimen.gzh_radius_card));
         card.setCardElevation(0f);
-        card.setCardBackgroundColor(surfaceContainerColor(c));
+        card.setCardBackgroundColor(color(c, R.color.gzh_surface_container));
         card.setStrokeWidth(0);
         card.setUseCompatPadding(false);
         card.setPreventCornerOverlap(false);
@@ -354,7 +236,7 @@ final class UiKit {
         if (iconRes != 0) {
             ImageView icon = new ImageView(c);
             icon.setImageDrawable(ContextCompat.getDrawable(c, iconRes));
-            icon.setImageTintList(accentTint(c));
+            icon.setImageTintList(tint(c, R.color.gzh_primary));
             int s = dim(c, R.dimen.gzh_icon);
             LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(s, s);
             ilp.setMarginEnd(dp(c, 10));
@@ -373,7 +255,7 @@ final class UiKit {
         if (withValue) {
             value = new TextView(c);
             value.setTextSize(TypedValue.COMPLEX_UNIT_PX, dim(c, R.dimen.gzh_text_title));
-            value.setTextColor(accentColor(c));
+            value.setTextColor(color(c, R.color.gzh_primary));
             value.setTypeface(Typeface.DEFAULT_BOLD);
             value.setGravity(Gravity.END);
             LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(
@@ -439,7 +321,7 @@ final class UiKit {
     static View divider(LinearLayout parent) {
         Context c = parent.getContext();
         View line = new View(c);
-        line.setBackgroundColor(outlineVariantColor(c));
+        line.setBackgroundColor(color(c, R.color.gzh_outline_variant));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(c, 1)));
         lp.topMargin = dim(c, R.dimen.gzh_item_gap);
@@ -488,32 +370,32 @@ final class UiKit {
 
         switch (kind) {
             case BTN_PRIMARY:
-                b.setBackgroundTintList(tint(accentColor(c), color(c, R.color.gzh_container_disabled)));
-                b.setTextColor(tint(onAccentColor(c), color(c, R.color.gzh_on_surface_disabled)));
-                b.setIconTint(tint(onAccentColor(c), color(c, R.color.gzh_on_surface_disabled)));
+                b.setBackgroundTintList(tint(c, R.color.gzh_primary, R.color.gzh_container_disabled));
+                b.setTextColor(tint(c, R.color.gzh_on_primary, R.color.gzh_on_surface_disabled));
+                b.setIconTint(tint(c, R.color.gzh_on_primary, R.color.gzh_on_surface_disabled));
                 b.setRippleColor(tint(c, R.color.gzh_ripple_light));
                 break;
             case BTN_OUTLINE:
                 b.setBackgroundTintList(tint(c, android.R.color.transparent));
                 b.setStrokeWidth(Math.max(1, dp(c, 1)));
-                b.setStrokeColor(tint(outlineColor(c), outlineVariantColor(c)));
+                b.setStrokeColor(tint(c, R.color.gzh_outline, R.color.gzh_outline_variant));
                 b.setTextColor(tint(c, R.color.gzh_on_surface, R.color.gzh_on_surface_disabled));
-                b.setIconTint(tint(accentColor(c), color(c, R.color.gzh_on_surface_disabled)));
-                b.setRippleColor(accentRippleTint(c));
+                b.setIconTint(tint(c, R.color.gzh_primary, R.color.gzh_on_surface_disabled));
+                b.setRippleColor(tint(c, R.color.gzh_ripple_primary));
                 break;
             case BTN_DANGER:
                 b.setBackgroundTintList(tint(c, android.R.color.transparent));
                 b.setStrokeWidth(Math.max(1, dp(c, 1)));
-                b.setStrokeColor(tint(color(c, R.color.gzh_tertiary_container), outlineVariantColor(c)));
+                b.setStrokeColor(tint(c, R.color.gzh_tertiary_container, R.color.gzh_outline_variant));
                 b.setTextColor(tint(c, R.color.gzh_tertiary, R.color.gzh_on_surface_disabled));
                 b.setIconTint(tint(c, R.color.gzh_tertiary, R.color.gzh_on_surface_disabled));
                 b.setRippleColor(tint(c, R.color.gzh_ripple_light));
                 break;
             case BTN_TONAL:
             default:
-                b.setBackgroundTintList(tint(surfaceContainerHighColor(c), color(c, R.color.gzh_container_disabled)));
+                b.setBackgroundTintList(tint(c, R.color.gzh_surface_container_high, R.color.gzh_container_disabled));
                 b.setTextColor(tint(c, R.color.gzh_on_surface, R.color.gzh_on_surface_disabled));
-                b.setIconTint(tint(accentColor(c), color(c, R.color.gzh_on_surface_disabled)));
+                b.setIconTint(tint(c, R.color.gzh_primary, R.color.gzh_on_surface_disabled));
                 b.setRippleColor(tint(c, R.color.gzh_ripple_light));
                 break;
         }
@@ -603,10 +485,10 @@ final class UiKit {
             b.setElevation(0f);
             b.setStateListAnimator(null);
             b.setStrokeWidth(Math.max(1, dp(c, 1)));
-            b.setStrokeColor(checkedTint(accentColor(c), outlineColor(c)));
-            b.setBackgroundTintList(checkedTint(accentColor(c), color(c, android.R.color.transparent)));
-            b.setTextColor(checkedTint(onAccentColor(c), color(c, R.color.gzh_on_surface_variant)));
-            b.setRippleColor(accentRippleTint(c));
+            b.setStrokeColor(checkedTint(c, R.color.gzh_primary, R.color.gzh_outline));
+            b.setBackgroundTintList(checkedTint(c, R.color.gzh_primary, android.R.color.transparent));
+            b.setTextColor(checkedTint(c, R.color.gzh_on_primary, R.color.gzh_on_surface_variant));
+            b.setRippleColor(tint(c, R.color.gzh_ripple_primary));
             group.addView(b, new LinearLayout.LayoutParams(0,
                 ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         }
@@ -634,27 +516,6 @@ final class UiKit {
     }
 
     // ------------------------------------------------------------------ rows
-
-    /**
-     * GeneralsX @bugfix Android switch-silent-set 29/09/2026
-     * CompoundButton.setChecked FIRES the checked-change listener, so code
-     * that merely reflects state (refresh) or reverts a rejected tap
-     * (failure paths) re-enters whatever handler is attached -- and that
-     * handler then treats the reverted value as a user action: the
-     * "blocked" toast path actually wrote the patch marker off, and a
-     * revert raced the very setting it was undoing. Detach, set, reattach.
-     * The listener is passed in explicitly: CompoundButton has no public
-     * getter for the attached one (javac: cannot find symbol).
-     */
-    static void setSwitchCheckedSilently(android.widget.CompoundButton sw,
-        android.widget.CompoundButton.OnCheckedChangeListener listener, boolean checked) {
-        if (sw == null || sw.isChecked() == checked) {
-            return;
-        }
-        sw.setOnCheckedChangeListener(null);
-        sw.setChecked(checked);
-        sw.setOnCheckedChangeListener(listener);
-    }
 
     /** A title + supporting description + trailing Material switch. */
     static MaterialSwitch switchRow(LinearLayout parent, CharSequence title, CharSequence description) {
@@ -730,7 +591,7 @@ final class UiKit {
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
         bg.setCornerRadius(dim(c, R.dimen.gzh_radius_row));
-        bg.setColor(surfaceContainerHighColor(c));
+        bg.setColor(color(c, R.color.gzh_surface_container_high));
         row.setBackground(bg);
         if (onClick != null) {
             row.setClickable(true);
@@ -741,7 +602,7 @@ final class UiKit {
         if (iconRes != 0) {
             ImageView icon = new ImageView(c);
             icon.setImageDrawable(ContextCompat.getDrawable(c, iconRes));
-            icon.setImageTintList(accentTint(c));
+            icon.setImageTintList(tint(c, R.color.gzh_primary));
             int s = dim(c, R.dimen.gzh_icon);
             LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(s, s);
             ilp.setMarginEnd(dim(c, R.dimen.gzh_item_gap));
@@ -791,23 +652,14 @@ final class UiKit {
      * A compact "chip": a rounded, tinted, non-interactive label. Used for the
      * one-word verdicts (GPU name, active driver) that used to be full
      * sentences of body text.
-     *
-     * GeneralsX @feature Android port accent-colors 21/09/2026 Passing 0 for
-     * either colour role means "resolve through the theme": 0 text takes the
-     * accent (always readable on the neutral surface tint), 0 background is
-     * the neutral surface-container wash. That keeps verdict chips following
-     * the Interface-tab accent without every caller re-deriving it.
      */
     static TextView chip(LinearLayout parent, int iconRes, CharSequence label, int textColorRes,
                          int backgroundColorRes) {
         Context c = parent.getContext();
-        int textColor = textColorRes != 0 ? color(c, textColorRes) : accentColor(c);
-        int bgColor = backgroundColorRes != 0 ? color(c, backgroundColorRes)
-            : surfaceContainerHighColor(c);
         TextView chip = new TextView(c);
         chip.setText(label);
         chip.setTextSize(TypedValue.COMPLEX_UNIT_PX, dim(c, R.dimen.gzh_text_caption));
-        chip.setTextColor(textColor);
+        chip.setTextColor(color(c, textColorRes));
         chip.setTypeface(Typeface.DEFAULT_BOLD);
         chip.setGravity(Gravity.CENTER_VERTICAL);
         chip.setPadding(dp(c, 12), dp(c, 7), dp(c, 12), dp(c, 7));
@@ -818,7 +670,7 @@ final class UiKit {
             if (icon != null) {
                 int s = dp(c, 15);
                 icon.setBounds(0, 0, s, s);
-                icon.setTint(textColor);
+                icon.setTint(color(c, textColorRes));
                 chip.setCompoundDrawablesRelative(icon, null, null, null);
                 chip.setCompoundDrawablePadding(dp(c, 7));
             }
@@ -826,7 +678,7 @@ final class UiKit {
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.RECTANGLE);
         bg.setCornerRadius(dp(c, 999));
-        bg.setColor(bgColor);
+        bg.setColor(color(c, backgroundColorRes));
         chip.setBackground(bg);
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(

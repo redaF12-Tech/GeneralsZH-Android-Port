@@ -62,14 +62,11 @@ public class FolderPickerActivity extends Activity {
 
     @Override
     protected void attachBaseContext(android.content.Context newBase) {
-        super.attachBaseContext(ThemeHelper.wrap(LocaleHelper.wrap(newBase)));
+        super.attachBaseContext(LocaleHelper.wrap(newBase));
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // GeneralsX @feature Android port accent-colors 21/09/2026 Accent
-        // before views -- same reasoning as SetupActivity.onCreate().
-        ThemeHelper.applyAccentTheme(this);
         super.onCreate(savedInstanceState);
         setTitle(R.string.folderpicker_title);
 
@@ -82,7 +79,7 @@ public class FolderPickerActivity extends Activity {
         // M3 actions at the bottom where a thumb reaches them.
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(UiKit.backgroundColor(this));
+        root.setBackgroundColor(UiKit.color(this, R.color.gzh_background));
 
         UiKit.appBar(root, getString(R.string.setup_window_title),
             getString(R.string.folderpicker_title), 0, null, null);
@@ -106,7 +103,7 @@ public class FolderPickerActivity extends Activity {
 
         listView = new ListView(this);
         listView.setDivider(new android.graphics.drawable.ColorDrawable(
-            UiKit.outlineVariantColor(this)));
+            UiKit.color(this, R.color.gzh_outline_variant)));
         listView.setDividerHeight(Math.max(1, UiKit.dp(this, 1)));
         listView.setPadding(UiKit.dim(this, R.dimen.gzh_item_gap_tight), 0,
             UiKit.dim(this, R.dimen.gzh_item_gap_tight), 0);
@@ -204,7 +201,7 @@ public class FolderPickerActivity extends Activity {
                 if (icon != null) {
                     int s = UiKit.dim(FolderPickerActivity.this, R.dimen.gzh_icon);
                     icon.setBounds(0, 0, s, s);
-                    icon.setTint(UiKit.accentColor(FolderPickerActivity.this));
+                    icon.setTint(UiKit.color(FolderPickerActivity.this, R.color.gzh_primary));
                     row.setCompoundDrawablesRelative(icon, null, null, null);
                 }
                 return row;
