@@ -45,7 +45,50 @@
 #if defined(__ANDROID__)
 #include <SDL3/SDL_main.h>
 #include <cerrno>
+// GeneralsX @bugfix Android port Core/Generals 03/10/2026 The Vulkan/GLES
+// decision has to be made in TWO places that must agree: here (which kind of
+// SDL window/surface to create) and DX8Wrapper::Init() in Core's
+// WW3D2/dx8wrapper.cpp (which D3D8 implementation to load). The Zero Hour
+// entry point already routes both through d3d8gles_ShouldUseVulkanBackend();
+// this file did not, so it ALWAYS created a Vulkan window while
+// dx8wrapper.cpp -- whose default is the native GLES backend -- loaded
+// Direct3DCreate8_GLES underneath it. SDL_GL_CreateContext() then failed with
+// "the specified window isn't an OpenGL window" inside
+// WebGLPipeline::initContext(), whose false return the caller ignores, so
+// D3D device creation still "succeeded", the engine ran normally (audio,
+// game logic), and nothing was ever presented: a black screen. This is the
+// exact failure described in d3d8gles.h's comment on this function.
+// GeneralsX @build Android port Core/Generals 03/10/2026 d3d8gles.h is
+// reachable because g_generals links the d3d8gles target on Android, which
+// exports this include directory PUBLIC (see d3d8gles/CMakeLists.txt).
+#include "d3d8gles.h"
 #endif
+
+/**
+ * UseVulkanBackend / UseANGLE
+ *
+ * GeneralsX @bugfix Android port Core/Generals 03/10/2026 Thin adapters over
+ * the shared single source of truth (d3d8gles.cpp), mirroring the identical
+ * wrappers in GeneralsMD/Code/Main/SDL3Main.cpp. Non-Android builds are always
+ * the Vulkan/DXVK path, exactly as before this change.
+ */
+static bool UseVulkanBackend()
+{
+#if defined(__ANDROID__)
+	return d3d8gles_ShouldUseVulkanBackend();
+#else
+	return true;
+#endif
+}
+
+static bool UseANGLE()
+{
+#if defined(__ANDROID__)
+	return d3d8gles_ShouldUseANGLE();
+#else
+	return false;
+#endif
+}
 
 // USER INCLUDES (match WinMain.cpp pattern)
 #include "Lib/BaseType.h"
@@ -359,38 +402,92 @@ int main(int argc, char* argv[])
 			// blocked main thread on resume looks like a hang.
 			SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
 #endif
+			// GeneralsX @bugfix Android port Core/Generals 03/10/2026 Decide the
+			// backend ONCE, before SDL brings up the video driver, and use the
+			// same decision for the SDL window/surface and (via the shared
+			// d3d8gles helper) for DX8Wrapper::Init(). SDL loads EGL while
+			// initializing the video subsystem rather than lazily at
+			// context-creation time, so the ANGLE EGL_LIBRARY hint below has
+			// to be set before SDL_InitSubSystem(). See d3d8gles.h for why the
+			// two copies of this decision drifted apart into a black screen.
+			const bool useVulkan = UseVulkanBackend();
+#if defined(__ANDROID__)
+			if (!useVulkan && UseANGLE()) {
+				SDL_SetHint(SDL_HINT_EGL_LIBRARY, "libEGL_angle.so");
+
+				// GeneralsX @bugfix Android port Core/Generals 03/10/2026 Mirror
+				// of the Zero Hour entry point's ANGLE fix (08/30/2026): ANGLE's
+				// enablePreRotateSurfaces pre-rotates its own rendering based on
+				// the surface's real currentTransform, and a whole-frame
+				// vertical flip was verified on a Redmi Note 8 Pro through
+				// exactly that path while the same device's DXVK/Vulkan path
+				// (which hardcodes preTransform = IDENTITY and lets
+				// SurfaceFlinger do the rotation blit) was correct. Disable it so
+				// ANGLE falls back to the already-proven compositor-blit
+				// behavior.
+				setenv("ANGLE_FEATURE_OVERRIDES_DISABLED", "enablePreRotateSurfaces", 1);
+			}
+#endif
 			if (!SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
 				fprintf(stderr, "FATAL: Failed to initialize SDL3: %s\n", SDL_GetError());
 				return 1;
 			}
 
-			// Set DXVK WSI driver before loading Vulkan
-			setenv("DXVK_WSI_DRIVER", "SDL3", 1);
+			if (useVulkan) {
+				// Set DXVK WSI driver before loading Vulkan
+				setenv("DXVK_WSI_DRIVER", "SDL3", 1);
 
-			// GeneralsX @bugfix BenderAI 06/03/2026 - Exclude LLVMpipe Vulkan ICD before loading Vulkan.
-			// libvulkan_lvp.so crashes during static initialization with LLVM 20.x when the Vulkan
-			// loader enumerates all ICDs. Restrict to hardware ICDs first.
-			// GeneralsX @bugfix Android port Core/Generals 02/10/2026 Host ICD
-			// directories (/usr/share, /etc) do not exist on Android -- the
-			// device's libvulkan.so IS the driver there -- so skip the filter (it
-			// would only print confusing "no hardware ICDs" warnings). The OpenAL
-			// filter is also skipped: its host-backend block is already compiled
-			// out for Android (see FilterPipeWireOpenAL).
+				// GeneralsX @bugfix BenderAI 06/03/2026 - Exclude LLVMpipe Vulkan ICD before loading Vulkan.
+				// libvulkan_lvp.so crashes during static initialization with LLVM 20.x when the Vulkan
+				// loader enumerates all ICDs. Restrict to hardware ICDs first.
+				// GeneralsX @bugfix Android port Core/Generals 02/10/2026 Host ICD
+				// directories (/usr/share, /etc) do not exist on Android -- the
+				// device's libvulkan.so IS the driver there -- so skip the filter (it
+				// would only print confusing "no hardware ICDs" warnings).
 #if !defined(__ANDROID__)
-			FilterSoftwareVulkanICDs();
+				FilterSoftwareVulkanICDs();
 #endif
+			}
 			FilterPipeWireOpenAL();
 
-			// Load Vulkan library for DXVK DirectX8→Vulkan translation
-			fprintf(stderr, "INFO: Loading Vulkan library...\n");
-			if (!SDL_Vulkan_LoadLibrary(nullptr)) {
-				fprintf(stderr, "WARNING: Failed to load Vulkan: %s\n", SDL_GetError());
-				fprintf(stderr, "WARNING: Continuing without Vulkan (may use software rendering)\n");
+			if (useVulkan) {
+				// Load Vulkan library for DXVK DirectX8→Vulkan translation
+				fprintf(stderr, "INFO: Loading Vulkan library...\n");
+				if (!SDL_Vulkan_LoadLibrary(nullptr)) {
+					fprintf(stderr, "WARNING: Failed to load Vulkan: %s\n", SDL_GetError());
+					fprintf(stderr, "WARNING: Continuing without Vulkan (may use software rendering)\n");
+				}
+			} else {
+				// GeneralsX @bugfix Android port Core/Generals 03/10/2026 GLES3
+				// context attributes must be set BEFORE SDL_CreateWindow -- SDL
+				// only applies them to windows created after the call. The
+				// context itself is created later, by DX8Wrapper::Init() ->
+				// the d3d8gles backend (WebGLPipeline::initContext).
+				fprintf(stderr, "INFO: Using native GLES3 backend (no Vulkan)\n");
+				SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+				SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+				SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+				SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+				// GeneralsX @bugfix Android port Core/Generals 03/10/2026
+				// ALPHA_SIZE 8 mirrors GeneralsMD/Code/Main/SDL3Main.cpp: an
+				// opaque (alpha 0) EGL config is a rarely-exercised path on
+				// Android, and Vulkan/DXVK declares
+				// VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR explicitly while EGL has no
+				// equivalent knob -- its blend behavior is inferred from the
+				// chosen config's alpha bits. See that file's comment.
+				SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+				SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 			}
 
-			// Create SDL3 window with Vulkan support
-			fprintf(stderr, "INFO: Creating SDL3 Vulkan window...\n");
-			Uint32 windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;  // Start hidden, show after D3D init
+			// Create SDL3 window matching the chosen backend. A Vulkan window
+			// cannot host a GL context and vice versa, so this flag and the one
+			// DX8Wrapper::Init() picks must never disagree.
+			fprintf(stderr, "INFO: Creating SDL3 %s window...\n", useVulkan ? "Vulkan" : "OpenGL ES");
+			Uint32 windowFlags = (useVulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL) | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;  // Start hidden, show after D3D init
 #if defined(__ANDROID__)
 			// GeneralsX @feature Android port Core/Generals 02/10/2026 (mirrors
 			// GeneralsMD/Code/Main/SDL3Main.cpp):
