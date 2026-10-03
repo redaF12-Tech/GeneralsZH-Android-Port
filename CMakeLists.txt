@@ -89,23 +89,43 @@ endif()
 
 include(cmake/config.cmake)
 
-# Must be set here, before any add_subdirectory, so that Core and GeneralsMD are compiled
-# with the same value. GameLogic declares m_frameLegacy/m_frameLegacyLast behind this macro,
-# so a target that disagrees about it disagrees about the class layout.
-# The derived macros are set here as well, not in NextGenMP_defines.h, because Core files
-# (htree.cpp, FrameRateLimit.cpp, ParticleSys.cpp, seglinerenderer.cpp, ...) use them and Core
-# cannot include a GeneralsMD header. Upstream solves this by having WWCommon.h reach across
-# into GeneralsMD with a relative path; defining them here keeps the dependency one-way.
-if(SAGE_HIGH_FPS_SIM)
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_SERVER=1)
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_LIMIT=60)
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_FRAME_MULTIPLIER=2)
-else()
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_LIMIT=30)
-    add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_FRAME_MULTIPLIER=1)
-endif()
-# Unlocks the render framerate. Required at 60 Hz, optional but desirable at 30.
-add_compile_definitions(GENERALS_ONLINE_HIGH_FPS_RENDER=1)
+# GeneralsX @bugfix Generals base game 02/10/2026 The GENERALS_ONLINE_HIGH_FPS_*
+# family used to be defined here with add_compile_definitions(), so that Core and
+# GeneralsMD would agree on the value (GameLogic declares m_frameLegacy /
+# m_frameLegacyLast behind these macros, so two targets that disagreed would
+# disagree about the class layout) without Core having to include a GeneralsMD
+# header. The definitions have moved to GeneralsMD/Code/CMakeLists.txt, on the
+# zi_always INTERFACE target; see the long comment there.
+#
+# They cannot stay here. add_compile_definitions() applies to every directory
+# configured below it -- Core/ and Generals/ included -- so a build with both
+# engines enabled handed a Zero Hour capability macro to the base game's own
+# translation units. The guard this block used to carry, if(RTS_BUILD_ZEROHOUR),
+# only asserts "Zero Hour is part of this build", not "this target is Zero Hour".
+#
+# The damage: the members the macro selects (GameClient::getFrameLegacy /
+# getFrameLegacyLast / HasLegacyFrameAdvanced, and GameLogic's m_frameLegacy) are
+# declared only in GeneralsMD's GameClient.h and GameLogic.h; the base game
+# declares neither. Core is shared between the two engines and is compiled once
+# per engine, and every Core file that uses those members -- ParticleSys.cpp,
+# htree.cpp, FrameRateLimit.cpp, seglinerenderer.cpp, ... -- already guards each
+# site with the correct retail two-branch form:
+#
+#     #if defined(GENERALS_ONLINE_HIGH_FPS_RENDER)
+#         ...getFrameLegacy()...
+#     #else
+#         ...getFrame()...
+#     #endif
+#
+# The base game had correct code waiting in its `#else` branch and could never
+# reach it: with the macro set globally it took the Zero Hour branch and failed
+# with "class GameClient has no member named 'getFrameLegacy'" -- seven sites in
+# ParticleSys.cpp alone. The define was asserting a capability the base game's
+# GameClient does not have.
+#
+# Git history: this is main's df6bcbc2, clobbered as collateral damage by
+# 13d421c5 ("Revert fix(build): resolve vcpkg and the NDK"), which reverted the
+# whole block -- not only the vcpkg/NDK lines its title mentions.
 
 include(cmake/gamespy.cmake)
 include(cmake/lzhl.cmake)

@@ -68,7 +68,18 @@ void FramePacer::setFramesPerSecondLimit( Int fps )
 {
 	DEBUG_LOG(("FramePacer::setFramesPerSecondLimit() - setting max fps to %d (TheGlobalData->m_useFpsLimit == %d)", fps, TheGlobalData->m_useFpsLimit));
 	// clamp FPS to at least render at same as logic
+	// GeneralsX @bugfix Generals base game 02/10/2026 Restore the guard the
+	// GeneralsOnline upstream carries around this line. GENERALS_ONLINE_HIGH_FPS_LIMIT
+	// is defined only for the Zero Hour target (GeneralsMD/Code/CMakeLists.txt, on
+	// the zi_always interface), so the unguarded form failed to compile in the base
+	// game with "'GENERALS_ONLINE_HIGH_FPS_LIMIT' was not declared in this scope".
+	// The clamp is a GeneralsOnline concept in the first place: it exists so the
+	// render rate is never set below the simulation rate, and the base game has no
+	// high-FPS simulation rate to protect. Same guard as the two sibling sites in
+	// FrameRateLimit.cpp and the copy in the GO upstream this file was ported from.
+#if defined(GENERALS_ONLINE)
 	fps = std::max<int>(fps, GENERALS_ONLINE_HIGH_FPS_LIMIT);
+#endif
 
 	m_maxFPS = fps;
 }
