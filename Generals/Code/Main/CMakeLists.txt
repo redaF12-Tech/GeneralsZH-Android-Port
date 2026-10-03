@@ -123,7 +123,30 @@ target_sources(g_generals PRIVATE
     $<$<NOT:$<BOOL:${WIN32}>>:SDL3Main.cpp>
     # Linux stubs
     $<$<NOT:$<BOOL:${WIN32}>>:LinuxStubs.cpp>
+    # GeneralsX @bugfix Generals base game 03/10/2026 The float-transcendental and
+    # float->int diagnostics, and with them the __ubsan_handle_float_cast_overflow
+    # runtime the sanitizer flag needs. cmake/config-build.cmake turns that flag on
+    # through core_config, which both engines link, but the handler lived only in
+    # GeneralsMD/Code/Main/ReferenceFloatMath.cpp -- so g_generals compiled every
+    # sanitizer call site and then failed to link with "undefined symbol:
+    # __ubsan_handle_float_cast_overflow". The file is self-contained (no engine
+    # headers, no Zero Hour symbols) and is compiled from its GeneralsMD location,
+    # exactly as GeneralsMD/Code/Main/CMakeLists.txt compiles it for Zero Hour.
+    $<$<NOT:$<BOOL:${MSVC}>>:${CMAKE_SOURCE_DIR}/GeneralsMD/Code/Main/ReferenceFloatMath.cpp>
 )
+
+if(NOT MSVC)
+    # Same source-file properties GeneralsMD/Code/Main/CMakeLists.txt applies: keep
+    # the compiler from rewriting "(float)sin((double)x)" back into sinf inside
+    # sinf, and keep the target's inherited precompiled header out of the file (the
+    # PCH brings in <math.h>, whose default-visibility declarations these
+    # definitions must not inherit, and a PCH built without -fno-builtin cannot be
+    # used by a file compiled with it).
+    set_source_files_properties(${CMAKE_SOURCE_DIR}/GeneralsMD/Code/Main/ReferenceFloatMath.cpp
+        PROPERTIES
+        COMPILE_OPTIONS "-fno-builtin"
+        SKIP_PRECOMPILE_HEADERS ON)
+endif()
 
 # RC files are optional for MinGW builds
 # Icon: LoadIcon() handles missing resource gracefully (uses default system icon)

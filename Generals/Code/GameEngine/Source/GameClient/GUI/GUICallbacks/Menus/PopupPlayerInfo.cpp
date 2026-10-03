@@ -277,7 +277,15 @@ RankPoints::RankPoints()
 
 RankPoints *TheRankPointValues = nullptr;
 
-void SetLookAtPlayer( Int id, AsciiString nick)
+// GeneralsX @bugfix Generals base game 03/10/2026 Match the declaration in the
+// shared header (Core/GameEngine/Include/GameNetwork/GameSpy/PersistentStorageDefs.h),
+// which takes int64_t for the profile ID on both the GeneralsOnline and the
+// GameSpy branch. This definition still used the base game's own Int, which on
+// this 64-bit target mangles differently -- the calls in WOLWelcomeMenu.cpp and
+// WOLBuddyOverlay.cpp bound to the declared int64_t overload and the link failed
+// with "undefined symbol: SetLookAtPlayer(long, AsciiString)". Zero Hour's
+// equivalent definitions already take int64_t; this aligns the base game.
+void SetLookAtPlayer( int64_t id, AsciiString nick)
 {
 	lookAtPlayerID = id;
 	lookAtPlayerName = nick.str();
