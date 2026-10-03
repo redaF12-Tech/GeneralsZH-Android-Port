@@ -285,6 +285,12 @@ if [[ ! -f "${APK}" ]]; then
 fi
 echo "==> APK: ${APK}"
 
+# Clearly named copy next to the Gradle output (the CI workflow uploads its
+# own run-numbered copy; this one is the stable local artifact name).
+FINAL_APK="${ANDROID_DIR}/Generals-Android-arm64-v8a.apk"
+cp "${APK}" "${FINAL_APK}"
+echo "==> Clearly named APK: ${FINAL_APK}"
+
 if [[ $DO_INSTALL -eq 1 ]]; then
     command -v adb >/dev/null 2>&1 || { echo "ERROR: adb not found on PATH"; exit 1; }
     echo "==> adb install -r"
