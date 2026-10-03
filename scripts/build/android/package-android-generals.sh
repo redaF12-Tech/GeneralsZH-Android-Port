@@ -1,0 +1,299 @@
+#!/bin/bash
+# Package the Android build of the ORIGINAL Generals (Core/Generals) into an APK.
+#
+# Separate pipeline from package-android-zh.sh (Zero Hour): different Gradle
+# project (android-generals/, applicationId com.generalsx.generals) and a
+# different engine build (g_generals, configured with the android-vulkan
+# preset + -DRTS_BUILD_GENERALS=ON -DRTS_BUILD_ZEROHOUR=OFF).
+#
+# Flow:
+#   1. Stage the native libraries built by the engine into the Gradle
+#      shell's jniLibs (libmain.so from Generals/Code/Main, SDL3, SDL3_image,
+#      openal, gamespy, DXVK d3d8/d3d9, adrenotools + hook shims,
+#      libc++_shared from the NDK).
+#   2. Stage SDL3's Java glue (org.libsdl.app.SDLActivity et al) from the
+#      in-tree SDL3 source + this repo's patches, so Java and native SDL
+#      always match versions.
+#   3. Stage small runtime assets bundled into the APK and extracted into the
+#      selected game folder on first launch: fonts/ (Liberation, renamed),
+#      dxvk.conf, DefaultOptions.ini.
+#   4. gradle assembleDebug -> app-debug.apk, ready for adb install.
+#
+# Game .big archives are NOT packaged: the user picks their own game folder
+# in the launcher (com.generalsx.generals keeps its own prefs and its own
+# Android/data/com.generalsx.generals/files/ storage, separate from the
+# Zero Hour app).
+#
+# Usage: ./scripts/build/android/package-android-generals.sh [--install]
+#   --install  adb install the APK to the first connected device
+set -euo pipefail
+
+DO_INSTALL=0
+for arg in "$@"; do
+    case "$arg" in
+        --install) DO_INSTALL=1 ;;
+        *) echo "ERROR: unknown argument '$arg' (usage: $0 [--install])"; exit 1 ;;
+    esac
+done
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+BUILD_DIR="${PROJECT_ROOT}/build/android-vulkan"
+ANDROID_DIR="${PROJECT_ROOT}/android-generals"
+JNILIBS="${ANDROID_DIR}/app/src/main/jniLibs/arm64-v8a"
+JAVA_SDL="${ANDROID_DIR}/app/src/main/java-sdl"
+ASSETS="${ANDROID_DIR}/app/src/main/assets/gamedata"
+STAGING="${GX_ANDROID_STAGING:-${HOME}/GeneralsX/android-staging}"
+
+# --- 1. native libraries -----------------------------------------------------
+# Deterministic path (same discipline as the CI Verify step): a `find` over
+# the build dir can silently pick a stale libmain.so from a previous Zero
+# Hour build sharing the same build tree.
+GAME_LIB="${BUILD_DIR}/Generals/Code/Main/libmain.so"
+if [[ ! -f "${GAME_LIB}" ]]; then
+    echo "ERROR: ${GAME_LIB} not found — configure/build with"
+    echo "       cmake --preset android-vulkan -DRTS_BUILD_GENERALS=ON -DRTS_BUILD_ZEROHOUR=OFF"
+    echo "       and build the g_generals target first."
+    exit 1
+fi
+
+rm -rf "${JNILIBS}"
+mkdir -p "${JNILIBS}"
+cp "${GAME_LIB}" "${JNILIBS}/libmain.so"
+echo "==> Staged engine: libmain.so ($(du -h "${JNILIBS}/libmain.so" | cut -f1))"
+
+# Required runtime .so set. Fail loudly on any missing file: a stale or partial
+# stage produces an APK that dies at System.loadLibrary / D3D init.
+declare -a REQUIRED_LIBS=(
+    "_deps/sdl3-build/libSDL3.so"
+    "libdxvk_d3d8.so"
+    "libdxvk_d3d9.so"
+)
+for rel in "${REQUIRED_LIBS[@]}"; do
+    src="${BUILD_DIR}/${rel}"
+    if [[ ! -f "${src}" ]]; then
+        echo "ERROR: required library missing: ${src}"
+        exit 1
+    fi
+    cp "${src}" "${JNILIBS}/"
+done
+
+# SDL3_image, openal, gamespy and adrenotools are all potential DT_NEEDED of
+# libmain.so — a runtime `dlopen` dependency, not an optional feature — so a
+# missing one is a hard packaging failure, not a warning to ship past. Each
+# entry lists every path the corresponding project is known to place its
+# output at (gamespy lands at ${BUILD_DIR} directly, see package-android-zh.sh
+# for the full story).
+declare -a RUNTIME_LIB_CANDIDATES=(
+    "libSDL3_image.so:_deps/sdl3_image-build/libSDL3_image.so"
+    "libopenal.so:_deps/openal_soft-build/libopenal.so"
+    "libgamespy.so:libgamespy.so"
+    "libadrenotools.so:_deps/adrenotools-build/libadrenotools.so"
+)
+for entry in "${RUNTIME_LIB_CANDIDATES[@]}"; do
+    name="${entry%%:*}"
+    primary_rel="${entry#*:}"
+    src="${BUILD_DIR}/${primary_rel}"
+    if [[ ! -f "${src}" ]]; then
+        src="$(find "${BUILD_DIR}" -maxdepth 6 -name "${name}" 2>/dev/null | head -1)"
+    fi
+    if [[ -z "${src}" || ! -f "${src}" ]]; then
+        echo "ERROR: ${name} not found anywhere under ${BUILD_DIR} — libmain.so may need it at dlopen time and the APK will crash on launch without it."
+        exit 1
+    fi
+    cp "${src}" "${JNILIBS}/"
+done
+
+# libadrenotools' hook shims (cmake/adrenotools.cmake). Not DT_NEEDED by
+# libmain.so — adrenotools_open_libvulkan() dlopen()s these by path only
+# when a user imports a custom Vulkan driver, and that path is required to
+# equal nativeLibraryDir (i.e. this jniLibs directory). Package them
+# unconditionally so the feature works without a rebuild.
+declare -a ADRENOTOOLS_HOOK_LIBS=(
+    "libmain_hook.so"
+    "libfile_redirect_hook.so"
+    "libgsl_alloc_hook.so"
+    "libhook_impl.so"
+)
+for name in "${ADRENOTOOLS_HOOK_LIBS[@]}"; do
+    src="$(find "${BUILD_DIR}" -maxdepth 6 -name "${name}" 2>/dev/null | head -1)"
+    if [[ -z "${src}" || ! -f "${src}" ]]; then
+        echo "ERROR: ${name} not found anywhere under ${BUILD_DIR} — required by the Custom Vulkan Driver feature (cmake/adrenotools.cmake)."
+        exit 1
+    fi
+    cp "${src}" "${JNILIBS}/"
+done
+
+# libc++_shared.so from the NDK (ANDROID_STL=c++_shared)
+if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
+    echo "ERROR: ANDROID_NDK_HOME must be set (for libc++_shared.so)."
+    exit 1
+fi
+LIBCXX="$(ls "${ANDROID_NDK_HOME}"/toolchains/llvm/prebuilt/*/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so 2>/dev/null | head -1)"
+if [[ -z "${LIBCXX}" ]]; then
+    echo "ERROR: libc++_shared.so not found in the NDK sysroot."
+    exit 1
+fi
+cp "${LIBCXX}" "${JNILIBS}/"
+
+# Prebuilt ANGLE (Vulkan backend) for the GLES rendering path, same optional
+# staging as the Zero Hour app (see package-android-zh.sh for the full
+# rationale). Falls back to the system GLES driver when absent.
+ANGLE_PREBUILT="${PROJECT_ROOT}/Core/Libraries/Source/d3d8gles/angle-prebuilt/arm64-v8a"
+if [[ -f "${ANGLE_PREBUILT}/libEGL_angle.so" && -f "${ANGLE_PREBUILT}/libGLESv2_angle.so" ]]; then
+    cp "${ANGLE_PREBUILT}/libEGL_angle.so" "${ANGLE_PREBUILT}/libGLESv2_angle.so" "${JNILIBS}/"
+else
+    echo "WARNING: prebuilt ANGLE libraries not found at ${ANGLE_PREBUILT} — GLES backend will fall back to the system GLES driver."
+fi
+
+# Opt-in Vulkan validation layer (diagnostic tool, same as the ZH app).
+VVL_STAGED="${STAGING}/vulkan_validation/libVkLayer_khronos_validation.so"
+if [[ ! -f "${VVL_STAGED}" ]]; then
+    echo "==> Vulkan validation layer not staged yet; fetching"
+    "${PROJECT_ROOT}/scripts/build/android/fetch-vulkan-validation-layer.sh" || true
+fi
+if [[ -f "${VVL_STAGED}" ]]; then
+    cp "${VVL_STAGED}" "${JNILIBS}/"
+else
+    echo "WARNING: Vulkan validation layer not available — dxvk_validation.txt will have no effect in this build."
+fi
+
+echo "==> Staged $(ls "${JNILIBS}" | wc -l | tr -d ' ') native libraries:"
+ls -la "${JNILIBS}"
+
+# --- 2. SDL3 Java glue -------------------------------------------------------
+SDL_JAVA_SRC="${BUILD_DIR}/_deps/sdl3-src/android-project/app/src/main/java/org/libsdl/app"
+if [[ ! -d "${SDL_JAVA_SRC}" ]]; then
+    echo "ERROR: SDL3 Java sources not found at ${SDL_JAVA_SRC} (configure/build first)."
+    exit 1
+fi
+rm -rf "${JAVA_SDL}"
+mkdir -p "${JAVA_SDL}/org/libsdl/app"
+cp "${SDL_JAVA_SRC}"/*.java "${JAVA_SDL}/org/libsdl/app/"
+echo "==> Staged SDL3 Java glue ($(ls "${JAVA_SDL}/org/libsdl/app" | wc -l | tr -d ' ') files)"
+
+# java-sdl/ is gitignored (re-staged from the vanilla SDL3 tarball on every
+# packaging run), so this repo's SDL3 Java fixes are reapplied fresh each run
+# from android/patches/*.patch (shared with the ZH app — same SDL version).
+PATCH_DIR="${PROJECT_ROOT}/android/patches"
+if [[ -d "${PATCH_DIR}" ]]; then
+    for patch_file in "${PATCH_DIR}"/*.patch; do
+        [[ -f "${patch_file}" ]] || continue
+        echo "==> Applying $(basename "${patch_file}") to SDL3 Java glue"
+        patch -p1 -d "${JAVA_SDL}" < "${patch_file}"
+    done
+fi
+
+# --- 3. runtime assets -------------------------------------------------------
+mkdir -p "${ASSETS}"
+
+# Fonts (Liberation, renamed to the Windows names the game requests).
+if [[ ! -f "${STAGING}/fonts/arial.ttf" ]]; then
+    echo "==> Fonts not staged yet; fetching Liberation fonts"
+    GX_FONTS="${STAGING}/fonts" "${PROJECT_ROOT}/scripts/build/ios/stage-fonts.sh"
+fi
+rm -rf "${ASSETS}/fonts"
+cp -R "${STAGING}/fonts" "${ASSETS}/fonts"
+
+# dxvk.conf — tuned translation-layer defaults (16x aniso, quiet logs).
+if [[ -f "${STAGING}/dxvk.conf" ]]; then
+    cp "${STAGING}/dxvk.conf" "${ASSETS}/dxvk.conf"
+else
+    cat > "${ASSETS}/dxvk.conf" <<'EOF'
+# DXVK configuration for GeneralsX Generals on Android.
+# Read from the game's working directory at startup.
+dxvk.logLevel = none
+# RTS camera angles smear terrain with plain trilinear; 16x anisotropic is the
+# single biggest perceived-sharpness win and free on modern mobile GPUs.
+d3d9.samplerAnisotropy = 16
+# Background memory defragmentation corrupted the allocation pool on a real
+# Adreno device (use-after-free crash in createAllocation; upstream has the
+# same class of workaround for Intel ANV, dxvk issue #4395).
+dxvk.enableMemoryDefrag = False
+EOF
+fi
+
+# DefaultOptions.ini — seed full detail on first run: the 2003 GPU auto-detect
+# doesn't know "Adreno ..." and would silently pick Low LOD + quarter-res
+# textures.
+if [[ -f "${STAGING}/DefaultOptions.ini" ]]; then
+    cp "${STAGING}/DefaultOptions.ini" "${ASSETS}/DefaultOptions.ini"
+else
+    cat > "${ASSETS}/DefaultOptions.ini" <<'EOF'
+AntiAliasing = 1
+BuildingOcclusion = yes
+DynamicLOD = no
+ExtraAnimations = yes
+GameSpyIPAddress = 0.0.0.0
+HeatEffects = yes
+IPAddress = 0.0.0.0
+IdealStaticGameLOD = High
+Retaliation = yes
+ShowSoftWaterEdge = yes
+ShowTrees = yes
+StaticGameLOD = High
+TextureReduction = 0
+UseAlternateMouse = no
+UseCloudMap = yes
+UseDoubleClickAttackMove = no
+UseLightMap = yes
+UseShadowDecals = yes
+UseShadowVolumes = yes
+EOF
+fi
+
+echo "==> Staged APK assets:"
+find "${ASSETS}" -type f | sed "s|${ASSETS}/|    |"
+
+# --- 3b. engine build number -------------------------------------------------
+# Same convention as the ZH pipeline: the launcher's logs can prove which
+# build produced them.
+ENGINE_BUILD="$(git -C "${PROJECT_ROOT}" rev-list --count HEAD 2>/dev/null || echo 0)"
+echo "${ENGINE_BUILD}" > "${ANDROID_DIR}/app/src/main/assets/engine_build.txt"
+echo "==> Engine build number: ${ENGINE_BUILD}"
+
+# --- 4. gradle ---------------------------------------------------------------
+cd "${ANDROID_DIR}"
+GRADLE_CMD=""
+if [[ -x "./gradlew" ]]; then
+    GRADLE_CMD="./gradlew"
+elif command -v gradle >/dev/null 2>&1; then
+    GRADLE_CMD="gradle"
+else
+    echo "ERROR: no gradle wrapper and no 'gradle' on PATH."
+    echo "       Either install Gradle 8.x (sdkman/brew/apt), then re-run this script."
+    exit 1
+fi
+# versionCode/versionName are managed by hand in android-generals/app/
+# build.gradle; GX_ANDROID_VERSION_CODE / GX_ANDROID_VERSION_NAME let a
+# manual CI dispatch override either without editing build.gradle.
+GRADLE_VERSION_ARG=""
+if [[ -n "${GX_ANDROID_VERSION_CODE:-}" ]]; then
+    GRADLE_VERSION_ARG="-PandroidVersionCode=${GX_ANDROID_VERSION_CODE}"
+fi
+if [[ -n "${GX_ANDROID_VERSION_NAME:-}" ]]; then
+    GRADLE_VERSION_ARG="${GRADLE_VERSION_ARG} -PandroidVersionName=${GX_ANDROID_VERSION_NAME}"
+fi
+
+echo "==> ${GRADLE_CMD} assembleDebug ${GRADLE_VERSION_ARG}"
+"${GRADLE_CMD}" assembleDebug ${GRADLE_VERSION_ARG}
+
+APK="${ANDROID_DIR}/app/build/outputs/apk/debug/app-debug.apk"
+if [[ ! -f "${APK}" ]]; then
+    echo "ERROR: expected APK not found at ${APK}"
+    exit 1
+fi
+echo "==> APK: ${APK}"
+
+# Clearly named copy next to the Gradle output (the CI workflow uploads its
+# own run-numbered copy; this one is the stable local artifact name).
+FINAL_APK="${ANDROID_DIR}/Generals-Android-arm64-v8a.apk"
+cp "${APK}" "${FINAL_APK}"
+echo "==> Clearly named APK: ${FINAL_APK}"
+
+if [[ $DO_INSTALL -eq 1 ]]; then
+    command -v adb >/dev/null 2>&1 || { echo "ERROR: adb not found on PATH"; exit 1; }
+    echo "==> adb install -r"
+    adb install -r "${APK}"
+    echo "==> Installed. Pick your game folder in the launcher (package com.generalsx.generals)."
+fi

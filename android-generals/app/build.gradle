@@ -1,0 +1,116 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    // Core/Generals: the original C&C Generals (not Zero Hour) Android shell.
+    // Deliberately a different namespace/applicationId from the Zero Hour app
+    // (com.generalsx.zerohour) so both install side by side, keep separate
+    // app storage (Android/data/com.generalsx.generals/), and never collide
+    // in the app drawer.
+    namespace 'com.generalsx.generals'
+    compileSdk 35
+
+    // Same fixed, committed debug keystore as the Zero Hour app (copied into
+    // this project at setup): a fresh GitHub Actions runner has no
+    // ~/.android/debug.keystore, generates a NEW random key every run, and
+    // every build then would have a different signature — Android would refuse
+    // to install an update over the previous APK. Signing every build with
+    // the same in-repo key makes CI builds installable as updates over each
+    // other. Debug-only key with a well-known password; never use it to sign
+    // anything meant for a store listing.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
+
+    defaultConfig {
+        applicationId 'com.generalsx.generals'
+        // Same floor as the Zero Hour app and for the same reasons: the
+        // native side (android-vulkan preset) is built against android-28
+        // (bionic glob(3), stable Vulkan loader); an APK declaring lower
+        // would install and then fail to dlopen its own libraries. The
+        // graphics gate is the GPU, not the OS version — arm64-v8a +
+        // Vulkan/GLES 3.0 are declared in AndroidManifest.xml.
+        minSdk 28
+        targetSdk 35
+        // Version numbers managed by hand, same scheme as the ZH app:
+        // versionCode = major*10000 + minor*100 + patch (1.0.0 -> 10000).
+        // -PandroidVersionCode=N / -PandroidVersionName=X.Y.Z (wired from the
+        // "Build Android (Generals)" workflow's manual-dispatch inputs)
+        // override them for one-off CI builds without touching this file.
+        versionCode (project.hasProperty('androidVersionCode') ? (project.androidVersionCode as Integer) : 10000)
+        versionName (project.hasProperty('androidVersionName') ? project.androidVersionName : '1.0.0')
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+    }
+
+    sourceSets {
+        main {
+            // Both directories are STAGED by scripts/build/android/
+            // package-android-generals.sh (gitignored): jniLibs/ receives the
+            // CMake-built .so set, java-sdl/ receives org/libsdl/app/*.java
+            // from the in-tree SDL3 source so the shell always matches the
+            // exact SDL version the game linked.
+            java.srcDirs += 'src/main/java-sdl'
+            jniLibs.srcDirs = ['src/main/jniLibs']
+            // Small runtime files bundled into the APK, staged by the
+            // packaging script: assets/gamedata/ (fonts/, dxvk.conf,
+            // DefaultOptions.ini) is extracted into the selected game folder
+            // on first launch by LauncherActivity.
+            assets.srcDirs = ['src/main/assets']
+        }
+    }
+
+    buildTypes {
+        debug {
+            // Explicit: overrides AGP's implicit per-machine debug signingConfig
+            // with the fixed in-repo key above.
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled false
+            // Sideload builds sign with the same fixed debug key; Play
+            // distribution is out of scope for a GPL port of a game whose
+            // assets the user must own.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    packagingOptions {
+        jniLibs {
+            // libadrenotools (cmake/adrenotools.cmake) hard-requires
+            // uncompressed, on-disk native libraries: it installs its hook by
+            // dlopen()ing .so files it expects to find at
+            // ApplicationInfo.nativeLibraryDir, which is only populated with
+            // real files when legacy packaging is on. Same rationale as the
+            // Zero Hour app.
+            useLegacyPackaging true
+
+            // Do NOT let AGP's stripReleaseDebugSymbols strip the DXVK
+            // libraries: stripped libdxvk_d3d8/d3d9.so crash mid-render with
+            // corrupted Vulkan dispatch (root-caused on the Zero Hour port —
+            // see android/app/build.gradle for the full story). Keeping this
+            // identical here so the same hardware failure cannot come back
+            // through the Generals APK.
+            keepDebugSymbols += ['**/libdxvk_d3d8.so', '**/libdxvk_d3d9.so']
+        }
+    }
+}
+
+dependencies {
+    // Material Components for the launcher / folder-picker screens —
+    // GeneralsGameActivity (the actual game surface) stays on its own plain
+    // fullscreen theme and never touches these widgets.
+    implementation 'com.google.android.material:material:1.12.0'
+
+    // Explicit dependency for WindowInsetsCompat (edge-to-edge padding on
+    // targetSdk 35) — pulled in transitively by Material already, but
+    // declared directly since we call its APIs.
+    implementation 'androidx.core:core:1.13.1'
+}

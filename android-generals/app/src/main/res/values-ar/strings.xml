@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Core/Generals 03/10/2026 Arabic locale, render-backend picker only.
+
+    Deliberately partial: Android resolves each string independently and falls
+    back to the default (values/strings.xml) for any this file does not define,
+    so adding the diagnostics section in Arabic does not require translating
+    the whole launcher — and the folder-picker strings keep their existing
+    English until someone translates them properly.
+
+    The three short segment labels stay as brand names (GLES / ANGLE / Vulkan)
+    rather than being translated: they are proper nouns, and the Zero Hour app
+    does the same in every locale.
+-->
+<resources>
+    <string name="launcher_graphics_title">الجرافيكس</string>
+    <string name="launcher_graphics_backend_label">محرك الرسم</string>
+    <string name="launcher_graphics_current">الحالي: %1$s</string>
+    <string name="launcher_graphics_gpu">بطاقة الرسوميات لديك: %1$s</string>
+    <string name="launcher_graphics_gles_short">GLES</string>
+    <string name="launcher_graphics_gles_angle_short">ANGLE</string>
+    <string name="launcher_graphics_vulkan_short">Vulkan</string>
+    <string name="launcher_graphics_gles">OpenGL ES (الافتراضي)</string>
+    <string name="launcher_graphics_gles_angle">OpenGL ES + ANGLE</string>
+    <string name="launcher_graphics_vulkan">Vulkan</string>
+    <string name="launcher_graphics_saved">تم الحفظ. يسري عند تشغيل اللعبة في المرة القادمة.</string>
+    <string name="launcher_graphics_save_failed">تعذّر حفظ محرك الرسم: %1$s</string>
+    <string name="launcher_graphics_help">واجهة الرسوميات التي تستخدمها اللعبة. يسري عند تشغيل اللعبة في المرة القادمة، وليس فوراً.\n\nOpenGL ES (الافتراضي): المحرك الأصلي المخصص لهذا المنفذ، ويعمل على كل جهاز جُرّب عليه. ابدأ من هنا، ولا تغيّره إلا لسبب.\n\nOpenGL ES + ANGLE: نفس المحرك، لكن يمر عبر ANGLE من Google (يحوّله إلى Vulkan) بدلاً من تعريف GLES الخاص بهاتفك. غالباً أسرع أثناء التشغيل.\n\nVulkan: المحرك الأصلي، عبر تحويل Direct3D 8 إلى Vulkan بواسطة DXVK. عادةً أسرع على هواتف Snapdragon الحديثة، لكنه يعتمد كلياً على تعريف بطاقة الرسوميات، وبعض التعريفات تعرضه بشكل خاطئ.\n\nإذا كانت اللعبة تعمل لكن الشاشة سوداء، فسجل الجهاز يذكر المحرك المستخدَم فعلياً: ابحث عن "INFO: Creating SDL3 … window" و"[d3d8gles] GLES backend" في ملف generals-stderr.log داخل مجلد اللعبة.</string>
+</resources>

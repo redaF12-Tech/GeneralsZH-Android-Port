@@ -1117,8 +1117,28 @@ public:
 		// show for it. Revisit only with a measurement that says a path relies
 		// on the default.
 		// Phase 2: bring up the WebGL2 pipeline on the canvas.
-		WebGLPipeline::get()->initContext((int)m_pp.BackBufferWidth, (int)m_pp.BackBufferHeight,
+		//
+		// GeneralsX @bugfix Android port Core/Generals 03/10/2026 RECORD the
+		// result instead of discarding it. initContext() returns false when
+		// SDL_GL_CreateContext/SDL_GL_MakeCurrent fail -- which is exactly
+		// what happens when the SDL window was created for the OTHER backend
+		// (a Vulkan window cannot host a GL context; SDL reports "the
+		// specified window isn't an OpenGL window"). Discarding the value
+		// made CreateDevice() return D3D_OK anyway, so DX8Wrapper::Set_Render_Device
+		// succeeded, the engine ran normally (audio, game logic, input), and
+		// nothing was ever presented: a black screen with no error anywhere.
+		// CreateDevice() checks m_contextOk below and fails loudly instead, so
+		// a backend/window mismatch surfaces in the device log at startup
+		// rather than as an unexplained black screen.
+		m_contextOk = WebGLPipeline::get()->initContext((int)m_pp.BackBufferWidth, (int)m_pp.BackBufferHeight,
 			(SDL_Window *)focusWindow);
+		if (!m_contextOk) {
+			fprintf(stderr, "[d3d8gles] FATAL: GL context creation failed for the %ux%u back buffer -- "
+				"nothing can be presented. This is the signature of an SDL window created for the "
+				"wrong render backend (SDL3Main.cpp's useVulkan vs DX8Wrapper::Init()'s backend switch "
+				"disagreeing); see d3d8gles.h's comment on d3d8gles_ShouldUseVulkanBackend().\n",
+				(unsigned)m_pp.BackBufferWidth, (unsigned)m_pp.BackBufferHeight);
+		}
 	}
 
 	D3D8GLES_IUNKNOWN_IMPL(WebGLDevice)
@@ -1176,6 +1196,12 @@ public:
 			pp->BackBufferFormat != D3DFMT_UNKNOWN ? pp->BackBufferFormat : m_pp.BackBufferFormat);
 		return D3D_OK;
 	}
+
+	// GeneralsX @bugfix Android port Core/Generals 03/10/2026 Exposed so
+	// WebGLDirect3D8::CreateDevice() can turn a failed GL context creation
+	// into a failed CreateDevice instead of a silently unusable device. See the
+	// initContext() call site in the constructor and the CreateDevice() check.
+	bool gxContextOk() const { return m_contextOk; }
 
 	HRESULT Reset(D3DPRESENT_PARAMETERS *pp) override
 	{
@@ -1810,6 +1836,11 @@ private:
 	WebGLSurface *m_depthStencil = nullptr;
 	WebGLSurface *m_currentRT = nullptr;
 	WebGLSurface *m_currentDS = nullptr;
+	// GeneralsX @bugfix Android port Core/Generals 03/10/2026 Set in the
+	// constructor from WebGLPipeline::initContext()'s result; read by
+	// CreateDevice() so a failed context cannot masquerade as a working
+	// device. See the initContext call site for the full rationale.
+	bool m_contextOk = true;
 	WINBOOL m_cursorShown = FALSE;
 
 	D3DMATRIX m_transforms[kMaxTransforms] = {};
@@ -2138,6 +2169,19 @@ public:
 		        pp->BackBufferWidth, pp->BackBufferHeight, (int)pp->BackBufferFormat,
 		        (int)pp->EnableAutoDepthStencil, (int)pp->AutoDepthStencilFormat);
 		*ppReturnedDeviceInterface = new WebGLDevice(this, pp, focusWindow, behaviorFlags);
+		// GeneralsX @bugfix Android port Core/Generals 03/10/2026 A device
+		// whose GL context could not be created can never present anything.
+		// Report it as a failed CreateDevice (E_FAIL) instead of D3D_OK: the
+		// engine's own retry ladder in W3DDisplay::init() then handles it the
+		// way it handles any other device-creation failure, and the reason is
+		// already in the log from the constructor. Returning success here is
+		// what produced a black screen with a fully running game.
+		WebGLDevice *device = static_cast<WebGLDevice *>(*ppReturnedDeviceInterface);
+		if (!device->gxContextOk()) {
+			device->Release();
+			*ppReturnedDeviceInterface = nullptr;
+			return E_FAIL;
+		}
 		return D3D_OK;
 	}
 

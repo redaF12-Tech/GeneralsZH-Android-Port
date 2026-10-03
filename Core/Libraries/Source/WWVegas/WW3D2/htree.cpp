@@ -611,7 +611,17 @@ void HTreeClass::Anim_Update_Without_Interpolation(const Matrix3D & root,HRawAni
 	{
 		// TheSuperHackers @tweak Keep the animation frame step in sync with the ww3d frame step if they can align.
 		// @todo This needs improving if the WWSyncPerSecond is changed or the animation frame rates can be larger.
+		// GeneralsX @bugfix Generals base game 02/10/2026 Restore both branches of the
+		// GeneralsOnline upstream assertion. Only the Zero Hour branch was kept when
+		// this file was ported, so the base game failed to compile here with
+		// "'GENERALS_ONLINE_HIGH_FPS_LIMIT' was not declared in this scope" -- that
+		// macro is defined for the Zero Hour target only. The base game's sync rate is
+		// the retail 30, which is what the upstream #else branch asserts.
+#if defined(GENERALS_ONLINE)
 		static_assert(WWSyncPerSecond == GENERALS_ONLINE_HIGH_FPS_LIMIT, "This is currently catered to a 60/30 fps sync (depending on define)");
+#else
+		static_assert(WWSyncPerSecond == 30, "This is currently catered to a 30 fps sync");
+#endif
 		return;
 	}
 

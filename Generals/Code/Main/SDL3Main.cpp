@@ -38,6 +38,58 @@
 #include <unistd.h>   // _exit()
 #include <glob.h>     // glob() for Vulkan ICD discovery
 
+// GeneralsX @build Android port Core/Generals 02/10/2026 On Android this
+// include renames main() to SDL_main, which the SDLActivity Java shell
+// (android-generals/) invokes inside the app process after loading libmain.so.
+// Mirrors the SAGE_MOBILE_PLATFORM include in GeneralsMD/Code/Main/SDL3Main.cpp.
+#if defined(__ANDROID__)
+#include <SDL3/SDL_main.h>
+#include <cerrno>
+// GeneralsX @bugfix Android port Core/Generals 03/10/2026 The Vulkan/GLES
+// decision has to be made in TWO places that must agree: here (which kind of
+// SDL window/surface to create) and DX8Wrapper::Init() in Core's
+// WW3D2/dx8wrapper.cpp (which D3D8 implementation to load). The Zero Hour
+// entry point already routes both through d3d8gles_ShouldUseVulkanBackend();
+// this file did not, so it ALWAYS created a Vulkan window while
+// dx8wrapper.cpp -- whose default is the native GLES backend -- loaded
+// Direct3DCreate8_GLES underneath it. SDL_GL_CreateContext() then failed with
+// "the specified window isn't an OpenGL window" inside
+// WebGLPipeline::initContext(), whose false return the caller ignores, so
+// D3D device creation still "succeeded", the engine ran normally (audio,
+// game logic), and nothing was ever presented: a black screen. This is the
+// exact failure described in d3d8gles.h's comment on this function.
+// GeneralsX @build Android port Core/Generals 03/10/2026 d3d8gles.h is
+// reachable because g_generals links the d3d8gles target on Android, which
+// exports this include directory PUBLIC (see d3d8gles/CMakeLists.txt).
+#include "d3d8gles.h"
+#endif
+
+/**
+ * UseVulkanBackend / UseANGLE
+ *
+ * GeneralsX @bugfix Android port Core/Generals 03/10/2026 Thin adapters over
+ * the shared single source of truth (d3d8gles.cpp), mirroring the identical
+ * wrappers in GeneralsMD/Code/Main/SDL3Main.cpp. Non-Android builds are always
+ * the Vulkan/DXVK path, exactly as before this change.
+ */
+static bool UseVulkanBackend()
+{
+#if defined(__ANDROID__)
+	return d3d8gles_ShouldUseVulkanBackend();
+#else
+	return true;
+#endif
+}
+
+static bool UseANGLE()
+{
+#if defined(__ANDROID__)
+	return d3d8gles_ShouldUseANGLE();
+#else
+	return false;
+#endif
+}
+
 // USER INCLUDES (match WinMain.cpp pattern)
 #include "Lib/BaseType.h"
 #include "Common/CommandLine.h"
@@ -185,7 +237,12 @@ static void FilterSoftwareVulkanICDs()
 static void FilterPipeWireOpenAL()
 {
 	// GeneralsX @bugfix Copilot 24/03/2026 PipeWire/OpenAL workaround is Linux-only; keep macOS CoreAudio backend selection untouched.
-	#if defined(__linux__)
+	// GeneralsX @bugfix Android port Core/Generals 02/10/2026 Android is also
+	// "linux" to the preprocessor, and forcing the host backend list there
+	// (pulse/alsa/oss/...) would skip openal-soft's Android backends entirely
+	// (aaudio/opensles) and land on "null" -- silent audio. Keep the host
+	// backends for real desktop Linux only.
+	#if defined(__linux__) && !defined(__ANDROID__)
 	// Crash: alcOpenDevice() hits 'movaps %xmm1,0x26260(%rbx)' — SSE movaps requires
 	// 16-byte alignment; a misaligned ALCdevice struct faults regardless of backend.
 	// Disabling CPU extensions forces openal-soft to use scalar code that has no
@@ -222,6 +279,58 @@ GameEngine *CreateGameEngine(void)
 	return engine;
 }
 
+#if defined(__ANDROID__)
+/**
+ * ApplyAndroidWorkingDirectory
+ *
+ * Enter the game folder the user picked in the Generals launcher
+ * (GeneralsLauncherActivity) BEFORE any engine code touches the filesystem:
+ * the engine loads every .big archive in its working directory, so this
+ * chdir() is what points the game at the user's own legally-obtained files.
+ * The launcher passes the folder on the command line as -gxGameDir <path>
+ * (see GeneralsGameActivity.getArguments() in android-generals/); the path is carried by argv
+ * instead of the gamedata_path.txt marker + JNI lookup the Zero Hour shell
+ * uses (GeneralsMD/Code/Main/SDL3Main.cpp) because a plain argv entry needs
+ * no JNI plumbing here and reaches us before SDL's own bootstrap finishes.
+ *
+ * Also mirrors stderr into <gamedir>/generals-stderr.log: Android sends
+ * native stderr to /dev/null (only SDL_Log reaches logcat), and an engine
+ * this chatty is undebuggable blind. The previous session's log is kept as
+ * *-prev.log -- a session that ends in a low-memory kill leaves no crash
+ * report, so the prior log is often the only evidence.
+ *
+ * @return true when a working directory was entered
+ */
+static bool ApplyAndroidWorkingDirectory(int argc, char *argv[])
+{
+	const char *gameDir = nullptr;
+	for (int i = 1; i + 1 < argc; ++i) {
+		if (strcmp(argv[i], "-gxGameDir") == 0 && argv[i + 1] != nullptr && argv[i + 1][0] != '\0') {
+			gameDir = argv[i + 1];
+			break;
+		}
+	}
+	if (gameDir == nullptr) {
+		fprintf(stderr, "WARNING: no -gxGameDir argument; staying in the process CWD (the engine will not find game data)\n");
+		return false;
+	}
+	if (chdir(gameDir) != 0) {
+		fprintf(stderr, "WARNING: chdir('%s') failed: %s\n", gameDir, strerror(errno));
+		return false;
+	}
+	fprintf(stderr, "INFO: Android working directory: %s\n", gameDir);
+
+	char logPath[1024], prevPath[1024];
+	snprintf(logPath, sizeof(logPath), "%s/generals-stderr.log", gameDir);
+	snprintf(prevPath, sizeof(prevPath), "%s/generals-stderr-prev.log", gameDir);
+	rename(logPath, prevPath);
+	if (freopen(logPath, "w", stderr) != nullptr) {
+		setvbuf(stderr, nullptr, _IOLBF, 0);  // line-buffered: a crash still flushes recent lines
+	}
+	return true;
+}
+#endif // __ANDROID__
+
 /**
  * main
  *
@@ -240,6 +349,13 @@ int main(int argc, char* argv[])
 	// Store command line arguments in globals for CommandLine.cpp parser
 	__argc = argc;
 	__argv = argv;
+
+#if defined(__ANDROID__)
+	// GeneralsX @feature Android port Core/Generals 02/10/2026 chdir to the
+	// launcher-selected game folder and start the stderr log BEFORE the banner
+	// below, so the banner itself lands in the log file.
+	ApplyAndroidWorkingDirectory(argc, argv);
+#endif
 
 	fprintf(stderr, "=================================================\n");
 	fprintf(stderr, " Command & Conquer Generals (Linux)\n");
@@ -279,30 +395,109 @@ int main(int argc, char* argv[])
 			// This prevents LLVM SIGSEGV crash during Vulkan driver enumeration
 			// Must be done here, not in SDL3GameEngine::init() which is too late
 			fprintf(stderr, "INFO: Initializing SDL3 video subsystem...\n");
+#if defined(__ANDROID__)
+			// GeneralsX @feature Android port Core/Generals 02/10/2026 (mirrors
+			// GeneralsMD/Code/Main/SDL3Main.cpp): don't let SDL block its main
+			// thread on pause -- the engine owns its own frame pacing, and a
+			// blocked main thread on resume looks like a hang.
+			SDL_SetHint(SDL_HINT_ANDROID_BLOCK_ON_PAUSE, "0");
+#endif
+			// GeneralsX @bugfix Android port Core/Generals 03/10/2026 Decide the
+			// backend ONCE, before SDL brings up the video driver, and use the
+			// same decision for the SDL window/surface and (via the shared
+			// d3d8gles helper) for DX8Wrapper::Init(). SDL loads EGL while
+			// initializing the video subsystem rather than lazily at
+			// context-creation time, so the ANGLE EGL_LIBRARY hint below has
+			// to be set before SDL_InitSubSystem(). See d3d8gles.h for why the
+			// two copies of this decision drifted apart into a black screen.
+			const bool useVulkan = UseVulkanBackend();
+#if defined(__ANDROID__)
+			if (!useVulkan && UseANGLE()) {
+				SDL_SetHint(SDL_HINT_EGL_LIBRARY, "libEGL_angle.so");
+
+				// GeneralsX @bugfix Android port Core/Generals 03/10/2026 Mirror
+				// of the Zero Hour entry point's ANGLE fix (08/30/2026): ANGLE's
+				// enablePreRotateSurfaces pre-rotates its own rendering based on
+				// the surface's real currentTransform, and a whole-frame
+				// vertical flip was verified on a Redmi Note 8 Pro through
+				// exactly that path while the same device's DXVK/Vulkan path
+				// (which hardcodes preTransform = IDENTITY and lets
+				// SurfaceFlinger do the rotation blit) was correct. Disable it so
+				// ANGLE falls back to the already-proven compositor-blit
+				// behavior.
+				setenv("ANGLE_FEATURE_OVERRIDES_DISABLED", "enablePreRotateSurfaces", 1);
+			}
+#endif
 			if (!SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_AUDIO)) {
 				fprintf(stderr, "FATAL: Failed to initialize SDL3: %s\n", SDL_GetError());
 				return 1;
 			}
 
-			// Set DXVK WSI driver before loading Vulkan
-			setenv("DXVK_WSI_DRIVER", "SDL3", 1);
+			if (useVulkan) {
+				// Set DXVK WSI driver before loading Vulkan
+				setenv("DXVK_WSI_DRIVER", "SDL3", 1);
 
-			// GeneralsX @bugfix BenderAI 06/03/2026 - Exclude LLVMpipe Vulkan ICD before loading Vulkan.
-			// libvulkan_lvp.so crashes during static initialization with LLVM 20.x when the Vulkan
-			// loader enumerates all ICDs. Restrict to hardware ICDs first.
-			FilterSoftwareVulkanICDs();
+				// GeneralsX @bugfix BenderAI 06/03/2026 - Exclude LLVMpipe Vulkan ICD before loading Vulkan.
+				// libvulkan_lvp.so crashes during static initialization with LLVM 20.x when the Vulkan
+				// loader enumerates all ICDs. Restrict to hardware ICDs first.
+				// GeneralsX @bugfix Android port Core/Generals 02/10/2026 Host ICD
+				// directories (/usr/share, /etc) do not exist on Android -- the
+				// device's libvulkan.so IS the driver there -- so skip the filter (it
+				// would only print confusing "no hardware ICDs" warnings).
+#if !defined(__ANDROID__)
+				FilterSoftwareVulkanICDs();
+#endif
+			}
 			FilterPipeWireOpenAL();
 
-			// Load Vulkan library for DXVK DirectX8→Vulkan translation
-			fprintf(stderr, "INFO: Loading Vulkan library...\n");
-			if (!SDL_Vulkan_LoadLibrary(nullptr)) {
-				fprintf(stderr, "WARNING: Failed to load Vulkan: %s\n", SDL_GetError());
-				fprintf(stderr, "WARNING: Continuing without Vulkan (may use software rendering)\n");
+			if (useVulkan) {
+				// Load Vulkan library for DXVK DirectX8→Vulkan translation
+				fprintf(stderr, "INFO: Loading Vulkan library...\n");
+				if (!SDL_Vulkan_LoadLibrary(nullptr)) {
+					fprintf(stderr, "WARNING: Failed to load Vulkan: %s\n", SDL_GetError());
+					fprintf(stderr, "WARNING: Continuing without Vulkan (may use software rendering)\n");
+				}
+			} else {
+				// GeneralsX @bugfix Android port Core/Generals 03/10/2026 GLES3
+				// context attributes must be set BEFORE SDL_CreateWindow -- SDL
+				// only applies them to windows created after the call. The
+				// context itself is created later, by DX8Wrapper::Init() ->
+				// the d3d8gles backend (WebGLPipeline::initContext).
+				fprintf(stderr, "INFO: Using native GLES3 backend (no Vulkan)\n");
+				SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+				SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+				SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+				SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+				// GeneralsX @bugfix Android port Core/Generals 03/10/2026
+				// ALPHA_SIZE 8 mirrors GeneralsMD/Code/Main/SDL3Main.cpp: an
+				// opaque (alpha 0) EGL config is a rarely-exercised path on
+				// Android, and Vulkan/DXVK declares
+				// VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR explicitly while EGL has no
+				// equivalent knob -- its blend behavior is inferred from the
+				// chosen config's alpha bits. See that file's comment.
+				SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+				SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+				SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 			}
 
-			// Create SDL3 window with Vulkan support
-			fprintf(stderr, "INFO: Creating SDL3 Vulkan window...\n");
-			Uint32 windowFlags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;  // Start hidden, show after D3D init
+			// Create SDL3 window matching the chosen backend. A Vulkan window
+			// cannot host a GL context and vice versa, so this flag and the one
+			// DX8Wrapper::Init() picks must never disagree.
+			fprintf(stderr, "INFO: Creating SDL3 %s window...\n", useVulkan ? "Vulkan" : "OpenGL ES");
+			Uint32 windowFlags = (useVulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL) | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;  // Start hidden, show after D3D init
+#if defined(__ANDROID__)
+			// GeneralsX @feature Android port Core/Generals 02/10/2026 (mirrors
+			// GeneralsMD/Code/Main/SDL3Main.cpp):
+			// HIGH_PIXEL_DENSITY -- request a native-resolution drawable; without
+			// it the swapchain renders at point size and the display upscales,
+			// visibly blurring textures and terrain.
+			// FULLSCREEN -- immersive mode: hides the status/navigation bars so
+			// the RTS UI owns the whole panel.
+			windowFlags |= SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_FULLSCREEN;
+#endif
 			TheSDL3Window = SDL_CreateWindow(
 				"Command & Conquer Generals",
 				1024, 768,  // Default resolution
@@ -318,6 +513,103 @@ int main(int argc, char* argv[])
 			// Store window handle globally (cast SDL_Window* to HWND for compatibility)
 			ApplicationHWnd = (HWND)TheSDL3Window;
 			fprintf(stderr, "INFO: SDL3 window created successfully\n");
+
+#if defined(__ANDROID__)
+			// GeneralsX @feature Android port Core/Generals 02/10/2026 Match the
+			// game's internal resolution to the real panel: the engine's 4:3
+			// default would otherwise render inside the wide display pillarboxed.
+			// Injected as -xres/-yres argv entries so the normal command-line path
+			// applies them -- CommandLine::parseCommandLineForEngineInit() (which
+			// runs later, from GameEngine::init) re-reads the __argc/__argv
+			// globals, so replacing them here lands. A user-passed -xres/-yres
+			// still wins: the parser lets later arguments override earlier ones
+			// and ours go last, so only add them when the user passed neither.
+			{
+				bool userSetRes = false;
+				for (int i = 1; i < __argc; ++i) {
+					if (strcmp(__argv[i], "-xres") == 0 || strcmp(__argv[i], "-yres") == 0) {
+						userSetRes = true;
+						break;
+					}
+				}
+				// WindowManager can take a handful of frames to apply the
+				// manifest's landscape lock to a freshly created Activity; a single
+				// snapshot right after SDL_CreateWindow can still catch a stale
+				// portrait size, which would bake a wrong -xres/-yres for the whole
+				// session. Poll briefly for four consecutive identical landscape
+				// readings (200ms stable) before trusting the size, same heuristic
+				// as the Zero Hour shell.
+				int prevW = -1, prevH = -1;
+				int stableCount = 0;
+				for (int attempt = 0; attempt < 60; ++attempt) {
+					int w = 0, h = 0;
+					SDL_GetWindowSizeInPixels(TheSDL3Window, &w, &h);
+					if (w > h && w == prevW && h == prevH) {
+						if (++stableCount >= 4) break;
+					} else {
+						stableCount = 0;
+					}
+					prevW = w;
+					prevH = h;
+					SDL_PumpEvents();
+					SDL_Delay(50);
+				}
+				// Use the pixel size of the high-density drawable: the game renders
+				// 1:1 into the native-resolution swapchain, and fonts/UI rescale via
+				// the engine's resolution-aware font scaling (GlobalLanguage).
+				int winW = 0, winH = 0;
+				SDL_GetWindowSizeInPixels(TheSDL3Window, &winW, &winH);
+				if (!userSetRes && winW > 0 && winH > 0 && winW > winH) {
+					static char xresVal[16], yresVal[16];
+					static char xresFlag[] = "-xres";
+					static char yresFlag[] = "-yres";
+					int xres = winW & ~1;  // keep it even
+					int yres = winH;
+					// Prefer a Resolution already saved in the working directory's
+					// Options.ini over the window-derived one (same rationale as the
+					// Zero Hour shell): the engine-init parse runs after Options.ini
+					// has applied its saved value, so re-injecting the window size
+					// unconditionally would silently discard the user's preference on
+					// every launch. Options.ini is plain "key = value" per line.
+					{
+						FILE *fp = fopen("Options.ini", "r");
+						if (fp != nullptr) {
+							char line[256];
+							while (fgets(line, sizeof(line), fp)) {
+								int savedX = 0, savedY = 0;
+								if (sscanf(line, " Resolution = %d %d", &savedX, &savedY) == 2 &&
+								    savedX > 0 && savedY > 0) {
+									xres = savedX & ~1;
+									yres = savedY;
+									fprintf(stderr, "INFO: using saved Resolution %dx%d from Options.ini instead of window size %dx%d\n",
+									        xres, yres, winW, winH);
+									break;
+								}
+							}
+							fclose(fp);
+						}
+					}
+
+					snprintf(xresVal, sizeof(xresVal), "%d", xres);
+					snprintf(yresVal, sizeof(yresVal), "%d", yres);
+
+					static char *newArgv[64];
+					int n = 0;
+					for (int i = 0; i < __argc && n < 59; ++i) {
+						newArgv[n++] = __argv[i];
+					}
+					newArgv[n++] = xresFlag;
+					newArgv[n++] = xresVal;
+					newArgv[n++] = yresFlag;
+					newArgv[n++] = yresVal;
+					newArgv[n] = nullptr;
+					__argv = newArgv;
+					__argc = n;
+					fprintf(stderr, "INFO: Android resolution injected: -xres %s -yres %s (window pixels %dx%d)\n",
+					        xresVal, yresVal, winW, winH);
+				}
+			}
+#endif // __ANDROID__
 		}
 
 		// Call cross-platform game entry point

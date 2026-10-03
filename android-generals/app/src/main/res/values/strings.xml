@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Generals</string>
+    <string name="launcher_title">Command &amp; Conquer Generals</string>
+    <string name="launcher_subtitle">Original Generals engine — Android (arm64)</string>
+
+    <string name="launcher_folder_label">Game folder</string>
+    <string name="launcher_status_none">No game folder selected yet.</string>
+    <string name="launcher_status_valid">Game folder looks valid — all required archives found.</string>
+    <string name="launcher_status_partial">Game folder is incomplete: found %1$d of %2$d required archives.</string>
+    <string name="launcher_status_invalid">Game folder is not valid — INI.big is missing.</string>
+    <string name="launcher_default_folder_note">Using this app\'s own files dir by default; copy your game files there or pick another folder.</string>
+
+    <string name="launcher_button_pick">Choose game folder…</string>
+    <string name="launcher_button_launch">Launch game</string>
+    <string name="launcher_button_launch_disabled">Launch game (choose a valid folder first)</string>
+
+    <string name="launcher_required_title">Required archives (original Generals)</string>
+    <string name="launcher_required_body">INI.big · Terrain.big · Textures.big · W3D.big · Window.big · Audio.big · Music.big · English.big · maps.big · shaders.big · gensec.big · Speech.big · Patch.big · AudioEnglish.big · SpeechEnglish.big\n\nCopy them with their original filenames and directory structure from your own legally owned install. Zero Hour (*ZH.big) archives are not used by this app.</string>
+
+    <string name="launcher_extracting">Preparing bundled fonts and defaults…</string>
+    <string name="launcher_extract_failed">Could not prepare bundled files: %1$s</string>
+    <string name="launcher_permission_needed">All-files access is required so the engine can read your game folder.</string>
+
+    <!-- Core/Generals 03/10/2026 Render-backend picker. Writes
+         <internal files dir>/render_backend.cfg, which is the exact file the
+         native side reads: d3d8gles_ShouldUseVulkanBackend() /
+         d3d8gles_ShouldUseANGLE() in Core/Libraries/Source/d3d8gles/src/d3d8gles.cpp
+         open SDL_GetAndroidInternalStoragePath()/render_backend.cfg, and SDL3
+         returns Context.getFilesDir() for that. Same convention (and same
+         three values) as the Zero Hour launcher, so both engines agree on the
+         format. -->
+
+    <string name="launcher_graphics_title">Graphics</string>
+    <string name="launcher_graphics_backend_label">Render backend</string>
+    <string name="launcher_graphics_current">Current: %1$s</string>
+    <string name="launcher_graphics_gpu">Your GPU: %1$s</string>
+    <string name="launcher_graphics_gles_short">GLES</string>
+    <string name="launcher_graphics_gles_angle_short">ANGLE</string>
+    <string name="launcher_graphics_vulkan_short">Vulkan</string>
+    <string name="launcher_graphics_gles">OpenGL ES (default)</string>
+    <string name="launcher_graphics_gles_angle">OpenGL ES + ANGLE</string>
+    <string name="launcher_graphics_vulkan">Vulkan</string>
+    <string name="launcher_graphics_saved">Saved. Takes effect next time you launch the game.</string>
+    <string name="launcher_graphics_save_failed">Could not save the render backend: %1$s</string>
+    <string name="launcher_graphics_help">Which graphics API the game uses. Takes effect the next time you launch the game, not live.\n\nOpenGL ES (default): the native renderer written for this port. It works on every device tested so far — start here, and only change it if you have a reason to.\n\nOpenGL ES + ANGLE: the same renderer, routed through Google\'s ANGLE (which translates it to Vulkan) instead of your phone\'s own GLES driver. Often faster once running.\n\nVulkan: the original backend, through DXVK\'s Direct3D 8 to Vulkan translation. Usually faster on recent Snapdragon phones, but it depends entirely on your GPU driver, and some drivers render it incorrectly.\n\nIf the game runs but the screen is black, the device log names the backend it actually used: look for "INFO: Creating SDL3 … window" and "[d3d8gles] GLES backend" in generals-stderr.log in the game folder.</string>
+
+    <string name="folderpicker_title">Choose the game folder</string>
+    <string name="folderpicker_hint_valid">This folder contains the required Generals archives.</string>
+    <string name="folderpicker_hint_invalid">Pick the folder that contains your Generals .big archives.</string>
+    <string name="folderpicker_up_entry">.. (up)</string>
+    <string name="folderpicker_button_use">Use this folder</string>
+    <string name="common_cancel">Cancel</string>
+    <string name="folderpicker_toast_cant_read">Cannot read this folder — grant "All files access" in Settings.</string>
+    <string name="folderpicker_toast_cant_read_legacy">Cannot read this folder — grant storage permission in Settings.</string>
+</resources>

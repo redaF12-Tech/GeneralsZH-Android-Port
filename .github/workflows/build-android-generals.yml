@@ -1,12 +1,12 @@
 # Core/Generals 02/10/2026 Build the ORIGINAL C&C Generals engine (not Zero
 # Hour) as a standalone Android APK — the separate com.generalsx.generals app
-# living in Android/Generals/, with its own folder-picker launcher.
+# living in android-generals/, with its own folder-picker launcher.
 #
 # Why a second workflow instead of a job in build-android.yml:
 #   * Different engine target: g_generals (Generals/) instead of z_generals
 #     (GeneralsMD/), configured with the SAME android-vulkan preset plus
 #     -DRTS_BUILD_GENERALS=ON -DRTS_BUILD_ZEROHOUR=OFF.
-#   * Different shell project: Android/Generals (its own Gradle root,
+#   * Different shell project: android-generals/ (its own Gradle root,
 #     applicationId com.generalsx.generals) — never touches android/ (the
 #     Zero Hour app), so the two APKs can't clobber each other's staged
 #     jniLibs/java-sdl/assets.
@@ -41,7 +41,7 @@ on:
       - 'Core/**'
       - 'Dependencies/**'
       - 'cmake/**'
-      - 'Android/Generals/**'
+      - 'android-generals/**'
       - 'scripts/build/android/**'
       - 'Patches/**'
       - 'CMakeLists.txt'
@@ -52,7 +52,7 @@ on:
     inputs:
       version_name:
         type: string
-        description: "Override versionName (e.g. 1.0.1). Leave blank to use the committed default (Android/Generals/app/build.gradle)."
+        description: "Override versionName (e.g. 1.0.1). Leave blank to use the committed default (android-generals/app/build.gradle)."
         default: ""
       version_code:
         type: string
@@ -390,7 +390,7 @@ jobs:
       - name: Set artifact version
         id: artifact
         run: |
-          # Version numbers are manually managed (Android/Generals/app/
+          # Version numbers are manually managed (android-generals/app/
           # build.gradle). A manual "Run workflow" dispatch can still
           # override them for a one-off build via the version_name /
           # version_code inputs; a normal PR build passes neither, so Gradle
@@ -402,8 +402,8 @@ jobs:
       - name: Package APK
         env:
           # package-android-generals.sh uses these to stage jniLibs/, the SDL3
-          # Java glue and fonts into Android/Generals, then invokes Gradle.
-          # The fixed debug.keystore committed in Android/Generals/app/ is
+          # Java glue and fonts into android-generals, then invokes Gradle.
+          # The fixed debug.keystore committed in android-generals/app/ is
           # what makes consecutive CI builds installable as updates over each
           # other (provided versionCode was bumped by hand).
           GX_ANDROID_STAGING: ${{ github.workspace }}/android-staging
@@ -415,7 +415,7 @@ jobs:
       - name: Locate APK
         id: locate
         run: |
-          APK="Android/Generals/app/build/outputs/apk/debug/app-debug.apk"
+          APK="android-generals/app/build/outputs/apk/debug/app-debug.apk"
           if [ ! -f "$APK" ]; then echo "::error::APK not found at $APK"; exit 1; fi
           cp "$APK" "${{ steps.artifact.outputs.apk_name }}"
           echo "path=${{ steps.artifact.outputs.apk_name }}" >> "$GITHUB_OUTPUT"
