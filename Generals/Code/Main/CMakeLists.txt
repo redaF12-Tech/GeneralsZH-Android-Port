@@ -1,5 +1,5 @@
 # GeneralsX @build Android port Core/Generals 02/10/2026 On Android the game
-# is not a process of its own: SDL3's Java shell (Android/Generals) loads the
+# is not a process of its own: SDL3's Java shell (android-generals/) loads the
 # game as a shared library named libmain.so and calls its SDL_main. Everywhere
 # else the game remains a regular executable. Mirrors GeneralsMD/Code/Main.
 if(ANDROID)

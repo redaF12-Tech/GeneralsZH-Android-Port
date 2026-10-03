@@ -2,7 +2,7 @@
 # Package the Android build of the ORIGINAL Generals (Core/Generals) into an APK.
 #
 # Separate pipeline from package-android-zh.sh (Zero Hour): different Gradle
-# project (Android/Generals, applicationId com.generalsx.generals) and a
+# project (android-generals/, applicationId com.generalsx.generals) and a
 # different engine build (g_generals, configured with the android-vulkan
 # preset + -DRTS_BUILD_GENERALS=ON -DRTS_BUILD_ZEROHOUR=OFF).
 #
@@ -39,7 +39,7 @@ done
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 BUILD_DIR="${PROJECT_ROOT}/build/android-vulkan"
-ANDROID_DIR="${PROJECT_ROOT}/Android/Generals"
+ANDROID_DIR="${PROJECT_ROOT}/android-generals"
 JNILIBS="${ANDROID_DIR}/app/src/main/jniLibs/arm64-v8a"
 JAVA_SDL="${ANDROID_DIR}/app/src/main/java-sdl"
 ASSETS="${ANDROID_DIR}/app/src/main/assets/gamedata"
@@ -264,7 +264,7 @@ else
     echo "       Either install Gradle 8.x (sdkman/brew/apt), then re-run this script."
     exit 1
 fi
-# versionCode/versionName are managed by hand in Android/Generals/app/
+# versionCode/versionName are managed by hand in android-generals/app/
 # build.gradle; GX_ANDROID_VERSION_CODE / GX_ANDROID_VERSION_NAME let a
 # manual CI dispatch override either without editing build.gradle.
 GRADLE_VERSION_ARG=""

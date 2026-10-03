@@ -40,7 +40,7 @@
 
 // GeneralsX @build Android port Core/Generals 02/10/2026 On Android this
 // include renames main() to SDL_main, which the SDLActivity Java shell
-// (Android/Generals) invokes inside the app process after loading libmain.so.
+// (android-generals/) invokes inside the app process after loading libmain.so.
 // Mirrors the SAGE_MOBILE_PLATFORM include in GeneralsMD/Code/Main/SDL3Main.cpp.
 #if defined(__ANDROID__)
 #include <SDL3/SDL_main.h>
@@ -245,7 +245,7 @@ GameEngine *CreateGameEngine(void)
  * the engine loads every .big archive in its working directory, so this
  * chdir() is what points the game at the user's own legally-obtained files.
  * The launcher passes the folder on the command line as -gxGameDir <path>
- * (see GeneralsGameActivity.getArguments() in Android/Generals); the path is carried by argv
+ * (see GeneralsGameActivity.getArguments() in android-generals/); the path is carried by argv
  * instead of the gamedata_path.txt marker + JNI lookup the Zero Hour shell
  * uses (GeneralsMD/Code/Main/SDL3Main.cpp) because a plain argv entry needs
  * no JNI plumbing here and reaches us before SDL's own bootstrap finishes.
