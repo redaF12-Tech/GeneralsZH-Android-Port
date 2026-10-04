@@ -41,11 +41,18 @@
 #include "wwmemlog.h"
 #include "dx8wrapper.h"
 #include "GXTrace.h"
+// GeneralsX @bugfix Android port 04/10/2026 <vector> must not live inside the
+// Android guard below: std::vector is used unconditionally (lines 214, 289, 322,
+// 363, 735, 763, 1222, 1234, 1244, 1950), so every non-Android build -- Linux
+// Flatpak and macOS in CI -- failed in this translation unit with
+// "'vector' is not a member of 'std'" before the bundling step could run.
+// Keep the Android-only includes guarded; the standard header is not platform
+// specific.
+#include <vector>
 #if defined(__ANDROID__)
 // GeneralsX @perf Android port 09/05/2026 - draw-category / UI-timing hooks
 #include "d3d8gles.h"
 #include <chrono>
-#include <vector>
 #endif
 
 
