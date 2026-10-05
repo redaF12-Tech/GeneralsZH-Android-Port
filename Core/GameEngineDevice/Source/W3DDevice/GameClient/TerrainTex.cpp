@@ -46,6 +46,7 @@
 //         Includes
 //-----------------------------------------------------------------------------
 #include <stdlib.h>
+#include <cstdio>
 
 #include "W3DDevice/GameClient/TerrainTex.h"
 #include "W3DDevice/GameClient/WorldHeightMap.h"
@@ -509,6 +510,26 @@ void AlphaTerrainTextureClass::Apply(unsigned int stage)
 {
 	// Do the base apply.
 	TextureClass::Apply(stage);
+
+#if defined(__ANDROID__)
+	// GeneralsX @bugfix Android port 05/10/2026 One-time render-time probe:
+	// the constructor's GX-BUILD-MARKER prints the *default*
+	// m_multiPassTerrain, but GameData blocks parsed after the constructor
+	// can flip it before the first terrain draw, and neither value is
+	// visible in a device log until now. Print the value this Apply()
+	// actually branched on, once per run, so a log answers which path
+	// rendered instead of which default was set. Null TheGlobalData means
+	// the caller's !multiPass test below is skipped, i.e. multipass setup.
+	static Bool s_loggedTerrainPass = FALSE;
+	if (!s_loggedTerrainPass)
+	{
+		s_loggedTerrainPass = TRUE;
+		fprintf(stderr, "INFO: GX-TERRAIN-PASS AlphaTerrain Apply stage=%u multiPassTerrain=%d path=%s\n",
+			stage,
+			TheGlobalData ? (int)TheGlobalData->m_multiPassTerrain : -1,
+			(TheGlobalData && TheGlobalData->m_multiPassTerrain) ? "multipass" : "nvidia-single-pass");
+	}
+#endif
 
 	// Set the bilinear or trilinear filtering.
 	if (TheGlobalData && (TheGlobalData->m_bilinearTerrainTex || TheGlobalData->m_trilinearTerrainTex)) {

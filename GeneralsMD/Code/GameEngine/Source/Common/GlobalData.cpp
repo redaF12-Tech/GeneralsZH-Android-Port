@@ -1354,6 +1354,25 @@ void GlobalData::parseGameDataDefinition( INI* ini )
 	// parse the ini weapon definition
 	ini->initFromINI( TheWritableGlobalData, s_GlobalDataFieldParseTable );
 
+#if defined(__ANDROID__)
+	// GeneralsX @bugfix Android port 05/10/2026 The constructor default set
+	// m_multiPassTerrain=TRUE (01/08/2026), but every GameData block parsed
+	// here (the BIG-archived Data/INI/GameData.ini, SagePatch.ini, any
+	// modded or repacked game-data INI, a map's GameData override) runs
+	// AFTER that constructor and can silently set it back to FALSE,
+	// re-enabling TerrainTex.cpp's single-pass Nvidia shortcut that fails
+	// on every mobile GPU. The constructor's GX-BUILD-MARKER line cannot
+	// see this because it prints earlier, so log the value each GameData
+	// block actually parsed, then re-assert the Android invariant at the
+	// last point the INI machinery can reach the field.
+	fprintf(stderr, "INFO: GX-GAMEDATA m_multiPassTerrain=%d after '%s'\n",
+		(int)TheWritableGlobalData->m_multiPassTerrain, ini->getFilename().str());
+	if (!TheWritableGlobalData->m_multiPassTerrain)
+	{
+		TheWritableGlobalData->m_multiPassTerrain = TRUE;
+		fprintf(stderr, "INFO: GX-GAMEDATA re-asserted m_multiPassTerrain=1 (Android multipass invariant)\n");
+	}
+#endif
 
 	// override INI values with user preferences
 	OptionPreferences optionPref;
