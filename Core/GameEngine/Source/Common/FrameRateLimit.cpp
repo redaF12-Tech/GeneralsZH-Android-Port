@@ -126,13 +126,28 @@ Real FrameRateLimit::wait(UnsignedInt maxFps)
 
 
 const UnsignedInt RenderFpsPreset::s_fpsValues[] = {
+	// GeneralsX @bugfix Generals base game 02/10/2026 Restore the guard the
+	// GeneralsOnline upstream carries around this table and the static_assert
+	// below: GENERALS_ONLINE_HIGH_FPS_SERVER / _HIGH_FPS_LIMIT are defined only
+	// for the Zero Hour target, so the unguarded form failed to compile in the
+	// base game. The upstream condition is
+	//   defined(GENERALS_ONLINE) && defined(GENERALS_ONLINE_HIGH_FPS_SERVER)
+	// (see references/generals-online-client/Core/GameEngine/Source/Common/
+	// FrameRateLimit.cpp); GENERALS_ONLINE_HIGH_FPS_SERVER is itself only ever
+	// set for Zero Hour, so the second half already implies the first. The
+	// assertion is the genuinely GeneralsOnline one -- it checks the minimum
+	// offered render rate against the simulation rate -- and has no meaning
+	// outside a high-FPS build, so it is guarded rather than given a base-game
+	// value.
 #if defined(GENERALS_ONLINE_HIGH_FPS_SERVER)
 	60, 65, 70, 72, 75, 80, 85, 90, 100, 110, 120, 144, 240, 480, UncappedFpsValue };
 #else
 	30, 50, 56, 60, 65, 70, 72, 75, 80, 85, 90, 100, 110, 120, 144, 240, 480, UncappedFpsValue };
 #endif
 
+#if defined(GENERALS_ONLINE)
 static_assert(LOGICFRAMES_PER_SECOND <= GENERALS_ONLINE_HIGH_FPS_LIMIT, "Min FPS values need to be revisited!");
+#endif
 
 UnsignedInt RenderFpsPreset::getNextFpsValue(UnsignedInt value)
 {

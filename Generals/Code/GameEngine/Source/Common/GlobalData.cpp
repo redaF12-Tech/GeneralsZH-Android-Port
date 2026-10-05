@@ -35,6 +35,11 @@
 #ifndef _WIN32
 #include <filesystem>
 #endif
+// GeneralsX @bugfix Android port 04/10/2026 The GX-BUILD-MARKER line in the
+// GlobalData constructor calls fprintf/stderr. PreRTS.h does not pull stdio in,
+// so declare it directly rather than relying on whichever sibling header
+// happens to be included first.
+#include <cstdio>
 #include "ww3d.h"
 #include "texturefilter.h"
 
@@ -649,7 +654,33 @@ GlobalData::GlobalData()
 	m_useLightMap = FALSE;
 	m_bilinearTerrainTex = FALSE;
 	m_trilinearTerrainTex = FALSE;
+#if defined(__ANDROID__)
+	// GeneralsX @bugfix Android port 04/10/2026 Ported from the identical fix in
+	// GeneralsMD/GlobalData.cpp (01/08/2026) -- Zero Hour had it, Generals never did.
+	//
+	// TerrainTex.cpp's Apply() picks between two ways to blend an alpha-edge
+	// terrain tile onto its base tile: multipass (two clean draws) when
+	// m_multiPassTerrain is true, or a single-pass shortcut when it's false.
+	// That shortcut's own comment says exactly why it's risky: "This method is a
+	// backdoor specific to Nvidia based cards. It will fail on other hardware."
+	// No mobile GPU is Nvidia. Real-device testing on a Snapdragon 8 Elite
+	// (Adreno) showed a solid black fringe along every alpha-blended terrain edge
+	// (coastlines, rock/clutter bases) instead of a smooth blend -- exactly the
+	// failure that comment warns about -- while a Redmi Note 8 Pro (Mali-G76)
+	// happened not to hit it. On g_generals the same shortcut drove the whole
+	// terrain surface to black when the cinematic handed over to gameplay, while
+	// units, buildings and the minimap stayed correct, because those do not go
+	// through Apply(). Default to the safe multipass path on Android instead of
+	// gambling on which non-Nvidia GPUs tolerate the shortcut.
+	m_multiPassTerrain = TRUE;
+#else
 	m_multiPassTerrain = FALSE;
+#endif
+	// GeneralsX @bugfix Android port 04/10/2026 Unconditional build-verification
+	// line, same marker string as the Zero Hour build. If this prints, the
+	// running g_generals binary is the one that carried this fix; if it prints
+	// m_multiPassTerrain=0 the device is still running an older .so.
+	fprintf(stderr, "INFO: GX-BUILD-MARKER 20260801-multipass-terrain-fix m_multiPassTerrain=%d\n", (int)m_multiPassTerrain);
 	m_adjustCliffTextures = FALSE;
 	m_stretchTerrain = FALSE;
 	m_useHalfHeightMap = FALSE;
@@ -1198,6 +1229,26 @@ void GlobalData::parseGameDataDefinition( INI* ini )
 
 	// parse the ini weapon definition
 	ini->initFromINI( TheWritableGlobalData, s_GlobalDataFieldParseTable );
+
+#if defined(__ANDROID__)
+	// GeneralsX @bugfix Android port 05/10/2026 The constructor default set
+	// m_multiPassTerrain=TRUE, but every GameData block parsed here (the
+	// BIG-archived Data/INI/GameData.ini, SagePatch.ini, any modded or
+	// repacked game-data INI, a map's GameData override) runs AFTER that
+	// constructor and can silently set it back to FALSE, re-enabling
+	// TerrainTex.cpp's single-pass Nvidia shortcut that fails on every
+	// mobile GPU. The constructor's GX-BUILD-MARKER line cannot see this
+	// because it prints earlier, so log the value each GameData block
+	// actually parsed, then re-assert the Android invariant at the last
+	// point the INI machinery can reach the field.
+	fprintf(stderr, "INFO: GX-GAMEDATA m_multiPassTerrain=%d after '%s'\n",
+		(int)TheWritableGlobalData->m_multiPassTerrain, ini->getFilename().str());
+	if (!TheWritableGlobalData->m_multiPassTerrain)
+	{
+		TheWritableGlobalData->m_multiPassTerrain = TRUE;
+		fprintf(stderr, "INFO: GX-GAMEDATA re-asserted m_multiPassTerrain=1 (Android multipass invariant)\n");
+	}
+#endif
 
 	TheWritableGlobalData->m_userDataDir.clear();
 

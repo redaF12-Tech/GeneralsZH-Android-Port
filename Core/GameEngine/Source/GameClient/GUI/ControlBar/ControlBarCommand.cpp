@@ -547,7 +547,16 @@ static Bool canBeOrderedToForceAttack( const Object *obj )
 	for( ContainedItemsList::const_iterator it = passengers->begin(); it != passengers->end(); ++it )
 	{
 		const Object *passenger = *it;
+		// GeneralsX @bugfix Generals base game 03/10/2026 The Zero Hour Contain
+		// interface takes the passenger's ID (HelixContain matches it against
+		// its portable-structure slot); the base game's takes none. The two
+		// engines share this file, so pick the call that matches the engine
+		// being compiled.
+#if RTS_ZEROHOUR
 		if( passenger && hasForceAttackWeapon( passenger ) && contain->isPassengerAllowedToFire( passenger->getID() ) )
+#else
+		if( passenger && hasForceAttackWeapon( passenger ) && contain->isPassengerAllowedToFire() )
+#endif
 			return TRUE;
 	}
 	return FALSE;

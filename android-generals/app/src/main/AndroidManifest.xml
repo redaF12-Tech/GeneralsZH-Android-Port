@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Core/Generals 02/10/2026 The original Generals engine renders through
+         the same two backends the Zero Hour port ships: DXVK (D3D8 ->
+         Vulkan) or the statically linked D3D8 -> GLES 3.0 layer, picked at
+         runtime. GLES 3.0 is what every backend ultimately needs, so it is
+         the install gate; Vulkan is declared for what it is — the faster
+         path where the driver is sound — but is not a condition of
+         installing (same reasoning as android/app/src/main/AndroidManifest.xml). -->
+    <uses-feature
+        android:name="android.hardware.vulkan.version"
+        android:version="0x401000"
+        android:required="false" />
+    <uses-feature
+        android:glEsVersion="0x00030000"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="true" />
+
+    <!-- Core/Generals 02/10/2026 "All files access": lets the in-app folder
+         browser (FolderPickerActivity) resolve to a real filesystem path
+         anywhere in shared storage (Downloads, an SD card, wherever the user
+         already put their game files) — no adb push, no restrictive
+         per-folder scoped-storage grants. The native engine's fopen()/chdir()
+         cannot use content:// URIs, which is exactly why the system SAF
+         picker is not used. tools:ignore silences the Play-policy lint
+         warning; this APK is sideloaded, not Play-distributed. -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+
+    <!-- Pre-Android-11 runtime-permission equivalent (minSdk 28); kept out of
+         the effective permission set on API 30+, where MANAGE_EXTERNAL_STORAGE
+         already covers everything. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:isGame="true"
+        android:appCategory="game"
+        android:hardwareAccelerated="true"
+        android:supportsRtl="true"
+        android:requestLegacyExternalStorage="true">
+
+        <!-- The single home-screen icon: the launcher with the game folder
+             picker. Configuring or picking the game folder must never depend
+             on the game itself having launched successfully, so this screen —
+             not the SDL surface — is the LAUNCHER activity. -->
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:theme="@style/Theme.GeneralsSettings"
+            android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".FolderPickerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.GeneralsSettings"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <!-- The game surface. No LAUNCHER category: it is started from
+             LauncherActivity only, once a valid game folder is configured.
+             Kept exported (MAIN only, no LAUNCHER) so a home-screen shortcut
+             someone already placed keeps resolving instead of dying on
+             update — same convention as the Zero Hour app. -->
+        <activity
+            android:name=".GeneralsGameActivity"
+            android:exported="true"
+            android:screenOrientation="landscape"
+            android:launchMode="singleInstance"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:preferMinimalPostProcessing="true"
+            android:configChanges="layoutDirection|locale|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

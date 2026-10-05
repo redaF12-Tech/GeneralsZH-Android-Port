@@ -41,11 +41,19 @@
 #include "wwmemlog.h"
 #include "dx8wrapper.h"
 #include "GXTrace.h"
+// GeneralsX @bugfix Generals base game 03/10/2026 <vector> is not Android-only:
+// the bidirectional/Arabic shaping helpers (Shape_Arabic, Prepare_RTL_Text,
+// Build_Textures and friends) declare and use std::vector<WCHAR>, std::vector<Unit>,
+// std::vector<RectClass> and std::vector<Word> on every platform, but the include had
+// been left inside the __ANDROID__ block below together with the genuinely Android-only
+// <chrono> UI-timing hooks. No header on this include path pulls it in, so every
+// non-Android build failed with "'std::vector' has not been declared" in the
+// linux64 Flatpak jobs, which compile this file for both engines.
+#include <vector>
 #if defined(__ANDROID__)
 // GeneralsX @perf Android port 09/05/2026 - draw-category / UI-timing hooks
 #include "d3d8gles.h"
 #include <chrono>
-#include <vector>
 #endif
 
 

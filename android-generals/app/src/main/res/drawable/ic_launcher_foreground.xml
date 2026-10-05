@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Core/Generals: foreground mark — a stylized four-point star / general's
+     insignia in the shared lavender accent, centered inside the adaptive
+     icon's 108dp canvas (safe zone is the inner 66dp). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Four-point star: tip-to-tip diamond with concave sides, drawn as a
+         path through the center of each quadrant edge. -->
+    <path
+        android:fillColor="#B9AEEA"
+        android:pathData="M54,24 C57.5,42 66,50.5 84,54 C66,57.5 57.5,66 54,84 C50.5,66 42,57.5 24,54 C42,50.5 50.5,42 54,24 Z" />
+    <!-- Small satellite diamond, upper-right, in the lighter on-primary tone
+         for a touch of rank-insignia detail. -->
+    <path
+        android:fillColor="#E4DDFF"
+        android:pathData="M76,32 L80,36 L76,40 L72,36 Z" />
+</vector>

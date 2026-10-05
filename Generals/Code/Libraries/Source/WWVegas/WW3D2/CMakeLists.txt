@@ -258,3 +258,12 @@ target_link_libraries(g_ww3d2 PRIVATE
     gi_always
     d3d8lib
 )
+
+# GeneralsX @build Android port Core/Generals 02/10/2026 dx8wrapper.cpp (Core)
+# calls Direct3DCreate8_GLES() directly (statically linked, unlike DXVK which
+# is dlopen'd) when the runtime backend switch selects GLES; needs
+# d3d8gles.h. Mirrors the same block in GeneralsMD/Code/Libraries/Source/
+# WWVegas/WW3D2/CMakeLists.txt.
+if(ANDROID)
+    target_link_libraries(g_ww3d2 PRIVATE d3d8gles)
+endif()

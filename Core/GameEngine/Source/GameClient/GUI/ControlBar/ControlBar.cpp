@@ -1164,9 +1164,15 @@ void ControlBar::init()
 			// why this specific moment (both windows are still at their
 			// authored resting positions) makes the offset correct forever,
 			// with no runtime recalibration ever needed again.
+			// GeneralsX @bugfix Generals base game 03/10/2026 The follow
+			// helpers are declared in GeneralsMD's GUICallbacks.h and defined
+			// in GeneralsMD's GroupPanel.cpp only, so the call sites in this
+			// shared file must not compile into the base game.
+#if RTS_ZEROHOUR
 			Int barX, barY;
 			m_contextParent[ CP_MASTER ]->winGetScreenPosition(&barX, &barY);
 			GroupPanelCalibrateFollowOffset(barX, barY);
+#endif
 		}
 
 		m_contextParent[ CP_PURCHASE_SCIENCE ] = TheWindowManager->winGetWindowFromId( nullptr, id );//m_scienceLayout->getFirstWindow();
@@ -1515,9 +1521,14 @@ void ControlBar::update()
 			// makes the panel actually slide in/out together with the bar
 			// rather than sitting static and "already in place" for the
 			// whole animation.
+			// GeneralsX @bugfix Generals base game 03/10/2026 ZH-only helper
+			// (GeneralsMD's GUICallbacks.h/GroupPanel.cpp); guarded out of the
+			// base game for the same reason as the calibrate call in init().
+#if RTS_ZEROHOUR
 			Int barX, barY;
 			controlBarRoot->winGetScreenPosition(&barX, &barY);
 			GroupPanelFollowControlBar(barX, barY, groupPanelVisible);
+#endif
 		}
 
 		// GeneralsX @feature Android port 03/08/2026 hold-gesture (add/clear
