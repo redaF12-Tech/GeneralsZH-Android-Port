@@ -25,18 +25,6 @@ screen; the engine is downloaded only by the Home check.
   a mirror address and read the CDN themselves. The mirror is as current as the last publish: after
   a new GeneralsOnline release, publish settings again so 1.3.0 players see it. Point the key back at
   `https://cdn.playgenerals.online/manifest.json` once the CDN fixes the digest.
-- **Support card** (launchers built from 03/10/2026 on): the Help page's "Support the project"
-  card comes entirely from `update/support.json` -- its text in every language, and the
-  addresses/links. `publish-update.py` copies the file to `support/<digest>.json` (a new name for every content, so
-  GitHub's five-minute per-file cache cannot pair a new manifest with the old file) and writes its
-  SHA-256 into the signed manifest, so it is as trusted as the manifest. Nothing of it is in the
-  APK, so a new or retired address, a reworded text, or a language added or dropped is just a
-  settings publish. Format: `text` maps a language tag (`en`, `ru`, `pt-BR`, `isv`, ...) to
-  `title`, `body`, `warning`, `copy_hint`, `copied` (`%s` = the entry's label); `entries` is a list
-  of `{ "label", "value" }`, where `label` is a string or a per-language object. A value starting
-  with `https://` opens in the browser, anything else is copied. The player's language falls back
-  to `en`, which the script requires. Deleting `update/support.json` before a publish withdraws
-  the card everywhere.
 - **Engine**: a newer `libmain.so` / `libmain60.so`. It is downloaded into the app's private
   storage and used from the next game start, instead of the engine inside the APK.
 

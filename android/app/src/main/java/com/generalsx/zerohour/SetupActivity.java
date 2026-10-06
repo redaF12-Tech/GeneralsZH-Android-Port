@@ -785,10 +785,6 @@ public class SetupActivity extends Activity {
             runOnUiThread(() -> {
                 updateCheckRunning = false;
                 refreshUpdatesStatus();
-                // The support card is read from the support.json this check may just have replaced.
-                if (r.supportUpdated && currentTab == TAB_HELP && contentHost != null) {
-                    showTab(TAB_HELP);
-                }
                 if (!r.ok) {
                     if (userAsked) {
                         toast(r.offline
@@ -824,8 +820,6 @@ public class SetupActivity extends Activity {
         // surface tint, so the version badge follows the picked accent too.
         UiKit.chip(about, R.drawable.ic_gzh_check, versionLabel(), 0, 0);
 
-        buildSupportSection(page);
-
         LinearLayout help = UiKit.card(page);
         UiKit.sectionHeader(help, R.drawable.ic_gzh_doc,
             getString(R.string.setup_card_how_it_works), false);
@@ -858,70 +852,6 @@ public class SetupActivity extends Activity {
             // Same "no browser" handling as the GeneralsOnline sign-in flow:
             // nothing else on the device can open an https link.
             Toast.makeText(this, getString(R.string.online_toast_no_browser, e.getMessage()), Toast.LENGTH_LONG).show();
-        }
-    }
-
-    // GeneralsX @feature Android port 03/10/2026 README "Support the project", in the launcher.
-    // On the Help page, next to the version, rather than on Home: Home is for getting into the game,
-    // and nothing here should stand between a player and the Play button. Text, languages and
-    // entries all come from the published support.json (SupportLinks), none from this APK.
-    private void buildSupportSection(LinearLayout page) {
-        SupportLinks support = SupportLinks.load(this);
-        if (support == null) {
-            return;
-        }
-        LinearLayout card = UiKit.card(page);
-        UiKit.sectionHeader(card, R.drawable.ic_gzh_heart, support.title, false);
-        if (!support.body.isEmpty()) {
-            UiKit.supporting(card, support.body);
-        }
-        for (SupportLinks.Entry e : support.entries) {
-            if (e.isLink()) {
-                UiKit.listRow(card, R.drawable.ic_gzh_globe, e.label,
-                    e.value, () -> openSupportLink(e.value));
-            } else {
-                final CharSequence idle = support.copyHint.isEmpty()
-                    ? e.value : e.value + "\n" + support.copyHint;
-                final UiKit.Row[] row = new UiKit.Row[1];
-                row[0] = UiKit.listRow(card, R.drawable.ic_gzh_copy, e.label, idle,
-                    () -> copySupportAddress(row[0], idle, e.label, e.value, support.copied));
-            }
-        }
-        if (!support.warning.isEmpty()) {
-            UiKit.helpText(card, support.warning);
-        }
-    }
-
-    // GeneralsX @bugfix Android port 03/10/2026 The copy was silent: Android 13+ was trusted to
-    // confirm it, and several vendor builds show nothing. The row itself now says so for a moment
-    // (with a tick of haptics), and the toast is shown on every version.
-    private void copySupportAddress(UiKit.Row row, CharSequence idle, String label, String value,
-                                    String copiedText) {
-        android.content.ClipboardManager clipboard =
-            (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-        if (clipboard == null) {
-            return;
-        }
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, value));
-        String done = copiedText.isEmpty() ? value : copiedText.replace("%s", label);
-        row.root.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
-        row.supporting.setText(value + "\n\u2713 " + done);
-        row.supporting.setTextColor(UiKit.color(this, R.color.gzh_primary));
-        row.root.removeCallbacks((Runnable) row.root.getTag());
-        Runnable restore = () -> {
-            row.supporting.setText(idle);
-            row.supporting.setTextColor(UiKit.color(this, R.color.gzh_on_surface_variant));
-        };
-        row.root.setTag(restore);
-        row.root.postDelayed(restore, 2500);
-        toast(done);
-    }
-
-    private void openSupportLink(String url) {
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-        } catch (android.content.ActivityNotFoundException e) {
-            toast(url);
         }
     }
 

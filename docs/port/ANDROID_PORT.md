@@ -345,8 +345,6 @@ a file manager to create them by hand.
 - **Settings** (`update/config.json`): written to `files/update/remote_config.ini`, read by the
   engine through `Common/GXRemoteConfig.h` and by the launcher: the STUN and TURN lists, the PC
   checksum and its revision-tag rule, and the community data package's manifest address.
-- **Support card** (`update/support.json`): the Help page's "Support the project" text, in every
-  language, and its addresses and links; its SHA-256 is in the signed manifest.
 - **Engine**: a newer `libmain.so`/`libmain60.so`, downloaded to the app's private storage and
   loaded by `GeneralsZHActivity.loadLibraries()` instead of the APK's, from the next game start.
 
