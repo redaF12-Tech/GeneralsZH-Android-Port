@@ -414,23 +414,9 @@ public class GeneralsOnlineActivity extends Activity {
         // it (refreshDataPackCard runs on every card refresh). It mirrors
         // isEnabled() silently: a raw setChecked here would re-enter the
         // toggle handler and could undo the change it reflects.
-        // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 While a
-        // mod parks the patch the switch reads FALSE and is DISABLED, same
-        // rule as the Home tab's mod card; clearing the mod folder re-enables
-        // it (refreshDataPackCard runs on every card refresh). It mirrors
-        // isEnabled() silently: a raw setChecked here would re-enter the
-        // toggle handler and could undo the change it reflects.
-        // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 While a
-        // mod parks the patch the switch reads FALSE and is DISABLED, same
-        // rule as the Home tab's mod card; clearing the mod folder re-enables
-        // it (refreshDataPackCard runs on every card refresh). It mirrors
-        // isEnabled() silently: a raw setChecked here would re-enter the
-        // toggle handler and could undo the change it reflects.
         dataPackSwitch.setEnabled(installed && !DataPackInstaller.modOwnsIniSpace(this));
         UiKit.setSwitchCheckedSilently(dataPackSwitch, this::onDataPackToggled,
             DataPackInstaller.isEnabled());
-        dataPackSwitch.setEnabled(installed);
-        dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
         if (dataPackModsSwitch != null) {
             final boolean withMods = DataPackInstaller.isEnabledWithMods();
             dataPackModsSwitch.setEnabled(installed && DataPackInstaller.isEnabled());
@@ -443,26 +429,6 @@ public class GeneralsOnlineActivity extends Activity {
                     : R.string.online_datapacks_mod_found_skipped, detectedDataMod));
             }
         }
-        // MYSOREZ-Up-Steam refresh block for the mod-scan switch is kept
-        // because the mod-scan fields exist in this file and are wired above.
-        // The telegram-community-link line above keeps strict disabled state
-        // while a mod owns the INI space; the MYSOREZ block keeps the
-        // mod-scan UI re-evaluation.
-        // end MYSOREZ block
-        //
-        if (dataPackModsSwitch != null) {
-            final boolean withMods = DataPackInstaller.isEnabledWithMods();
-            dataPackModsSwitch.setEnabled(installed && DataPackInstaller.isEnabled());
-            dataPackModsSwitch.setChecked(withMods);
-            if (detectedDataMod == null) {
-                dataPackModStatus.setText(R.string.online_datapacks_mod_none);
-            } else {
-                dataPackModStatus.setText(getString(withMods
-                    ? R.string.online_datapacks_mod_found_forced
-                    : R.string.online_datapacks_mod_found_skipped, detectedDataMod));
-            }
-        }
-
         if (!signedIn) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
                 R.string.online_datapacks_chip_sign_in_first, R.color.gzh_status_warn);

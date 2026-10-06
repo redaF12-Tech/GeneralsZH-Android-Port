@@ -345,4 +345,20 @@
     <string name="setup_interface_scale_label">%1$d%%</string>
     <string name="setup_button_apply_interface_scale">Aplicar tamaño de la interfaz</string>
     <string name="setup_interface_scale_help">Agranda la interfaz del juego sin tocar sus archivos: la barra de control con el radar crece hacia arriba desde el borde inferior, y la barra de poderes del general, el chat, los mensajes de eventos, la lista de jugadores, el menú de partida con Guardar/Cargar y Opciones y los botones del menú principal crecen desde donde están. Nada sale de la pantalla: cada parte crece solo lo que cabe, así que en un teléfono ancho la barra de control se hace más alta en vez de más ancha, y el campo de batalla encima, más bajo. Funciona junto con el tamaño del texto del menú. Se aplica la próxima vez que inicies el juego.</string>
+    <string name="setup_card_appearance">Tema</string>
+    <string name="setup_appearance_status">Tema: %1$s</string>
+    <string name="setup_appearance_mode_system">Sistema</string>
+    <string name="setup_appearance_mode_daylight">Diurno</string>
+    <string name="setup_appearance_mode_darkmode">Nocturno</string>
+    <string name="setup_appearance_help">Cambia los colores de esta app de ajustes, del visor de registros, del explorador de carpetas y de la pantalla de cuenta. «Sistema» sigue la apariencia del teléfono y el ahorro de batería. El renderizado del juego es algo aparte y nunca cambia.</string>
+    <string name="setup_card_accent">Color de acento</string>
+    <string name="setup_accent_help">Elige el color de acento de esta app de ajustes, el visor de registros, el explorador de carpetas y la pantalla de cuenta. Funciona con cualquiera de los dos temas de arriba.</string>
+    <string name="setup_accent_picker">Color de acento</string>
+    <string name="setup_accent_option">Acento: %1$s</string>
+    <string name="setup_accent_name_default">Violeta</string>
+    <string name="setup_accent_name_blue">Azul</string>
+    <string name="setup_accent_name_green">Verde</string>
+    <string name="setup_accent_name_teal">Turquesa</string>
+    <string name="setup_accent_name_orange">Naranja</string>
+    <string name="setup_accent_name_red">Rojo</string>
 </resources>
