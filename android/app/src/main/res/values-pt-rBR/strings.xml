@@ -361,4 +361,25 @@
     <string name="setup_accent_name_teal">Turquesa</string>
     <string name="setup_accent_name_orange">Laranja</string>
     <string name="setup_accent_name_red">Vermelho</string>
+
+    <string name="setup_title_generals">Command &amp; Conquer Generals</string>
+    <string name="setup_card_game">Jogo</string>
+    <string name="setup_game_generals">Generals</string>
+    <string name="setup_game_zero_hour">Zero Hour</string>
+    <string name="setup_game_desc">Cada jogo tem sua própria pasta, jogos salvos, mapas e arquivo de configurações. As opções de gráficos e interface valem para os dois.</string>
+    <string name="setup_status_folder_invalid_generals">Status: esta pasta NÃO contém INI.big — escolha a pasta do Generals original.\n</string>
+    <string name="setup_status_folder_is_zero_hour">Status: esta é uma pasta do Zero Hour (tem INIZH.big). O Generals precisa da pasta do jogo original.\n</string>
+    <string name="setup_sim_rate_30_desc_generals">30 Hz é a taxa do jogo original. Replays gravados no PC rodam nela.</string>
+    <string name="setup_sim_rate_60_desc_generals">60 Hz calcula a simulação duas vezes mais, com movimento mais suave. Dobra o trabalho por segundo, então um aparelho mais lento pode rodar abaixo da velocidade normal.</string>
+    <string name="setup_folder_issue_generals_incomplete">Faltam dados do jogo Generals:%1$s</string>
+    <string name="setup_switch_gpu_timer">Medição de tempo da GPU</string>
+    <string name="setup_switch_gpu_timer_desc">Mede quanto tempo a GPU gasta em cada quadro e adiciona ao resumo de desempenho, para saber se o limite é a GPU ou a CPU. Só OpenGL ES. Alguns drivers Mali travam com ela; deixe desligada, a menos que peçam. (gx_gles_gputimer.txt)</string>
+    <string name="setup_toast_folder_found_inside">O jogo estava em uma subpasta; usando %1$s</string>
+    <string name="setup_card_controls">Controles</string>
+    <string name="setup_switch_mouse_mode">Mouse e touchpad</string>
+    <string name="setup_switch_mouse_mode_desc">Um ponteiro em vez de tocar onde você quer: um mouse conectado funciona como no PC e, sem ele, seu dedo move o cursor como o touchpad de um notebook. Desligado: o jogo é controlado tocando diretamente.</string>
+    <string name="setup_mouse_mode_help">Touchpad: mova um dedo para mover o cursor. Tocar = clique esquerdo, dois toques = clique duplo, tocar e depois tocar e arrastar = caixa de seleção. Tocar com dois dedos = clique direito. Dois dedos = rolar o mapa, pinçar = zoom. Vale a partir do próximo início do jogo. A opção do jogo \"Controle alternativo do mouse\" continua decidindo o que fazem os botões esquerdo e direito. Nos menus, no lobby e nas caixas de diálogo o dedo toca diretamente, como de costume.</string>
+    <string name="setup_cursor_size_label">Tamanho do cursor: %1$d%%</string>
+    <string name="setup_switch_skip_intro">Pular vídeos de introdução</string>
+    <string name="setup_switch_skip_intro_desc">Logos da EA, a introdução e outros vídeos antes do menu são pulados; o jogo carrega direto. Para os dois jogos, com mods também.</string>
 </resources>

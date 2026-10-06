@@ -361,4 +361,25 @@
     <string name="setup_accent_name_teal">Biruzy</string>
     <string name="setup_accent_name_orange">Oranževy</string>
     <string name="setup_accent_name_red">Crveny</string>
+
+    <string name="setup_title_generals">Command &amp; Conquer Generals</string>
+    <string name="setup_card_game">Igra</string>
+    <string name="setup_game_generals">Generals</string>
+    <string name="setup_game_zero_hour">Zero Hour</string>
+    <string name="setup_game_desc">Každa igra imaje svoju papku, zapisy, karty i fajl nastavjenij. Nastavjenja grafiky i interfejsa sut obče.</string>
+    <string name="setup_status_folder_invalid_generals">Status: v toj papke NE JE INI.big — izberite papku originalnoj Generals.\n</string>
+    <string name="setup_status_folder_is_zero_hour">Status: to je papka Zero Hour (v njej je INIZH.big). Za Generals trěba papka originalnoj igry.\n</string>
+    <string name="setup_sim_rate_30_desc_generals">30 Hz je frekvencija originalnoj igry. Na njej se igrajut povtorjenja, zapisane na PK.</string>
+    <string name="setup_sim_rate_60_desc_generals">60 Hz računajut simulaciju dvakrat čęsto, dviženje je plavnějše. Rabota za sekundu se udvojaje, zato slabějše ustrojstvo može igrati pomalěje.</string>
+    <string name="setup_folder_issue_generals_incomplete">Nedostaje danyh igry Generals:%1$s</string>
+    <string name="setup_switch_gpu_timer">Měrjenje časa GPU</string>
+    <string name="setup_switch_gpu_timer_desc">Měri, koliko časa GPU trati na každy kadr, i dodaje to k svodu produktivnosti — da by bylo vidno, čto ograničaje: GPU ili CPU. Jedino OpenGL ES. Někoje drajvery Mali s tym padajut, zato vključajte jedino, ako vas o tom poprosili. (gx_gles_gputimer.txt)</string>
+    <string name="setup_toast_folder_found_inside">Igra je byla v podpapke; izbrana jest: %1$s</string>
+    <string name="setup_card_controls">Upravjanje</string>
+    <string name="setup_switch_mouse_mode">Myš i tačpad</string>
+    <string name="setup_switch_mouse_mode_desc">Kursor vměsto dotykov: podključena myš rabotaje kako na PC, a bez nje palec dvigaje kursor kako tačpad notebooka. Izključeno: igra se upravjaje dotykami naprųdno.</string>
+    <string name="setup_mouse_mode_help">Tačpad: vedite palcem — kursor se dvigaje. Dotyk = levy klik, dva dotyka = dvojny klik, dotyk, potom dotknųti i vesti = ramka izbora. Dotyk dvoma palcami = pravy klik. Dva palca = prokrutka karty, ščipok = masštab. Dějstvuje od slědnego zapuska igry. Čto dělajųt levy i pravy gumb, nadalje rěšaje opcija igry «Alternativno upravjanje myšjų». V menju, lobi i dialogah palec nažimaje naprųdno, kako obyčno.</string>
+    <string name="setup_cursor_size_label">Velikost kursora: %1$d%%</string>
+    <string name="setup_switch_skip_intro">Propuščati zastavky</string>
+    <string name="setup_switch_skip_intro_desc">Logotipy EA, vstupno video i druge filmy pred menju se ne pokazujut — igra odrazu prěhodi k zagruzkě. Za obě igry, i s modami.</string>
 </resources>

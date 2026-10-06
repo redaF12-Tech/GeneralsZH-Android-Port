@@ -361,4 +361,25 @@
     <string name="setup_accent_name_teal">Бірюзовий</string>
     <string name="setup_accent_name_orange">Помаранчевий</string>
     <string name="setup_accent_name_red">Червоний</string>
+
+    <string name="setup_title_generals">Command &amp; Conquer Generals</string>
+    <string name="setup_card_game">Гра</string>
+    <string name="setup_game_generals">Generals</string>
+    <string name="setup_game_zero_hour">Zero Hour</string>
+    <string name="setup_game_desc">Кожна гра має власну теку, збереження, мапи й файл налаштувань. Налаштування графіки та інтерфейсу спільні.</string>
+    <string name="setup_status_folder_invalid_generals">Статус: у цій теці НЕМАЄ INI.big — оберіть теку оригінальної Generals.\n</string>
+    <string name="setup_status_folder_is_zero_hour">Статус: це тека Zero Hour (у ній є INIZH.big). Для Generals потрібна тека оригінальної гри.\n</string>
+    <string name="setup_sim_rate_30_desc_generals">30 Гц — частота оригінальної гри. На ній відтворюються реплеї, записані на ПК.</string>
+    <string name="setup_sim_rate_60_desc_generals">60 Гц оновлюють симуляцію вдвічі частіше, рух плавніший. Навантаження за секунду подвоюється, тож на слабкому пристрої гра може йти повільніше.</string>
+    <string name="setup_folder_issue_generals_incomplete">Відсутні дані гри Generals:%1$s</string>
+    <string name="setup_switch_gpu_timer">Замір часу відеокарти</string>
+    <string name="setup_switch_gpu_timer_desc">Вимірює, скільки відеокарта витрачає на кожен кадр, і додає це до зведення продуктивності — щоб зрозуміти, що гальмує: відеокарта чи процесор. Лише для OpenGL ES. На деяких драйверах Mali спричиняє виліт, тож вмикайте, лише якщо вас про це попросили. (gx_gles_gputimer.txt)</string>
+    <string name="setup_toast_folder_found_inside">Гру знайдено у вкладеній теці, обрано її: %1$s</string>
+    <string name="setup_card_controls">Керування</string>
+    <string name="setup_switch_mouse_mode">Миша й тачпад</string>
+    <string name="setup_switch_mouse_mode_desc">Курсор замість дотиків: під’єднана миша працює як на ПК, а без неї палець рухає курсор, як тачпад ноутбука. Вимкнено: гра керується дотиками напряму.</string>
+    <string name="setup_mouse_mode_help">Тачпад: ведіть пальцем — курсор рухається. Дотик — лівий клік, два дотики — подвійний клік, дотик, а потім торкнутися й вести — рамка виділення. Дотик двома пальцями — правий клік. Два пальці — прокручування мапи, щипок — масштаб. Діє з наступного запуску гри. Що роблять ліва й права кнопки, як і раніше вирішує пункт гри «Альтернативне керування мишею». У меню, лобі та діалогах палець натискає напряму, як зазвичай.</string>
+    <string name="setup_cursor_size_label">Розмір курсора: %1$d%%</string>
+    <string name="setup_switch_skip_intro">Пропускати заставки</string>
+    <string name="setup_switch_skip_intro_desc">Логотипи EA, вступне відео та інші ролики перед меню не показуються — гра одразу переходить до завантаження. Для обох ігор, і з модами теж.</string>
 </resources>

@@ -361,4 +361,25 @@
     <string name="setup_accent_name_teal">Morski</string>
     <string name="setup_accent_name_orange">Pomarańczowy</string>
     <string name="setup_accent_name_red">Czerwony</string>
+
+    <string name="setup_title_generals">Command &amp; Conquer Generals</string>
+    <string name="setup_card_game">Gra</string>
+    <string name="setup_game_generals">Generals</string>
+    <string name="setup_game_zero_hour">Zero Hour</string>
+    <string name="setup_game_desc">Każda gra ma własny folder, zapisy, mapy i plik ustawień. Ustawienia grafiki i interfejsu są wspólne.</string>
+    <string name="setup_status_folder_invalid_generals">Status: ten folder NIE zawiera INI.big — wybierz folder oryginalnego Generals.\n</string>
+    <string name="setup_status_folder_is_zero_hour">Status: to folder Zero Hour (zawiera INIZH.big). Generals potrzebuje folderu oryginalnej gry.\n</string>
+    <string name="setup_sim_rate_30_desc_generals">30 Hz to częstotliwość oryginalnej gry. Powtórki nagrane na PC odtwarzają się na niej.</string>
+    <string name="setup_sim_rate_60_desc_generals">60 Hz liczy symulację dwa razy częściej, ruch jest płynniejszy. Podwaja to pracę na sekundę, więc słabsze urządzenie może działać wolniej.</string>
+    <string name="setup_folder_issue_generals_incomplete">Brak danych gry Generals:%1$s</string>
+    <string name="setup_switch_gpu_timer">Pomiar czasu GPU</string>
+    <string name="setup_switch_gpu_timer_desc">Mierzy, ile czasu GPU poświęca na każdą klatkę, i dodaje to do podsumowania wydajności — by sprawdzić, czy ogranicza GPU czy CPU. Tylko OpenGL ES. Niektóre sterowniki Mali się z tym wysypują, więc włączaj tylko na prośbę. (gx_gles_gputimer.txt)</string>
+    <string name="setup_toast_folder_found_inside">Gra była w podfolderze; użyto %1$s</string>
+    <string name="setup_card_controls">Sterowanie</string>
+    <string name="setup_switch_mouse_mode">Mysz i touchpad</string>
+    <string name="setup_switch_mouse_mode_desc">Kursor zamiast dotykania: podłączona mysz działa jak na PC, a bez niej palec przesuwa kursor jak touchpad laptopa. Wyłączone: gra sterowana jest bezpośrednio dotykiem.</string>
+    <string name="setup_mouse_mode_help">Touchpad: przesuwaj palcem, aby przesuwać kursor. Dotknięcie = lewy klik, dwa dotknięcia = podwójny klik, dotknięcie, a potem dotknięcie i przeciągnięcie = ramka zaznaczenia. Dotknięcie dwoma palcami = prawy klik. Dwa palce = przewijanie mapy, uszczypnięcie = powiększenie. Działa od następnego uruchomienia gry. O tym, co robią lewy i prawy przycisk, nadal decyduje opcja gry „Alternatywne sterowanie myszą”. W menu, lobby i oknach dialogowych palec naciska bezpośrednio, jak zwykle.</string>
+    <string name="setup_cursor_size_label">Rozmiar kursora: %1$d%%</string>
+    <string name="setup_switch_skip_intro">Pomijaj filmy wprowadzające</string>
+    <string name="setup_switch_skip_intro_desc">Logo EA, intro i inne filmy przed menu są pomijane — gra od razu przechodzi do wczytywania. Dla obu gier, także z modami.</string>
 </resources>
