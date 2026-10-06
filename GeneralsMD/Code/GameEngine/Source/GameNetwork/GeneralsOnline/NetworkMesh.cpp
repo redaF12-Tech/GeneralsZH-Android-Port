@@ -87,25 +87,45 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 		{
 			PlayerConnection& plrConnection = connections[connectionID];
 
+			// GeneralsX @bugfix Android port 02/10/2026 Retry rules from upstream (d60a850c9,
+			// d65d9d656, 3f1ebe4a7, dfe5b29d1, 92289d416, 2e04467af):
+			//   - only the later joiner of a pair gives up; the earlier one keeps retrying, so a
+			//     newcomer on a bad network leaves instead of knocking out an established player;
+			//   - during a match the link is repaired for as long as the peer is in the lobby;
+			//   - a peer that has left is not re-signalled;
+			//   - the host never leaves its own lobby over a peer it cannot reach;
+			//   - leaving is deferred to the lobby's Tick, since it deletes this mesh, which is
+			//     still inside RunCallbacks here.
+			// Captured first: SetDisconnected() can erase this entry.
+			const int64_t userID = plrConnection.m_userID;
+			const int signallingAttemptsBeforeDisconnect = plrConnection.m_SignallingAttempts;
+
 			if (TheNetwork != nullptr)
 			{
-				TheNetwork->GetConnectionManager()->disconnectPlayer(plrConnection.m_userID);
+				TheNetwork->GetConnectionManager()->disconnectPlayer(userID);
 			}
 
-			NetworkLog(ELogVerbosity::LOG_RELEASE, "[DC] Closing connection %lld", plrConnection.m_userID);
+			NetworkLog(ELogVerbosity::LOG_RELEASE, "[DC] Closing connection %lld", userID);
 
 			ServiceConfig& serviceConf = NGMP_OnlineServicesManager::GetInstance()->GetServiceConfig();
-			const int numSignallingAttempts = 3;
-			bool bShouldRetry = plrConnection.m_SignallingAttempts < numSignallingAttempts && serviceConf.retry_signalling;
+			const int numSignallingAttempts = 2;
+
+			// unknown join order caps both sides; a departed peer is capped without leaving
+			NGMP_OnlineServices_LobbyInterface* pJoinOrderLobby = NGMP_OnlineServicesManager::GetInterface<NGMP_OnlineServices_LobbyInterface>();
+			const bool bWeJoinedLater = pJoinOrderLobby == nullptr || !pJoinOrderLobby->IsJoinOrderKnown() || pJoinOrderLobby->JoinedAfter(userID);
+			const bool bPeerLeft = pJoinOrderLobby != nullptr && pJoinOrderLobby->IsJoinOrderKnown() && !pJoinOrderLobby->IsLobbyMember(userID);
+			const bool bInMatch = TheGameLogic != nullptr && TheGameLogic->isInInternetGame();
+			bool bShouldRetry = serviceConf.retry_signalling && ((bInMatch && !bPeerLeft) || (!bWeJoinedLater && !bPeerLeft) || signallingAttemptsBeforeDisconnect < numSignallingAttempts);
 
 			bool bWasError = pInfo->m_info.m_eState == k_ESteamNetworkingConnectionState_ProblemDetectedLocally || pInfo->m_info.m_eEndReason != k_ESteamNetConnectionEnd_App_Generic;
 			plrConnection.SetDisconnected(bWasError, pMesh, bShouldRetry && bWasError);
+			// plrConnection may be dangling past this point; use the captured locals.
 			
 			// the highest slot player, should leave. In most cases, this is the most recently joined player, but this may not be 100% accurate due to backfills.
 			// TODO_NGMP: In the future, we should pick the most recently joined by timestamp
 			if (bWasError) // only if it wasn't a clean disconnect (e.g. lobby leave)
 			{
-				NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Determined we didn't connect due to an error, Retrying: %d (currently at %d/%d attempts)", bShouldRetry, plrConnection.m_SignallingAttempts, numSignallingAttempts);
+				NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Determined we didn't connect due to an error, Retrying: %d (currently at %d/%d attempts)", bShouldRetry, signallingAttemptsBeforeDisconnect, numSignallingAttempts);
 				
 				// should we retry signaling?
 				if (bShouldRetry)
@@ -123,11 +143,11 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 							// Behavior:
 							// disconnected slot userID is higher than ours, do nothing, they will signal
 							// disconnected slot userID is lower than ours, we signal
-							if ((myUserID > plrConnection.m_userID))
+							if ((myUserID > userID))
 							{
 								NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Send signal start request...");
 
-								pWS->SendData_RequestSignalling(plrConnection.m_userID);
+								pWS->SendData_RequestSignalling(userID);
 							}
 							else
 							{
@@ -143,18 +163,28 @@ void OnSteamNetConnectionStatusChanged(SteamNetConnectionStatusChangedCallback_t
 					}
 				}
 
-				if (!bShouldRetry)
+				if (!bShouldRetry && bPeerLeft)
+				{
+					NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Not retrying, user %lld is no longer in the lobby", userID);
+				}
+				else if (!bShouldRetry && !bWeJoinedLater)
+				{
+					NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Not retrying, user %lld joined after us and will leave", userID);
+				}
+				else if (!bShouldRetry)
 				{
 					NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Not retrying, handling disconnect as failure...");
 
 					NGMP_OnlineServices_LobbyInterface* pLobbyInterface = NGMP_OnlineServicesManager::GetInterface<NGMP_OnlineServices_LobbyInterface>();
-					if (pLobbyInterface != nullptr)
+					if (pLobbyInterface != nullptr && pLobbyInterface->IsHost())
 					{
-						NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Performing local removal for user %lld from lobby due to failure to connect\n", plrConnection.m_userID);
-						if (pLobbyInterface->m_OnCannotConnectToLobbyCallback != nullptr)
-						{
-							pLobbyInterface->m_OnCannotConnectToLobbyCallback();
-						}
+						// the host keeps its lobby; the peer that can't connect is the one to go
+						NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Not leaving, we host this lobby; dropping user %lld only", userID);
+					}
+					else if (pLobbyInterface != nullptr)
+					{
+						NetworkLog(ELogVerbosity::LOG_RELEASE, "[STEAM NETWORKING][DISCONNECT HANDLER] Performing local removal for user %lld from lobby due to failure to connect\n", userID);
+						pLobbyInterface->QueueCannotConnectToLobby();
 					}
 				}
 			}
@@ -868,12 +898,91 @@ int NetworkMesh::SendGamePacket(void* pBuffer, uint32_t totalDataSize, int64_t u
 }
 
 
+// GeneralsX @bugfix Android port 02/10/2026 Issue #31 ("Mesh is not fully connected"). A joining
+// player builds its mesh before the join response, so the TURN credentials in that response
+// never reached the ICE configuration: the constructor set empty ones, nothing set them again,
+// and every connection -- the first and every retry -- was negotiated with no relay on this
+// side. Two players on networks that cannot reach each other directly (mobile CGNAT, filtered
+// Wi-Fi) were then left with only the host's relay, and in practice could not meet at all. The
+// same holds in the upstream PC client.
+//
+// The mesh cannot be built later instead (the service's START_SIGNALLING arrives before the HTTP
+// response, see JoinLobby), so it waits: outbound signalling is queued, inbound signals stay in
+// the WebSocket's buffer, and both resume once ApplyTurnCredentials() has set the relay. A
+// missing response releases them after kTurnCredentialWaitMs without a relay, as before.
+static const int64_t kTurnCredentialWaitMs = 5000;
+
+void NetworkMesh::AwaitTurnCredentials()
+{
+	m_bAwaitingTurnCredentials = true;
+	m_timeAwaitingTurnSince = std::chrono::steady_clock::now();
+	NetworkLog(ELogVerbosity::LOG_RELEASE, "[NGMP] Mesh holding signalling until the join response brings TURN credentials");
+}
+
+void NetworkMesh::ApplyTurnCredentials(const std::string& strUsername, const std::string& strToken)
+{
+	m_strTurnUsername = strUsername;
+	m_strTurnToken = strToken;
+	m_strTurnUsernameString = std::format("{},{}", m_strTurnUsername.c_str(), m_strTurnUsername.c_str());
+	m_strTurnTokenString = std::format("{},{}", m_strTurnToken.c_str(), m_strTurnToken.c_str());
+
+	// New outbound connections take their configuration from the global values when they are
+	// created; inbound ones from the listen socket's, so it is set there explicitly as well (as
+	// upstream 91f21934d does) rather than relying on it still inheriting the global value.
+	SteamNetworkingUtils()->SetGlobalConfigValueString(k_ESteamNetworkingConfig_P2P_TURN_UserList, m_strTurnUsernameString.c_str());
+	SteamNetworkingUtils()->SetGlobalConfigValueString(k_ESteamNetworkingConfig_P2P_TURN_PassList, m_strTurnTokenString.c_str());
+	if (m_hListenSock != k_HSteamListenSocket_Invalid)
+	{
+		SteamNetworkingUtils()->SetConfigValue(k_ESteamNetworkingConfig_P2P_TURN_UserList, k_ESteamNetworkingConfig_ListenSocket,
+			(intptr_t)m_hListenSock, k_ESteamNetworkingConfig_String, m_strTurnUsernameString.c_str());
+		SteamNetworkingUtils()->SetConfigValue(k_ESteamNetworkingConfig_P2P_TURN_PassList, k_ESteamNetworkingConfig_ListenSocket,
+			(intptr_t)m_hListenSock, k_ESteamNetworkingConfig_String, m_strTurnTokenString.c_str());
+	}
+	NetworkLog(ELogVerbosity::LOG_RELEASE, "[NGMP] Mesh TURN credentials applied (username empty=%d, token empty=%d), %zu deferred signalling request(s)",
+		(int)m_strTurnUsername.empty(), (int)m_strTurnToken.empty(), m_vecDeferredSignalling.size());
+
+	ReleaseDeferredSignalling();
+}
+
+void NetworkMesh::ReleaseDeferredSignalling()
+{
+	m_bAwaitingTurnCredentials = false;
+
+	std::vector<std::pair<int64_t, uint16_t>> vecDeferred;
+	vecDeferred.swap(m_vecDeferredSignalling);
+	for (const auto& request : vecDeferred)
+	{
+		StartConnectionSignalling(request.first, request.second);
+	}
+}
+
 void NetworkMesh::StartConnectionSignalling(int64_t remoteUserID, uint16_t preferredPort)
 {
+	if (m_bAwaitingTurnCredentials)
+	{
+		auto itDeferred = std::find_if(m_vecDeferredSignalling.begin(), m_vecDeferredSignalling.end(),
+			[remoteUserID](const std::pair<int64_t, uint16_t>& request) { return request.first == remoteUserID; });
+		if (itDeferred != m_vecDeferredSignalling.end())
+		{
+			itDeferred->second = preferredPort;
+		}
+		else
+		{
+			m_vecDeferredSignalling.emplace_back(remoteUserID, preferredPort);
+		}
+		NetworkLog(ELogVerbosity::LOG_RELEASE, "[NGMP] Signalling to user %lld deferred until TURN credentials arrive", remoteUserID);
+		return;
+	}
+
 	// if we already have a connection to this use, drop it, having a single-direction connection will break signalling
+	// GeneralsX @bugfix Android port 02/10/2026 The attempt count survives the re-signal, or the
+	// retry cap never holds: every re-signal recreated the entry at 1. Upstream d65d9d656.
+	int previousAttempts = 0;
 	auto it = m_mapConnections.find(remoteUserID);
 	if (it != m_mapConnections.end())
 	{
+		previousAttempts = it->second.m_SignallingAttempts;
+
 		if (it->second.m_hSteamConnection != k_HSteamNetConnection_Invalid)
 		{
 			NetworkLog(ELogVerbosity::LOG_RELEASE, "[DC] Closing connection %lld, new connection is being negotiated", remoteUserID);
@@ -964,8 +1073,8 @@ void NetworkMesh::StartConnectionSignalling(int64_t remoteUserID, uint16_t prefe
 	// create a local user type
 	m_mapConnections[remoteUserID] = PlayerConnection(remoteUserID, hSteamConnection);
 
-	// add attempt
-	++m_mapConnections[remoteUserID].m_SignallingAttempts;
+	// add attempt; carried over so the retry cap holds across re-signals
+	m_mapConnections[remoteUserID].m_SignallingAttempts = previousAttempts + 1;
 }
 
 
@@ -1065,8 +1174,20 @@ void NetworkMesh::Tick()
 		fflush(stderr);
 	}
 
-	// Check for incoming signals, and dispatch them
-	if (m_pSignaling != nullptr)
+	if (m_bAwaitingTurnCredentials)
+	{
+		const int64_t waitedMs = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_timeAwaitingTurnSince).count();
+		if (waitedMs >= kTurnCredentialWaitMs)
+		{
+			NetworkLog(ELogVerbosity::LOG_RELEASE, "[NGMP] No TURN credentials after %lld ms, releasing %zu deferred signalling request(s) without a relay",
+				(long long)waitedMs, m_vecDeferredSignalling.size());
+			ReleaseDeferredSignalling();
+		}
+	}
+
+	// Check for incoming signals, and dispatch them. While the TURN credentials are awaited they
+	// stay buffered in the WebSocket: an inbound connection is configured when it is created.
+	if (m_pSignaling != nullptr && !m_bAwaitingTurnCredentials)
 	{
 		m_pSignaling->Poll();
 	}
@@ -1231,6 +1352,13 @@ std::string PlayerConnection::GetConnectionType()
 void PlayerConnection::UpdateState(EConnectionState newState, NetworkMesh* pOwningMesh)
 {
 	m_State = newState;
+
+	// GeneralsX @bugfix Android port 02/10/2026 A link that came up starts its retry budget afresh
+	// if it breaks later. Upstream d65d9d656.
+	if (newState == EConnectionState::CONNECTED_DIRECT)
+	{
+		m_SignallingAttempts = 0;
+	}
 	pOwningMesh->UpdateConnectivity(this);
 
 	NGMP_OnlineServices_LobbyInterface* pLobbyInterface = NGMP_OnlineServicesManager::GetInterface<NGMP_OnlineServices_LobbyInterface>();

@@ -40,6 +40,7 @@
 
 #include "Lib/BaseType.h"
 #include "GXTrace.h"
+#include <chrono>
 #include "OpenALAudioDevice/OpenALAudioManager.h"
 #include "OpenALAudioDevice/OpenALAudioStream.h"
 #include "OpenALAudioCache.h"
@@ -551,14 +552,77 @@ void OpenALAudioManager::reset()
 }
 
 //-------------------------------------------------------------------------------------------------
+// GeneralsX @performance Android port 28/09/2026 Where the audio part of a frame goes. The
+// frame profiler ([GX-PERF] audio=) showed 10-30 ms per frame in battles on the old test
+// phone -- a third of the frame -- with no way to tell which of these steps it was. One
+// [GX-PERF-AUDIO] line per second, only with the perf trace on; the timing itself is a few
+// clock reads per frame.
+namespace {
+struct AudioPerf
+{
+	typedef std::chrono::steady_clock Clock;
+	Clock::time_point windowStart = Clock::now();
+	UnsignedInt frames = 0;
+	double baseMs = 0.0, requestsMs = 0.0, playingMs = 0.0, streamsMs = 0.0, fadeStopMs = 0.0;
+	double worstFrameMs = 0.0;
+	UnsignedInt requests = 0;
+};
+AudioPerf s_audioPerf;
+
+double msSince(AudioPerf::Clock::time_point t)
+{
+	return std::chrono::duration<double, std::milli>(AudioPerf::Clock::now() - t).count();
+}
+}
+
 void OpenALAudioManager::update()
 {
+	const Bool perf = GXTrace::isPerfEnabled();
+	AudioPerf::Clock::time_point t0;
+	if (perf) {
+		t0 = AudioPerf::Clock::now();
+		s_audioPerf.requests += (UnsignedInt)m_audioRequests.size();
+	}
+
 	AudioManager::update();
 	setDeviceListenerPosition();
+	const AudioPerf::Clock::time_point t1 = perf ? AudioPerf::Clock::now() : t0;
 	processRequestList();
+	const AudioPerf::Clock::time_point t2 = perf ? AudioPerf::Clock::now() : t0;
 	processPlayingList();
+	const AudioPerf::Clock::time_point t3 = perf ? AudioPerf::Clock::now() : t0;
 	processFadingList();
 	processStoppedList();
+
+	if (!perf) {
+		return;
+	}
+	const AudioPerf::Clock::time_point t4 = AudioPerf::Clock::now();
+	AudioPerf &p = s_audioPerf;
+	p.baseMs += std::chrono::duration<double, std::milli>(t1 - t0).count();
+	p.requestsMs += std::chrono::duration<double, std::milli>(t2 - t1).count();
+	p.playingMs += std::chrono::duration<double, std::milli>(t3 - t2).count();
+	p.fadeStopMs += std::chrono::duration<double, std::milli>(t4 - t3).count();
+	const double frameMs = std::chrono::duration<double, std::milli>(t4 - t0).count();
+	if (frameMs > p.worstFrameMs) {
+		p.worstFrameMs = frameMs;
+	}
+	++p.frames;
+
+	if (msSince(p.windowStart) < 1000.0) {
+		return;
+	}
+	OpenALAudioCacheStats &c = m_audioCache->stats();
+	const double n = (double)p.frames;
+	GX_PERF_TRACE("[GX-PERF-AUDIO] frames=%u ms/frame: base=%.2f requests=%.2f playing=%.2f (streams=%.2f) fade+stop=%.2f worst=%.2f | "
+		"requests=%u cache: hits=%u misses=%u (native wav %u) decode=%.1fms (open %.1f, max %.1f) evicted=%u dropped=%u used=%uKB/%uKB entries=%u | "
+		"sources 2d=%u 3d=%u streams=%u\n",
+		p.frames, p.baseMs / n, p.requestsMs / n, p.playingMs / n, p.streamsMs / n, p.fadeStopMs / n, p.worstFrameMs,
+		p.requests, c.hits, c.misses, c.nativeWav, c.decodeMs, c.openMs, c.decodeMaxMs, c.evicted, c.dropped,
+		m_audioCache->getCurrentlyUsedSize() / 1024, m_audioCache->getMaxSize() / 1024, m_audioCache->getEntryCount(),
+		(unsigned)m_playingSounds.size(), (unsigned)m_playing3DSounds.size(), (unsigned)m_playingStreams.size());
+	c = OpenALAudioCacheStats();
+	p = AudioPerf();
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1231,6 +1295,22 @@ void OpenALAudioManager::closeBuffer(ALuint bufferToClose)
 	m_audioCache->closeBuffer(bufferToClose);
 }
 
+//-------------------------------------------------------------------------------------------------
+// GeneralsX @bugfix Android port 28/09/2026 Give a finished portion's buffer back to the cache
+// only after taking it off the source. The source is stopped but still holds the buffer, and
+// the next portion or loop is fetched right after -- through the cache, which may evict any
+// unused entry to make room, including this one. OpenAL refuses to delete a buffer attached
+// to a source, so the eviction failed (al::base_exception from alDeleteBuffers under
+// startNextLoop), leaked the PCM, and the cache counted the space as free. Deleting the
+// source on release already detaches it; this covers the source that lives on.
+void OpenALAudioManager::detachAndCloseBuffer(PlayingAudio* playing)
+{
+	if (playing->m_source != 0 && playing->m_bufferHandle != 0)
+		alSourcei(playing->m_source, AL_BUFFER, 0);
+	closeBuffer(playing->m_bufferHandle);
+	playing->m_bufferHandle = 0;
+}
+
 
 //-------------------------------------------------------------------------------------------------
 PlayingAudio* OpenALAudioManager::allocatePlayingAudio(void)
@@ -1714,7 +1794,7 @@ void OpenALAudioManager::notifyOfAudioCompletion(UnsignedInt audioCompleted, Uns
 	playing->m_audioEventRTS->advanceNextPlayPortion();
 	if (playing->m_audioEventRTS->getNextPlayPortion() != PP_Done) {
 		if (playing->m_type == PAT_Sample) {
-			closeBuffer(playing->m_bufferHandle);	// close it so as not to leak it.
+			detachAndCloseBuffer(playing);	// close it so as not to leak it.
 			playing->m_bufferHandle = playSample(playing->m_audioEventRTS, playing);
 
 			// If we don't have a file now, then we should drop to the stopped status so that 
@@ -1724,7 +1804,7 @@ void OpenALAudioManager::notifyOfAudioCompletion(UnsignedInt audioCompleted, Uns
 			}
 		}
 		else if (playing->m_type == PAT_3DSample) {
-			closeBuffer(playing->m_bufferHandle);	// close it so as not to leak it.
+			detachAndCloseBuffer(playing);	// close it so as not to leak it.
 			playing->m_bufferHandle = playSample3D(playing->m_audioEventRTS, playing);
 
 			// If we don't have a file now, then we should drop to the stopped status so that 
@@ -2607,6 +2687,7 @@ void OpenALAudioManager::processPlayingList(void)
 		}
 	}
 
+	const AudioPerf::Clock::time_point streamsStart = AudioPerf::Clock::now();
 	for (it = m_playingStreams.begin(); it != m_playingStreams.end(); ) {
 		playing = (*it);
 		if (!playing)
@@ -2662,6 +2743,8 @@ void OpenALAudioManager::processPlayingList(void)
 			++it;
 		}
 	}
+
+	s_audioPerf.streamsMs += msSince(streamsStart);
 
 	// GeneralsX @bugfix 14/06/2026 Backstop (belt-and-braces): the proper fix is the EOF
 	// propagation in OpenALAudioStream (a finished one-shot now reaches AL_STOPPED so the
@@ -3021,8 +3104,7 @@ Real OpenALAudioManager::getEffectiveVolume(AudioEventRTS* event) const
 //-------------------------------------------------------------------------------------------------
 Bool OpenALAudioManager::startNextLoop(PlayingAudio* looping)
 {
-	closeBuffer(looping->m_bufferHandle);
-	looping->m_bufferHandle = 0;
+	detachAndCloseBuffer(looping);
 
 	if (looping->m_requestStop) {
 		return false;

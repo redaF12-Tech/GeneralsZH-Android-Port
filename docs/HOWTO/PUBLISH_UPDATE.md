@@ -8,12 +8,35 @@ screen; the engine is downloaded only by the Home check.
 - **Settings** (`update/config.json` in the main tree): values the engine reads at startup. Today
   the STUN and TURN server lists (`stun_servers`, `turn_servers`), the PC client checksum for
   cross-play (`pc_exe_crc`, computed with `scripts/update/pc-exe-crc.py`) and the community data
-  patch manifest address (`datapack_manifest_url`). A missing key keeps the value built in.
+  patch manifest address (`datapack_manifest_url`), and whether the current PC release ends its
+  logic checksum with the GeneralsOnline revision tag (`logic_crc_revision`, `1`/`0`; 100126 does
+  not -- used only when the launcher has not read it from the data package's PC executable).
+  A missing key keeps the value built in.
   The community data patch itself comes from that manifest and is updated on the multiplayer
   screen (GeneralsOnline account → Online game data), which checks it by itself and installs a
   newer one on Wi-Fi; the Updates card only says when a newer one is out. It also computes the PC checksum
   from the PC executable inside that patch, and that number wins over `pc_exe_crc`, so a new PC
   release normally needs nothing published at all; `pc_exe_crc` covers players without the patch.
+- **Data package manifest mirror**: while `datapack_manifest_url` points at the updates branch
+  (`.../updates/datapack-manifest.json`), `publish-update.py` copies the GeneralsOnline CDN manifest
+  there with its fields trimmed -- the CDN's `sha256` starts with a space, and launchers up to 1.3.0
+  compare it untrimmed, failing every install with "checksum mismatch". The script downloads the
+  package and refuses to publish unless the trimmed digest and size match it. Newer launchers ignore
+  a mirror address and read the CDN themselves. The mirror is as current as the last publish: after
+  a new GeneralsOnline release, publish settings again so 1.3.0 players see it. Point the key back at
+  `https://cdn.playgenerals.online/manifest.json` once the CDN fixes the digest.
+- **Support card** (launchers built from 03/10/2026 on): the Help page's "Support the project"
+  card comes entirely from `update/support.json` -- its text in every language, and the
+  addresses/links. `publish-update.py` copies the file to `support/<digest>.json` (a new name for every content, so
+  GitHub's five-minute per-file cache cannot pair a new manifest with the old file) and writes its
+  SHA-256 into the signed manifest, so it is as trusted as the manifest. Nothing of it is in the
+  APK, so a new or retired address, a reworded text, or a language added or dropped is just a
+  settings publish. Format: `text` maps a language tag (`en`, `ru`, `pt-BR`, `isv`, ...) to
+  `title`, `body`, `warning`, `copy_hint`, `copied` (`%s` = the entry's label); `entries` is a list
+  of `{ "label", "value" }`, where `label` is a string or a per-language object. A value starting
+  with `https://` opens in the browser, anything else is copied. The player's language falls back
+  to `en`, which the script requires. Deleting `update/support.json` before a publish withdraws
+  the card everywhere.
 - **Engine**: a newer `libmain.so` / `libmain60.so`. It is downloaded into the app's private
   storage and used from the next game start, instead of the engine inside the APK.
 

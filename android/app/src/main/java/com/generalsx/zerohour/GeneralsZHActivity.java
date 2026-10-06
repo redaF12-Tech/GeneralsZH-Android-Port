@@ -34,8 +34,10 @@ package com.generalsx.zerohour;
 import android.content.Intent;
 import android.content.res.AssetManager;
 import android.graphics.Rect;
+import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.view.Display;
+import android.view.KeyEvent;
 import android.view.DisplayCutout;
 import android.view.RoundedCorner;
 import android.view.WindowInsets;
@@ -66,6 +68,87 @@ public class GeneralsZHActivity extends SDLActivity {
     static final String EXTRA_FAST_TO = "gx_fast_to";
     static final String EXTRA_AUTO_QUIT = "gx_auto_quit";
     static final String EXTRA_CRC_EVERY_FRAME = "gx_crc_every_frame";
+
+    // GeneralsX @bugfix Android LAN: many Wi-Fi drivers drop broadcast frames unless an
+    // app holds a MulticastLock, which hides LAN games. Called from native code
+    // (udp.cpp) with true when a LAN broadcast socket opens and false when it closes,
+    // so the lock is only held while the LAN lobby or a LAN match is active.
+    private WifiManager.MulticastLock lanMulticastLock;
+
+    @SuppressWarnings("unused") // called via JNI
+    public synchronized void setLanMulticastLock(boolean held) {
+        try {
+            if (lanMulticastLock == null) {
+                WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+                if (wifi == null) return;
+                lanMulticastLock = wifi.createMulticastLock("GeneralsZH-LAN");
+                lanMulticastLock.setReferenceCounted(true);
+            }
+            if (held) {
+                lanMulticastLock.acquire();
+            } else if (lanMulticastLock.isHeld()) {
+                lanMulticastLock.release();
+            }
+            Log.i(TAG, "LAN multicast lock " + (lanMulticastLock.isHeld() ? "held" : "released"));
+        } catch (RuntimeException e) {
+            Log.w(TAG, "LAN multicast lock unavailable", e);
+        }
+    }
+
+    // GeneralsX @feature Android port 02/10/2026 The game's text fields are edited in an
+    // EditText bar (cursor, selection, copy, paste) -- see TextEditorBar and the engine's
+    // AndroidTextEditor.cpp. The engine calls show/hide from its own thread; the bar reports
+    // back through the two native methods, which only queue for the engine's next frame.
+    private TextEditorBar textEditorBar;
+
+    private static native void nativeTextEditorChanged(String text, int serial);
+    private static native void nativeTextEditorDone(String text, boolean submit, int serial);
+
+    @SuppressWarnings("unused") // called via JNI
+    public void showTextEditor(final String text, final int maxLength, final int flags, final int serial) {
+        runOnUiThread(() -> {
+            if (mLayout == null) {
+                return;
+            }
+            if (textEditorBar == null) {
+                textEditorBar = new TextEditorBar(this, mLayout, new TextEditorBar.Listener() {
+                    @Override public void onChanged(String changed, int changedSerial) {
+                        nativeTextEditorChanged(changed, changedSerial);
+                    }
+                    @Override public void onDone(String finished, boolean submit, int doneSerial) {
+                        nativeTextEditorDone(finished, submit, doneSerial);
+                    }
+                }, () -> {
+                    if (mSurface != null) {
+                        mSurface.requestFocus();
+                    }
+                });
+            }
+            textEditorBar.show(text, maxLength, flags, serial);
+        });
+    }
+
+    @SuppressWarnings("unused") // called via JNI
+    public void hideTextEditor() {
+        runOnUiThread(() -> {
+            if (textEditorBar != null) {
+                textEditorBar.hide();
+            }
+        });
+    }
+
+    // Back closes the bar (keeping the text) instead of reaching the game. While the keyboard
+    // is up, the keyboard takes the first Back itself.
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK && textEditorBar != null && textEditorBar.isShown()) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                textEditorBar.finish(false);
+            }
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
 
     // singleInstance: a relaunch from the Replay check screen can arrive here instead of
     // creating a new activity; keep the newest launch's extras for getArguments().
@@ -110,7 +193,7 @@ public class GeneralsZHActivity extends SDLActivity {
     // Measure the safe insets of this window -- the cutout's safe insets, and on Android 12+
     // the part of each rounded corner a line of text at the edge would run into -- and pass
     // them as fractions of the window, "left,top,right,bottom", for Common/GXSafeArea.h.
-    // Returns null when nothing is known (Android 9, or no cutout and square corners).
+    // Returns null when nothing is known (Android 9).
     private String computeSafeInsetsArgument() {
         try {
             int width;
@@ -137,6 +220,7 @@ public class GeneralsZHActivity extends SDLActivity {
             } else {
                 return null;
             }
+            boolean cornersKnown = false;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 // A text line hugging an edge meets the corner arc about 0.3 of the radius in
                 // (1 - cos 45 degrees); apply that to both sides of every corner.
@@ -150,12 +234,25 @@ public class GeneralsZHActivity extends SDLActivity {
                 for (int[] c : corners) {
                     RoundedCorner corner = display != null ? display.getRoundedCorner(c[0]) : null;
                     if (corner == null) continue;
+                    cornersKnown = true;
                     int inset = (int) Math.ceil(corner.getRadius() * 0.3);
                     if (c[1] == 1) left = Math.max(left, inset);
                     if (c[2] == 1) top = Math.max(top, inset);
                     if (c[3] == 1) right = Math.max(right, inset);
                     if (c[4] == 1) bottom = Math.max(bottom, inset);
                 }
+            }
+            // GeneralsX @bugfix Android port 28/09/2026 Before Android 12 the system cannot tell
+            // the corner radius, and some Android 12+ firmwares report none: on such a phone the
+            // FPS/clock line sat at the very top edge and was cut off (the old test phone, a
+            // teardrop notch that gave a left inset only). Assume a typical phone corner, a radius
+            // of 8% of the short side, and keep the same 0.3 of it clear on every side.
+            if (!cornersKnown && width > 0 && height > 0) {
+                int inset = (int) Math.ceil(Math.min(width, height) * 0.08 * 0.3);
+                left = Math.max(left, inset);
+                top = Math.max(top, inset);
+                right = Math.max(right, inset);
+                bottom = Math.max(bottom, inset);
             }
             if (width <= 0 || height <= 0 || (left | top | right | bottom) == 0) {
                 return null;

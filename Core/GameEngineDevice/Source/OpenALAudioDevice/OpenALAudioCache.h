@@ -70,6 +70,21 @@ struct OpenAudioFile
 	const AudioEventInfo* m_eventInfo;	// Not mutable, unlike the one on AudioEventRTS.
 	int m_totalSamples = 0;
 	float m_duration = 0.0f;
+	UnsignedInt m_lastUse = 0;	///< cache clock at the last open, for least-recently-used eviction
+};
+
+// GeneralsX @performance Android port 28/09/2026 What the sample cache did since the last
+// [GX-PERF-AUDIO] line (OpenALAudioManager::update). Reset by the reader.
+struct OpenALAudioCacheStats
+{
+	UnsignedInt hits = 0;
+	UnsignedInt misses = 0;       ///< opened and decoded from the file
+	double decodeMs = 0.0;        ///< time spent on those misses (open + FFmpeg decode + upload)
+	double decodeMaxMs = 0.0;     ///< the single slowest miss
+	double openMs = 0.0;          ///< part of decodeMs spent finding and opening the file
+	UnsignedInt evicted = 0;      ///< entries freed to make room
+	UnsignedInt dropped = 0;      ///< decoded but no room could be made: thrown away, sound not played
+	UnsignedInt nativeWav = 0;    ///< misses decoded by the built-in WAV reader rather than FFmpeg
 };
 
 struct OpenFileInfo
@@ -109,6 +124,8 @@ public:
 	// outside the audio cache. They should be used as a rough estimate only.
 	UnsignedInt getCurrentlyUsedSize() const { return m_currentlyUsedSize; }
 	UnsignedInt getMaxSize() const { return m_maxSize; }
+	UnsignedInt getEntryCount() const { return (UnsignedInt)m_openFiles.size(); }
+	OpenALAudioCacheStats &stats() { return m_stats; }
 
 	static void getWaveData(void* wave_data,
 		uint8_t*& data,
@@ -125,8 +142,12 @@ protected:
 
 	// FFmpeg related
 	Bool decodeFFmpeg(OpenAudioFile* fileToDecode);
+	// PCM and IMA ADPCM .wav, read directly (see the definition)
+	Bool decodeWavNative(const uint8_t* data, size_t size, OpenAudioFile* fileToDecode);
 
 	OpenFilesHash m_openFiles;
 	UnsignedInt m_currentlyUsedSize;
 	UnsignedInt m_maxSize;
+	UnsignedInt m_useClock = 0;
+	OpenALAudioCacheStats m_stats;
 };

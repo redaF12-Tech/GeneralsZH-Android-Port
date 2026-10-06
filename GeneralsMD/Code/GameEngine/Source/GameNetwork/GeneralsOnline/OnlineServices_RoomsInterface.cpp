@@ -1,4 +1,7 @@
 #include "GameNetwork/GeneralsOnline/NGMP_interfaces.h"
+#if defined(__ANDROID__) || defined(__linux__)
+#include <link.h>
+#endif
 #include "GameNetwork/GeneralsOnline/NGMP_include.h"
 // GeneralsX @bugfix Android port 10/07/2026 NetworkPacket.h/NetworkBitstream.h
 // (P2P transport) deferred, see NGMP_include.h -- unused in this file beyond
@@ -20,6 +23,7 @@
 #include "GameNetwork/GeneralsOnline/HTTP/HTTPManager.h"
 #include "GameNetwork/GameSpy/PeerDefs.h"
 #include "GameNetwork/GameSpyOverlay.h"
+#include "Common/GameEngine.h"
 
 
 WebSocket::WebSocket()
@@ -95,8 +99,12 @@ void WebSocket::Connect(const char* url, bool bIsReconnect, std::function<void(v
 		// crash. Same fix applied to the other two int/long curl mismatches
 		// this module had (Tick() below, HTTPRequest.cpp's m_responseCode).
 		long httpResponseCode = -1;
-		m_strWebsocketAddr = std::string(url);
-		curl_easy_setopt(m_pCurlWS, CURLOPT_URL, url);
+		// GeneralsX @bugfix Android port 03/10/2026 A retry passes m_strWebsocketAddr.c_str() as url,
+		// and the assignment below freed that buffer before curl read it: the last retry of a failed
+		// connect went out as "URL using bad/illegal format or missing URL". Copy first, use the copy.
+		std::string strUrl(url);
+		m_strWebsocketAddr = strUrl;
+		curl_easy_setopt(m_pCurlWS, CURLOPT_URL, m_strWebsocketAddr.c_str());
 
 		curl_easy_getinfo(m_pCurlWS, CURLINFO_RESPONSE_CODE, &httpResponseCode);
 
@@ -392,6 +400,35 @@ static bool JSONGetAsObject(nlohmann::json& jsonObject, T* outMsg)
 	return false;
 }
 
+// GeneralsX @feature Android port 02/10/2026 See WS_KEEPALIVE. Every object the dynamic linker
+// has mapped into this process (the engine, SDL, the GPU driver, system libraries), with the size
+// of its loaded segments -- the counterpart of the PC client's EnumProcessModulesEx list.
+static std::vector<std::vector<std::string>> GetLoadedModulesForProbe()
+{
+	std::vector<std::vector<std::string>> vecModules;
+#if defined(__ANDROID__) || defined(__linux__)
+	dl_iterate_phdr([](struct dl_phdr_info* info, size_t, void* data) -> int
+		{
+			auto* pModules = static_cast<std::vector<std::vector<std::string>>*>(data);
+			if (info->dlpi_name == nullptr || info->dlpi_name[0] == '\0')
+			{
+				return 0; // the main executable (app_process) and the vdso have no path here
+			}
+			uint64_t loadedSize = 0;
+			for (int i = 0; i < info->dlpi_phnum; ++i)
+			{
+				if (info->dlpi_phdr[i].p_type == PT_LOAD)
+				{
+					loadedSize += info->dlpi_phdr[i].p_memsz;
+				}
+			}
+			pModules->push_back({ std::string(info->dlpi_name), std::to_string(loadedSize) });
+			return 0;
+		}, &vecModules);
+#endif
+	return vecModules;
+}
+
 //static std::string strSignal = "str:1 ";
 void WebSocket::Tick()
 {
@@ -551,8 +588,7 @@ void WebSocket::Tick()
                         }
                         else // give up for real
                         {
-                            NetworkLog(ELogVerbosity::LOG_RELEASE, "Going to teardown (initial connect)");
-                            NGMP_OnlineServicesManager::GetInstance()->SetPendingFullTeardown(EGOTearDownReason::LOST_CONNECTION);
+                            NetworkLog(ELogVerbosity::LOG_RELEASE, "Going to teardown (initial connect, HTTP %ld)", httpResponseCode);
                             m_bConnected = false;
                             m_vecWSPartialBuffer.clear();
 
@@ -567,10 +603,14 @@ void WebSocket::Tick()
                             // (see above), so without this the "Connecting..."
                             // box put up by GeneralsOnline_AndroidGlue.cpp
                             // would just sit there forever with no feedback.
-                            ClearGSMessageBoxes();
-                            UnicodeString msg;
-                            msg.format(UnicodeString(L"Could not connect to GeneralsOnline (%hs)."), curl_easy_strerror(m->data.result));
-                            GSMessageBoxOk(UnicodeString(L"GeneralsOnline"), msg, nullptr);
+                            //
+                            // GeneralsX @bugfix Android port 03/10/2026 ... and through
+                            // AbortGeneralsOnlineStart: the services are torn down and the
+                            // main menu gets its buttons back (they stayed hidden, and only
+                            // killing the game helped), and a refused sign-in (401/403 on
+                            // the upgrade) says so instead of quoting curl.
+                            AbortGeneralsOnlineStart(httpResponseCode == 401 || httpResponseCode == 403,
+                                curl_easy_strerror(m->data.result));
                         }
                     }
                     else
@@ -850,6 +890,13 @@ void WebSocket::Tick()
 
 									case EWebSocketMessageID::START_GAME:
 									{
+										// GeneralsX @feature Android port 02/10/2026 Where the loading screen's
+										// screenshot goes; the match starts whether or not it is there.
+										if (jsonObject.contains("screenshot_url") && jsonObject["screenshot_url"].is_string())
+										{
+											NGMP_OnlineServicesManager::GetInstance()->SetScreenshotS3URI_StartMatch(jsonObject["screenshot_url"].get<std::string>());
+										}
+
 										NGMP_OnlineServices_LobbyInterface* pLobbyInterface = NGMP_OnlineServicesManager::GetInterface<NGMP_OnlineServices_LobbyInterface>();
 										if (pLobbyInterface != nullptr && pLobbyInterface->m_callbackStartGamePacket != nullptr)
 										{
@@ -860,8 +907,26 @@ void WebSocket::Tick()
 
 									case EWebSocketMessageID::FULL_MESH_CONNECTIVITY_CHECK_RESPONSE:
 									{
+										// GeneralsX @bugfix Android port 02/10/2026 Echo the check's id and attempt.
+										// Without them the service files the reply as a legacy client's, counts it
+										// for the first attempt only, and turns off the retry attempt for the whole
+										// lobby (FullMeshCheckProtocol.ShouldRetry): one slow link was a failed start
+										// in any lobby with this client in it. Also report the peers still
+										// negotiating, so the service waits for them (upstream 7fa4893be).
+										int64_t meshCheckID = 0;
+										int meshCheckAttempt = 0;
+										if (jsonObject.contains("mesh_check_id") && jsonObject["mesh_check_id"].is_number_integer())
+										{
+											meshCheckID = jsonObject["mesh_check_id"].get<int64_t>();
+										}
+										if (jsonObject.contains("attempt") && jsonObject["attempt"].is_number_integer())
+										{
+											meshCheckAttempt = jsonObject["attempt"].get<int>();
+										}
+
 										// respond with our state
 										std::vector<int64_t> connectivityMap;
+										std::vector<int64_t> connectingMap;
 										NetworkMesh* pMesh = nullptr;
 										NGMP_OnlineServices_LobbyInterface* pLobbyInterface = NGMP_OnlineServicesManager::GetInterface<NGMP_OnlineServices_LobbyInterface>();
 										if (pLobbyInterface != nullptr)
@@ -890,6 +955,11 @@ void WebSocket::Tick()
 														connectivityMap.push_back(userID);
 													}
 												}
+												else if (playerConn.GetState() == EConnectionState::CONNECTING_DIRECT || playerConn.GetState() == EConnectionState::FINDING_ROUTE)
+												{
+													// still negotiating: lets the service hold off restarting it
+													connectingMap.push_back(userID);
+												}
 											}
 										}
 #else
@@ -899,7 +969,10 @@ void WebSocket::Tick()
 										// send response
 										nlohmann::json j;
 										j["msg_id"] = EWebSocketMessageID::FULL_MESH_CONNECTIVITY_CHECK_RESPONSE;
+										j["mesh_check_id"] = meshCheckID;
+										j["attempt"] = meshCheckAttempt;
 										j["connectivity_map"] = connectivityMap;
+										j["connecting_map"] = connectingMap;
 										std::string strBody = j.dump();
 
 										Send(strBody.c_str());
@@ -1131,7 +1204,14 @@ void WebSocket::Tick()
 									{
 										NetworkLog(ELogVerbosity::LOG_RELEASE, "[PROBE] GOT PROBE REQUEST!");
 
-										NGMP_OnlineServicesManager::GetInstance()->CaptureScreenshotForProbe(EScreenshotType::SCREENSHOT_TYPE_GAMEPLAY);
+										// GeneralsX @feature Android port 02/10/2026 The probe carries the presigned
+										// URL its screenshot goes to (see S3ScreenshotEntry).
+										std::string strProbeURI;
+										if (jsonObject.contains("url") && jsonObject["url"].is_string())
+										{
+											strProbeURI = jsonObject["url"].get<std::string>();
+										}
+										NGMP_OnlineServicesManager::GetInstance()->CaptureScreenshotForProbe(EScreenshotType::SCREENSHOT_TYPE_GAMEPLAY, strProbeURI);
 
 										// service needs the response
                                         nlohmann::json j;
@@ -1139,6 +1219,21 @@ void WebSocket::Tick()
 										j["timestamp"] = "0";
                                         std::string strBody = j.dump();
                                         Send(strBody.c_str());
+									}
+									break;
+
+									case EWebSocketMessageID::WS_KEEPALIVE:
+									{
+										// GeneralsX @feature Android port 02/10/2026 The service's second anti-cheat
+										// probe: the modules loaded in the game's process, as [path, size] pairs.
+										// The PC client lists its DLLs; this lists the shared objects mapped into
+										// this process, which is the same question asked honestly on Android. Not
+										// answering is recorded against the account as a missing probe response.
+										nlohmann::json j;
+										j["msg_id"] = EWebSocketMessageID::WS_KEEPALIVE_CLIENT;
+										j["resp"] = GetLoadedModulesForProbe();
+										std::string strBody = j.dump();
+										Send(strBody.c_str());
 									}
 									break;
 

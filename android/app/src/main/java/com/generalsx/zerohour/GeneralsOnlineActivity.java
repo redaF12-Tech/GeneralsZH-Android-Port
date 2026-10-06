@@ -33,6 +33,9 @@
 // picks Steam/Discord/GameReplays on the site and comes back. Ported that
 // exact flow here, including the refresh_token cache so repeat logins skip
 // the browser entirely (LoginWithToken).
+//
+// GeneralsX @feature Android port 28/09/2026 This activity also owns the
+// per-card data-mod scan added by MYSOREZ-Up-Steam (dataPackModsSwitch etc.).
 
 package com.generalsx.zerohour;
 
@@ -72,7 +75,6 @@ public class GeneralsOnlineActivity extends Activity {
 
     private static final String PREFS_NAME = GeneralsOnlineSession.PREFS_NAME;
     private static final String PREF_SESSION_TOKEN = GeneralsOnlineSession.PREF_SESSION_TOKEN;
-    private static final String PREF_REFRESH_TOKEN = GeneralsOnlineSession.PREF_REFRESH_TOKEN;
     private static final String PREF_USER_ID = GeneralsOnlineSession.PREF_USER_ID;
     private static final String PREF_DISPLAY_NAME = GeneralsOnlineSession.PREF_DISPLAY_NAME;
     private static final String PREF_WS_URI = GeneralsOnlineSession.PREF_WS_URI;
@@ -87,6 +89,11 @@ public class GeneralsOnlineActivity extends Activity {
     private com.google.android.material.button.MaterialButton dataPackButton;
     private com.google.android.material.button.MaterialButton dataPackDeleteButton;
     private com.google.android.material.materialswitch.MaterialSwitch dataPackSwitch;
+    // GeneralsX @feature Android port 28/09/2026 "Use the patch with mods too" and which data mod
+    // the game folder has (DataPackInstaller.findDataMod, scanned off the UI thread).
+    private com.google.android.material.materialswitch.MaterialSwitch dataPackModsSwitch;
+    private TextView dataPackModStatus;
+    private String detectedDataMod;
     private TextView dataPackChip;
     private boolean dataPackBusy;
     private boolean dataPackPrompted;
@@ -249,6 +256,30 @@ public class GeneralsOnlineActivity extends Activity {
         dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
         dataPackSwitch.setOnCheckedChangeListener(this::onDataPackToggled);
 
+        // A data mod (Contra and the like) keeps the patch out by default: its INI files and the
+        // patch's would mix. This is the player's override, for a mod made for the patch.
+        dataPackModsSwitch = UiKit.switchRow(card,
+            getString(R.string.online_switch_datapacks_mods),
+            getString(R.string.online_switch_datapacks_mods_desc));
+        dataPackModsSwitch.setChecked(DataPackInstaller.isEnabledWithMods());
+        dataPackModsSwitch.setOnCheckedChangeListener((button, checked) -> {
+            if (!DataPackInstaller.setEnabledWithMods(this, checked)) {
+                Toast.makeText(this, R.string.online_datapacks_switch_failed,
+                    Toast.LENGTH_LONG).show();
+                button.setChecked(!checked);
+            }
+            refreshDataPackCard();
+        });
+        dataPackModStatus = UiKit.supporting(card, "");
+        final String gamePath = SetupActivity.getSavedGamePath(this);
+        new Thread(() -> {
+            final String mod = DataPackInstaller.findDataMod(gamePath);
+            handler.post(() -> {
+                detectedDataMod = mod;
+                refreshDataPackCard();
+            });
+        }, "gx-mod-scan").start();
+
         refreshDataPackCard();
         maybeAutoCheckDataPacks();
     }
@@ -383,9 +414,54 @@ public class GeneralsOnlineActivity extends Activity {
         // it (refreshDataPackCard runs on every card refresh). It mirrors
         // isEnabled() silently: a raw setChecked here would re-enter the
         // toggle handler and could undo the change it reflects.
+        // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 While a
+        // mod parks the patch the switch reads FALSE and is DISABLED, same
+        // rule as the Home tab's mod card; clearing the mod folder re-enables
+        // it (refreshDataPackCard runs on every card refresh). It mirrors
+        // isEnabled() silently: a raw setChecked here would re-enter the
+        // toggle handler and could undo the change it reflects.
+        // GeneralsX @bugfix Android datapack-switch-state 30/09/2026 While a
+        // mod parks the patch the switch reads FALSE and is DISABLED, same
+        // rule as the Home tab's mod card; clearing the mod folder re-enables
+        // it (refreshDataPackCard runs on every card refresh). It mirrors
+        // isEnabled() silently: a raw setChecked here would re-enter the
+        // toggle handler and could undo the change it reflects.
         dataPackSwitch.setEnabled(installed && !DataPackInstaller.modOwnsIniSpace(this));
         UiKit.setSwitchCheckedSilently(dataPackSwitch, this::onDataPackToggled,
             DataPackInstaller.isEnabled());
+        dataPackSwitch.setEnabled(installed);
+        dataPackSwitch.setChecked(DataPackInstaller.isEnabled());
+        if (dataPackModsSwitch != null) {
+            final boolean withMods = DataPackInstaller.isEnabledWithMods();
+            dataPackModsSwitch.setEnabled(installed && DataPackInstaller.isEnabled());
+            dataPackModsSwitch.setChecked(withMods);
+            if (detectedDataMod == null) {
+                dataPackModStatus.setText(R.string.online_datapacks_mod_none);
+            } else {
+                dataPackModStatus.setText(getString(withMods
+                    ? R.string.online_datapacks_mod_found_forced
+                    : R.string.online_datapacks_mod_found_skipped, detectedDataMod));
+            }
+        }
+        // MYSOREZ-Up-Steam refresh block for the mod-scan switch is kept
+        // because the mod-scan fields exist in this file and are wired above.
+        // The telegram-community-link line above keeps strict disabled state
+        // while a mod owns the INI space; the MYSOREZ block keeps the
+        // mod-scan UI re-evaluation.
+        // end MYSOREZ block
+        //
+        if (dataPackModsSwitch != null) {
+            final boolean withMods = DataPackInstaller.isEnabledWithMods();
+            dataPackModsSwitch.setEnabled(installed && DataPackInstaller.isEnabled());
+            dataPackModsSwitch.setChecked(withMods);
+            if (detectedDataMod == null) {
+                dataPackModStatus.setText(R.string.online_datapacks_mod_none);
+            } else {
+                dataPackModStatus.setText(getString(withMods
+                    ? R.string.online_datapacks_mod_found_forced
+                    : R.string.online_datapacks_mod_found_skipped, detectedDataMod));
+            }
+        }
 
         if (!signedIn) {
             setChip(dataPackChip, R.drawable.ic_gzh_info,
@@ -628,8 +704,7 @@ public class GeneralsOnlineActivity extends Activity {
     // browser again -- mirrors BeginLogin()'s GetCredentials()/LoginWithToken
     // branch in the reference client.
     private void maybeSilentReauth() {
-        String refreshToken = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .getString(PREF_REFRESH_TOKEN, null);
+        String refreshToken = GeneralsOnlineSession.currentRefreshToken(this);
         if (refreshToken == null || refreshToken.isEmpty() || busy) {
             return;
         }

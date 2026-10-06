@@ -78,6 +78,13 @@ final class DataPackInstaller {
      */
     static String manifestUrl(Context ctx) {
         String url = UpdateManager.remoteConfig(ctx, "datapack_manifest_url", MANIFEST_URL);
+        // GeneralsX @bugfix Android port 03/10/2026 A copy on the updates branch is published for
+        // launchers up to 1.3.0, which compare the CDN's sha256 untrimmed (it starts with a space)
+        // and so fail every install with "checksum mismatch". This launcher trims it, and the copy
+        // is only as current as the last settings publish, so it reads the CDN itself.
+        if (url.startsWith(UpdateManager.BASE_URL)) {
+            return MANIFEST_URL;
+        }
         return url.startsWith("https://") ? url : MANIFEST_URL;
     }
 
@@ -200,6 +207,106 @@ final class DataPackInstaller {
             NetworkTrace.write(ctx, "[datapack] could not disable: " + e);
             return false;
         }
+    }
+
+    // GeneralsX @feature Android port 28/09/2026 "Use the patch with mods too". The engine leaves
+    // the patch out when a data mod is installed (ArchiveFileSystem::loadMods: the patch's INI
+    // directories would mix with the mod's files); this marker, beside the disable one, is the
+    // player's override for a mod built on top of the GeneralsOnline patch.
+    private static final String WITH_MODS_MARKER = "gx_community_patch_with_mods.txt";
+
+    static boolean isEnabledWithMods() {
+        return new File(userDataDir(), WITH_MODS_MARKER).isFile();
+    }
+
+    /** Returns true if the state now matches what was asked for. */
+    static boolean setEnabledWithMods(Context ctx, boolean enabled) {
+        File marker = new File(userDataDir(), WITH_MODS_MARKER);
+        if (!enabled) {
+            boolean ok = !marker.exists() || marker.delete();
+            NetworkTrace.write(ctx, "[datapack] patch with mods disabled=" + ok);
+            return ok;
+        }
+        try {
+            File parent = marker.getParentFile();
+            if (parent != null && !parent.isDirectory()) {
+                parent.mkdirs();
+            }
+            try (FileWriter out = new FileWriter(marker)) {
+                out.write("The community data patch is mounted even with a data mod while this file exists.\n");
+            }
+            NetworkTrace.write(ctx, "[datapack] patch with mods enabled");
+            return true;
+        } catch (IOException e) {
+            NetworkTrace.write(ctx, "[datapack] could not enable with mods: " + e);
+            return false;
+        }
+    }
+
+    /**
+     * The first archive in the game folder that the engine treats as a data mod, or null: the
+     * same rule as ArchiveFileSystem::loadMods -- a name starting with '!' (how mods sort ahead
+     * of the retail archives) and at least one file under Data\INI\. UI and texture add-ons with
+     * the same prefix carry no INI and do not count. Reads only the archives' file tables.
+     */
+    static String findDataMod(String gamePath) {
+        if (gamePath == null) {
+            return null;
+        }
+        File[] files = new File(gamePath).listFiles();
+        if (files == null) {
+            return null;
+        }
+        java.util.Arrays.sort(files);
+        for (File f : files) {
+            String name = f.getName();
+            if (!f.isFile() || !name.startsWith("!") || !name.toLowerCase(Locale.US).endsWith(".big")) {
+                continue;
+            }
+            if (bigHasIniFiles(f)) {
+                return name;
+            }
+        }
+        return null;
+    }
+
+    // BIG file table: "BIGF"/"BIG4", archive size (LE), file count (BE), header size (BE), then per
+    // file: offset (BE), size (BE), zero-terminated path.
+    private static boolean bigHasIniFiles(File big) {
+        try (java.io.DataInputStream in = new java.io.DataInputStream(
+                new BufferedInputStream(new java.io.FileInputStream(big), 64 * 1024))) {
+            byte[] magic = new byte[4];
+            in.readFully(magic);
+            if (magic[0] != 'B' || magic[1] != 'I' || magic[2] != 'G') {
+                return false;
+            }
+            in.readInt(); // archive size, little-endian, unused
+            final int count = in.readInt();
+            in.readInt(); // header size
+            if (count < 0 || count > 200000) {
+                return false;
+            }
+            StringBuilder path = new StringBuilder();
+            for (int i = 0; i < count; i++) {
+                in.readInt();
+                in.readInt();
+                path.setLength(0);
+                int c;
+                while ((c = in.read()) > 0) {
+                    path.append((char) c);
+                }
+                if (c < 0) {
+                    return false;
+                }
+                String lower = path.toString().toLowerCase(Locale.US).replace('/', '\\');
+                if (lower.startsWith("data\\ini\\")) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            return false;
+        }
+        return false;
     }
 
     /**
@@ -336,7 +443,9 @@ final class DataPackInstaller {
             String version = manifest.optString("version", "");
             String downloadUrl = manifest.optString("download_url", "");
             long expectedSize = manifest.optLong("size", -1);
-            String expectedSha = manifest.optString("sha256", "");
+            // GeneralsX @bugfix Android port 02/10/2026 Trimmed: the 100126_QFE3 manifest publishes " 0857..." with a
+            // leading space, and every update then failed as "checksum mismatch" on a correct download.
+            String expectedSha = manifest.optString("sha256", "").trim();
 
             if (downloadUrl.isEmpty() || !downloadUrl.startsWith("https://")) {
                 return Result.failure("manifest has no usable download URL");
@@ -363,10 +472,12 @@ final class DataPackInstaller {
 
             progress.onInstalling();
             File target = userDataDir();
-            long[] pcExeCrc = new long[] { -1 };
+            // [0] checksum state, [1] whether the executable ends its logic checksum with the
+            // GeneralsOnline revision tag (1/0, -1 unknown) -- see pcExeCrcState.
+            long[] pcExeCrc = new long[] { -1, -1 };
             List<String> written = extract(tempZip, target, pcExeCrc);
             writeInstalledList(ctx, written);
-            writePcExeCrcSeed(ctx, pcExeCrc[0], version);
+            writePcExeCrcSeed(ctx, pcExeCrc[0], pcExeCrc[1], version);
             NetworkTrace.write(ctx, "[datapack] installed " + written.size()
                 + " file(s) into " + target.getAbsolutePath());
 
@@ -480,25 +591,49 @@ final class DataPackInstaller {
         return (rotated + (b & 0xFF)) & 0xFFFFFFFFL;
     }
 
-    private static long pcExeCrcState(InputStream exe) throws IOException {
+    // GeneralsX @bugfix Android port 03/10/2026 The GeneralsOnline releases of 22/09-28/09 end
+    // every logic checksum with this marker and 0x474F0001 (found by disassembly, GameLogic.cpp);
+    // the public source never had it, and 100126 (built from it) does not write it. A phone that
+    // still appended it mismatched every 100126 PC at the first checkpoint. Whether this
+    // executable has the string decides it, so the next release needs nothing from us either.
+    private static final byte[] PC_CRC_REVISION_MARKER =
+        "MARKER:OfficialLogicCRCRevision".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+    /** out[0] = checksum state, out[1] = 1/0 whether the revision marker is in the file. */
+    private static void pcExeCrcState(InputStream exe, long[] out) throws IOException {
         long crc = 0;
         long done = 0;
+        int matched = 0;
+        boolean hasMarker = false;
         byte[] buffer = new byte[64 * 1024];
         int read;
-        while (done < PC_EXE_CRC_LIMIT && (read = exe.read(buffer)) > 0) {
-            int use = (int) Math.min(read, PC_EXE_CRC_LIMIT - done);
-            for (int i = 0; i < use; i++) {
-                crc = crcFeed(crc, buffer[i]);
+        while ((read = exe.read(buffer)) > 0) {
+            if (done < PC_EXE_CRC_LIMIT) {
+                int use = (int) Math.min(read, PC_EXE_CRC_LIMIT - done);
+                for (int i = 0; i < use; i++) {
+                    crc = crcFeed(crc, buffer[i]);
+                }
+                done += use;
             }
-            done += use;
+            for (int i = 0; i < read && !hasMarker; i++) {
+                // The marker has no repeated prefix, so restarting a broken match is exact.
+                if (buffer[i] == PC_CRC_REVISION_MARKER[matched]) {
+                    if (++matched == PC_CRC_REVISION_MARKER.length) {
+                        hasMarker = true;
+                    }
+                } else {
+                    matched = buffer[i] == PC_CRC_REVISION_MARKER[0] ? 1 : 0;
+                }
+            }
         }
         for (int i = 0; i < 4; i++) {
             crc = crcFeed(crc, PC_VERSION_NUMBER >>> (8 * i));
         }
-        return crc;
+        out[0] = crc;
+        out[1] = hasMarker ? 1 : 0;
     }
 
-    private static void writePcExeCrcSeed(Context ctx, long seed, String version) throws IOException {
+    private static void writePcExeCrcSeed(Context ctx, long seed, long crcRevision, String version) throws IOException {
         File dir = new File(ctx.getFilesDir(), "update");
         File file = new File(dir, PC_EXE_SEED_FILE);
         if (seed < 0) {
@@ -510,14 +645,31 @@ final class DataPackInstaller {
             throw new IOException("could not create " + dir.getAbsolutePath());
         }
         try (FileWriter out = new FileWriter(file)) {
-            out.write(seed + "\n" + version + "\n");
+            out.write(seed + "\n" + version + "\n" + "crc_revision=" + crcRevision + "\n");
         }
-        NetworkTrace.write(ctx, "[datapack] PC exe checksum state " + seed + " from " + PC_EXE_NAME);
+        NetworkTrace.write(ctx, "[datapack] PC exe checksum state " + seed + " from " + PC_EXE_NAME
+            + ", logic CRC revision tag " + (crcRevision == 1 ? "present" : "absent"));
     }
 
     /** Whether the installed package's PC checksum has been computed (see PC_EXE_NAME). */
     static boolean hasPcExeCrcSeed(Context ctx) {
-        return new File(new File(ctx.getFilesDir(), "update"), PC_EXE_SEED_FILE).isFile();
+        File file = new File(new File(ctx.getFilesDir(), "update"), PC_EXE_SEED_FILE);
+        if (!file.isFile()) {
+            return false;
+        }
+        // A seed written before 03/10/2026 lacks the revision-tag line: install the package once
+        // more so it is known (see PC_CRC_REVISION_MARKER).
+        try (java.io.BufferedReader in = new java.io.BufferedReader(new java.io.FileReader(file))) {
+            String line;
+            while ((line = in.readLine()) != null) {
+                if (line.startsWith("crc_revision=")) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            return false;
+        }
+        return false;
     }
 
     /** Extracts the wanted prefixes into targetRoot, listing what it wrote. */
@@ -532,7 +684,7 @@ final class DataPackInstaller {
             while ((entry = zip.getNextEntry()) != null) {
                 String name = entry.getName().replace('\\', '/');
                 if (name.equalsIgnoreCase(PC_EXE_NAME)) {
-                    pcExeCrc[0] = pcExeCrcState(zip);
+                    pcExeCrcState(zip, pcExeCrc);
                     continue;
                 }
                 if (!isWanted(name)) {

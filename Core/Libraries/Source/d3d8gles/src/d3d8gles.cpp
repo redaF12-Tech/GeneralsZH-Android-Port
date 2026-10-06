@@ -484,6 +484,8 @@ public:
 		if (m_gl.fbo) {
 			glDeleteFramebuffers(1, &m_gl.fbo);
 			m_gl.fbo = 0;
+			m_gl.fboDepthGen = 0;
+			m_gl.fboStatus = 0;
 		}
 		if (m_gl.name) {
 			// GeneralsX @build Android port GLES experiment - part 2/2 of the
@@ -825,11 +827,7 @@ public:
 	// invalidateTextureBinding().
 	~WebGLVertexBuffer()
 	{
-		if (m_gl.name) {
-			glDeleteBuffers(1, &m_gl.name);
-			WebGLPipeline::get()->invalidateBufferBinding(m_gl.name);
-			m_gl.name = 0;
-		}
+		WebGLPipeline::get()->releaseBufferStorage(m_gl);
 	}
 
 	D3D8GLES_IUNKNOWN_IMPL(WebGLVertexBuffer)
@@ -863,6 +861,7 @@ public:
 		m_lockBegin = offset;
 		m_lockEnd = end;
 		m_lockDiscard = (flags & D3DLOCK_DISCARD) != 0;
+		m_lockNoOverwrite = (flags & D3DLOCK_NOOVERWRITE) != 0;
 		*ppbData = m_bits.data() + offset;
 		return D3D_OK;
 	}
@@ -870,10 +869,17 @@ public:
 	HRESULT Unlock() override
 	{
 		m_gl.markRange(m_lockBegin, m_lockEnd);
-		if (m_lockDiscard) m_gl.pendingDiscard = true;
+		// GeneralsX @bugfix Android port 30/09/2026 A lock with neither DISCARD nor NOOVERWRITE
+		// promises nothing: D3D waits (or renames) so draws already issued still read the old
+		// bytes. The upload has to be synchronized too, not an unsynchronized append.
+		if (m_lockDiscard)
+			m_gl.pendingDiscard = true;
+		else if (!m_lockNoOverwrite)
+			m_gl.pendingSync = true;
 		m_lockBegin = 0;
 		m_lockEnd = 0;
 		m_lockDiscard = false;
+		m_lockNoOverwrite = false;
 		return D3D_OK;
 	}
 
@@ -897,6 +903,7 @@ public:
 	size_t m_lockBegin = 0;
 	size_t m_lockEnd = 0;
 	bool m_lockDiscard = false;
+	bool m_lockNoOverwrite = false;
 	GLBufferState m_gl;
 	std::vector<BYTE> m_bits;
 };
@@ -914,11 +921,7 @@ public:
 	// ~WebGLVertexBuffer()'s comment; same missing-destructor leak, same fix.
 	~WebGLIndexBuffer()
 	{
-		if (m_gl.name) {
-			glDeleteBuffers(1, &m_gl.name);
-			WebGLPipeline::get()->invalidateBufferBinding(m_gl.name);
-			m_gl.name = 0;
-		}
+		WebGLPipeline::get()->releaseBufferStorage(m_gl);
 	}
 
 	D3D8GLES_IUNKNOWN_IMPL(WebGLIndexBuffer)
@@ -943,6 +946,7 @@ public:
 		m_lockBegin = offset;
 		m_lockEnd = end;
 		m_lockDiscard = (flags & D3DLOCK_DISCARD) != 0;
+		m_lockNoOverwrite = (flags & D3DLOCK_NOOVERWRITE) != 0;
 		*ppbData = m_bits.data() + offset;
 		return D3D_OK;
 	}
@@ -950,10 +954,17 @@ public:
 	HRESULT Unlock() override
 	{
 		m_gl.markRange(m_lockBegin, m_lockEnd);
-		if (m_lockDiscard) m_gl.pendingDiscard = true;
+		// GeneralsX @bugfix Android port 30/09/2026 A lock with neither DISCARD nor NOOVERWRITE
+		// promises nothing: D3D waits (or renames) so draws already issued still read the old
+		// bytes. The upload has to be synchronized too, not an unsynchronized append.
+		if (m_lockDiscard)
+			m_gl.pendingDiscard = true;
+		else if (!m_lockNoOverwrite)
+			m_gl.pendingSync = true;
 		m_lockBegin = 0;
 		m_lockEnd = 0;
 		m_lockDiscard = false;
+		m_lockNoOverwrite = false;
 		return D3D_OK;
 	}
 
@@ -976,6 +987,7 @@ public:
 	size_t m_lockBegin = 0;
 	size_t m_lockEnd = 0;
 	bool m_lockDiscard = false;
+	bool m_lockNoOverwrite = false;
 	GLBufferState m_gl;
 	std::vector<BYTE> m_bits;
 };

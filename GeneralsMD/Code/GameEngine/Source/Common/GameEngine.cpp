@@ -137,6 +137,10 @@
 // GeneralsX @bugfix Android port 07/11/2026 - ported from upstream GeneralsOnline: request a delayed teardown of NGMP
 // online services, deferred to the next GameEngine::update() so it doesn't destroy the manager mid-callback.
 static bool g_bTearDownGeneralsOnlineRequested = false;
+static const wchar_t* const kGeneralsOnlineSignInAgain =
+	L"Your Generals Online sign-in could not be renewed: it expired, or the account signed in "
+	L"on another device. Sign in again under GeneralsOnline account in the launcher.";
+
 void TearDownGeneralsOnline()
 {
 	g_bTearDownGeneralsOnlineRequested = true;
@@ -160,6 +164,14 @@ void TearDownGeneralsOnline()
 			title = TheGameText->fetch("GUI:GSErrorTitle");
 			body = L"Your connection to the Generals Online servers was lost.";
 		}
+		// GeneralsX @bugfix Android port 03/10/2026 Until now a session the server stopped accepting
+		// went unnoticed: the lobby kept polling and got 401 forever, and the player saw a lobby that
+		// simply never changed again.
+		else if (teardownReason == EGOTearDownReason::AUTH_FAILED)
+		{
+			title = TheGameText->fetch("GUI:GSErrorTitle");
+			body = kGeneralsOnlineSignInAgain;
+		}
 		else
 		{
 			title = TheGameText->fetch("GUI:GSErrorTitle");
@@ -171,6 +183,30 @@ void TearDownGeneralsOnline()
 		GameSpyCloseAllOverlays();
 		GSMessageBoxOk(title, body);
 	}
+}
+
+void MainMenuOnlineAborted();
+
+void AbortGeneralsOnlineStart(bool bAuth, const char* szDetail)
+{
+	if (NGMP_OnlineServicesManager::GetInstance() != nullptr)
+	{
+		NGMP_OnlineServicesManager::GetInstance()->SetPendingFullTeardown(EGOTearDownReason::USER_REQUESTED_SILENT);
+		TearDownGeneralsOnline();
+	}
+	MainMenuOnlineAborted();
+
+	UnicodeString body;
+	if (bAuth)
+	{
+		body = kGeneralsOnlineSignInAgain;
+	}
+	else
+	{
+		body.format(UnicodeString(L"Could not connect to GeneralsOnline (%hs)."), szDetail != nullptr ? szDetail : "");
+	}
+	ClearGSMessageBoxes();
+	GSMessageBoxOk(UnicodeString(L"GeneralsOnline"), body, nullptr);
 }
 
 //-------------------------------------------------------------------------------------------------
@@ -1141,6 +1177,77 @@ extern NGMPGame* TheNGMPGame;
 #endif
 
 /// -----------------------------------------------------------------------------------------------
+// GeneralsX @feature Android port 02/10/2026 Game speed above normal on a phone that cannot draw that
+// fast. Offline, the original engine runs one logic frame per rendered frame and sets the frame
+// limit from the Game Speed slider, so the game is only as fast as the screen is drawn: at the
+// maximum speed (240 logic frames a second on the 60 Hz engine) an Adreno phone drawing 120 fps
+// played twice as fast as normal, the Mali test phone drawing ~60 not faster at all. Here, when the
+// slider asks for more than normal speed and drawing falls behind it, the logic catches up with
+// extra frames within the same rendered frame -- up to three, within 8 ms, so drawing never stops,
+// and debt beyond that is dropped rather than carried (the game is then slower than asked, never
+// stuck catching up). Offline only (no TheNetwork), never at normal speed or below, where the
+// original "slower frames, slower game" behaviour stays. The logic frames are the same ones in
+// the same order, only grouped differently between draws: replays and saves are unaffected.
+static UnsignedInt s_gxCatchUpSteps = 0;
+
+static void gxCatchUpSpedUpLogic()
+{
+	static std::chrono::steady_clock::time_point s_last;
+	static double s_debt = 0.0;
+	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	double dt = s_last.time_since_epoch().count() != 0 ? std::chrono::duration<double>(now - s_last).count() : 0.0;
+	s_last = now;
+	if (dt > 0.1)
+		dt = 0.1;
+
+#if defined(GENERALS_ONLINE_HIGH_FPS_FRAME_MULTIPLIER)
+	const Int normalFps = BaseFps * GENERALS_ONLINE_HIGH_FPS_FRAME_MULTIPLIER;
+#else
+	const Int normalFps = BaseFps;
+#endif
+	// GeneralsX @bugfix Android port 03/10/2026 Only a game the player is playing: skirmish or
+	// campaign. A replay plays at its own speed, and catching up inside playback broke the replay
+	// check -- Global_War2.rep, which matched the PC on all 1946 checkpoints on 29/09, mismatched
+	// from the first one on the 02/10 builds (the recorded 60 fps limit is doubled for the 60 Hz
+	// engine, which is above normal, so playback qualified).
+	const Bool playingAGame = (TheGameLogic->isInSkirmishGame() || TheGameLogic->isInSinglePlayerGame())
+		&& !TheGameLogic->isInReplayGame() && (TheRecorder == nullptr || !TheRecorder->isPlaybackMode());
+	const Bool applies = TheNetwork == nullptr && playingAGame && TheGameLogic->isInGame() && !TheGameLogic->isGamePaused()
+		&& TheShell != nullptr && !TheShell->isShellActive()
+		&& !TheFramePacer->isTimeFrozen() && !TheFramePacer->isGameHalted()
+		&& TheFramePacer->isActualFramesPerSecondLimitEnabled()
+		&& TheFramePacer->getActualFramesPerSecondLimit() > normalFps;
+	if (!applies)
+	{
+		s_debt = 0.0;
+		return;
+	}
+
+	// This frame's own logic step already ran (canUpdateRegularGameLogic is true on every frame
+	// while the logic time scale is off, as it is offline).
+	s_debt += dt * TheFramePacer->getActualFramesPerSecondLimit() - 1.0;
+	const std::chrono::steady_clock::time_point until = now + std::chrono::milliseconds(8);
+	Int extra = 0;
+	while (s_debt >= 1.0 && extra < 3 && std::chrono::steady_clock::now() < until)
+	{
+		// The same steps as a regular frame's logic update (canUpdateGameLogic's preUpdate
+		// clears the per-render-frame flag and applies a scheduled pause).
+		TheMessageStream->propagateMessages();
+		TheGameLogic->preUpdate();
+		if (TheGameLogic->isGamePaused())
+			break;
+		TheGameLogic->UPDATE();
+		TheGameClient->step();
+		s_debt -= 1.0;
+		++extra;
+		++s_gxCatchUpSteps;
+	}
+	if (s_debt > 1.0)
+		s_debt = 1.0;
+	else if (s_debt < -1.0)
+		s_debt = -1.0;
+}
+
 DECLARE_PERF_TIMER(GameEngine_update)
 
 /** -----------------------------------------------------------------------------------------------
@@ -1172,6 +1279,30 @@ static void gxTraceEngineUpdatePhase(
 	static double s_radarUs = 0, s_audioUs = 0, s_clientUs = 0,
 		s_networkUs = 0, s_logicUs = 0, s_stepUs = 0;
 	static int s_frames = 0;
+	// GeneralsX @performance Android port 01/10/2026 Hitches. The averages above hide a single long
+	// frame; the owner sees a micro-stutter about every two seconds at a high frame rate. A frame is a
+	// hitch when it takes more than 1.8x the previous second's average (and over 25 ms); the worst one
+	// of each second is printed with its own split, so the phase that spiked is named.
+	static std::chrono::steady_clock::time_point s_lastFrame;
+	static double s_prevAvgMs = 0.0;
+	static int s_hitches = 0;
+	static double s_worstMs = 0.0, s_worstPhases[6] = {};
+
+	{
+		const std::chrono::steady_clock::time_point frameEnd = std::chrono::steady_clock::now();
+		if (s_lastFrame.time_since_epoch().count() != 0) {
+			const double frameMs = std::chrono::duration<double, std::milli>(frameEnd - s_lastFrame).count();
+			if (s_prevAvgMs > 0.0 && frameMs > 25.0 && frameMs > s_prevAvgMs * 1.8)
+				++s_hitches;
+			if (frameMs > s_worstMs) {
+				s_worstMs = frameMs;
+				const double phases[6] = { radarUs, audioUs, clientUs, networkUs, logicUs, stepUs };
+				for (int i = 0; i < 6; ++i)
+					s_worstPhases[i] = phases[i] / 1000.0;
+			}
+		}
+		s_lastFrame = frameEnd;
+	}
 
 	s_radarUs += radarUs;
 	s_audioUs += audioUs;
@@ -1194,6 +1325,14 @@ static void gxTraceEngineUpdatePhase(
 			s_networkUs / 1000.0 / s_frames,
 			s_logicUs / 1000.0 / s_frames,
 			s_stepUs / 1000.0 / s_frames);
+
+		GX_PERF_TRACE("[GX-PERF-HITCH] hitches=%d worstFrameMs=%.1f (radar=%.1f audio=%.1f client=%.1f network=%.1f logic=%.1f step=%.1f) speedCatchUpSteps=%u\n",
+			s_hitches, s_worstMs, s_worstPhases[0], s_worstPhases[1], s_worstPhases[2], s_worstPhases[3],
+			s_worstPhases[4], s_worstPhases[5], s_gxCatchUpSteps);
+		s_gxCatchUpSteps = 0;
+		s_prevAvgMs = (elapsedUs / 1000.0) / s_frames;
+		s_hitches = 0;
+		s_worstMs = 0.0;
 
 		s_windowStart = now;
 		s_radarUs = s_audioUs = s_clientUs = s_networkUs = s_logicUs = s_stepUs = 0;
@@ -1223,10 +1362,15 @@ void GameEngine::update()
 				TheFramePacer->setFramesPerSecondLimit(NGMP_OnlineServicesManager::Settings.Graphics_GetFPSLimit());
 				TheWritableGlobalData->m_useFpsLimit = NGMP_OnlineServicesManager::Settings.Graphics_GetFPSLimit();
 			}
-			else
+			else if (!TheGameLogic->isInGame() || TheShell->isShellActive())
 			{
 				TheFramePacer->setFramesPerSecondLimit(GENERALS_ONLINE_HIGH_FPS_LIMIT);
 			}
+			// GeneralsX @bugfix Android port 28/09/2026 An offline game keeps the limit
+			// MSG_NEW_GAME set from the skirmish Game Speed slider (GameLogicDispatch.cpp). This
+			// block used to reset it to GENERALS_ONLINE_HIGH_FPS_LIMIT on every frame of every
+			// game, so the slider did nothing: a skirmish on 1.3.0 ran at 30 fps on a phone that
+			// ran it at 45-60 on 1.2.2, where this block did not exist.
 #endif
 
 			if (gxPerfTrace) gxT0 = std::chrono::steady_clock::now();
@@ -1280,6 +1424,8 @@ void GameEngine::update()
 				stepUs = std::chrono::duration<double, std::micro>(gxT6 - gxT5).count();
 			}
 		}
+
+		gxCatchUpSpedUpLogic();
 
 		// GeneralsX @feature Android port 23/09/2026 Replay check: fast-forward extra
 		// logic frames and quit with a result file when asked to (GXReplayCheck.h).

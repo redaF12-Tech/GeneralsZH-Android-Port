@@ -31,8 +31,15 @@
 #pragma once
 
 #include <GLES3/gl3.h>
+#ifndef GL_MAP_PERSISTENT_BIT_EXT
+#define GL_MAP_PERSISTENT_BIT_EXT 0x0040
+#endif
+#ifndef GL_MAP_COHERENT_BIT_EXT
+#define GL_MAP_COHERENT_BIT_EXT 0x0080
+#endif
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -56,6 +63,27 @@ struct GLTextureState {
 	bool dirty = true;          // shadow bits changed since last upload
 	uint32_t samplerKey = ~0u;  // last-applied filter/wrap state
 	GLuint fbo = 0;             // lazily created when used as a render target
+	// GeneralsX @performance Android port 30/09/2026 Which depth renderbuffer (by generation, since
+	// GL may reuse a deleted name) was last attached to fbo, and
+	// the completeness the driver reported for that combination. glCheckFramebufferStatus returns
+	// a value, so with the render thread it waits for every queued call; it is asked only when
+	// an attachment actually changed, not on every render-target switch.
+	GLuint fboDepthGen = 0;
+	GLenum fboStatus = 0;
+};
+
+// GeneralsX @performance Android port 29/09/2026 Persistently mapped storage for a dynamic VB/IB
+// (EXT_buffer_storage): a few GL buffers, each mapped once for good, so an append is a memcpy and
+// no GL call at all. D3DLOCK_DISCARD moves to a copy the GPU has finished with (fenced) instead
+// of respecifying storage. See WebGLPipeline::persistentUpload().
+struct PersistentBufferSet {
+	static const int kMaxCopies = 8;
+	GLuint names[kMaxCopies] = {};
+	unsigned char *ptrs[kMaxCopies] = {};
+	GLsync fences[kMaxCopies] = {};
+	int count = 0;
+	int cur = -1;
+	size_t size = 0;
 };
 
 // GL side of a VB/IB.
@@ -79,6 +107,26 @@ struct GLBufferState {
 	// upload nor the NOOVERWRITE appends that follow in the same ring cycle
 	// have to wait on the GPU still reading the old contents.
 	bool pendingDiscard = false;
+	// GeneralsX @bugfix Android port 30/09/2026 Set when a lock since the last upload had neither
+	// DISCARD nor NOOVERWRITE. Such an update must not be written unsynchronized: D3D makes a plain
+	// lock wait for (or rename away from) draws still reading the buffer. Written that way, bytes
+	// a previous frame's draw was still reading changed under it -- long stretched triangles and
+	// passes vanishing for a frame, hidden until the render thread let the CPU get ahead of the GPU.
+	bool pendingSync = false;
+	// GeneralsX @performance Android port 29/09/2026 One past the highest byte the engine has
+	// ever written (0 = nothing tracked yet). A full upload only needs [0, writtenEnd): bytes
+	// beyond it were never written, so no draw can reference them.
+	size_t writtenEnd = 0;
+	PersistentBufferSet *persistent = nullptr; // set once a dynamic buffer takes the persistent path
+	// Persistent path only: one past the highest byte of the current copy that a draw issued since
+	// the copy was selected may read. Writing below it is a hazard (see persistentUpload()).
+	size_t gpuRefEnd = 0;
+	void noteGpuRead(size_t end, size_t size)
+	{
+		if (persistent == nullptr) return;
+		if (end > size) end = size;
+		if (end > gpuRefEnd) gpuRefEnd = end;
+	}
 
 	void markRange(size_t begin, size_t end)
 	{
@@ -86,6 +134,7 @@ struct GLBufferState {
 		if (end <= begin) return;
 		if (begin < dirtyBegin) dirtyBegin = begin;
 		if (end > dirtyEnd) dirtyEnd = end;
+		if (end > writtenEnd) writtenEnd = end;
 	}
 	void clearRange()
 	{
@@ -157,6 +206,11 @@ public:
 	// ~WebGLVertexBuffer()/~WebGLIndexBuffer() (d3d8gles.cpp) must call this
 	// right after glDeleteBuffers.
 	void invalidateBufferBinding(GLuint name);
+	void fullBufferUpload(GLBufferState &gl, const unsigned char *bits, size_t size, int kind);
+	// Persistent path for dynamic buffers; FALSE when unavailable (the caller then uploads as before).
+	bool persistentUpload(GLBufferState &gl, const unsigned char *bits, size_t size, bool isIndex);
+	// Deletes a buffer's GL storage, persistent copies included (VB/IB destructors).
+	void releaseBufferStorage(GLBufferState &gl);
 
 private:
 	WebGLPipeline() = default;
@@ -170,12 +224,51 @@ private:
 	// cache hit skips touching those bindings entirely, and content uploads
 	// (ensureVBUploaded/ensureIBUploaded) go through GL_COPY_WRITE_BUFFER,
 	// never GL_ARRAY_BUFFER/GL_ELEMENT_ARRAY_BUFFER, for the same reason.
+	// baseVertexIndex is the same offset as baseVertexBytes, in vertices: with
+	// glDrawElementsBaseVertex available the offset goes into the draw call and the VAO's
+	// attribute pointers stay at 0 (see m_glDrawElementsBaseVertex).
 	void drawCommon(WebGLDevice *dev, unsigned primType, unsigned primCount,
 	                GLuint vbo, unsigned stride, unsigned fvf,
 	                GLuint ibo, unsigned indexFormat,
-	                unsigned startIndex, int baseVertexBytes, unsigned vertexCount);
+	                unsigned startIndex, int baseVertexBytes, unsigned vertexCount,
+	                int baseVertexIndex = 0);
 
 	ProgramInfo *getProgram(WebGLDevice *dev, unsigned fvf);
+public:
+	// GeneralsX @feature Android port 01/10/2026 Virtual backbuffer for rendering below the window's
+	// resolution, stretched to the window at present() with SGSR or bilinear (see
+	// d3d8gles_SetVirtualBackbuffer). w or h <= 0 turns it off.
+	bool setVirtualBackbuffer(int w, int h, int renderW, int renderH, bool gsr);
+	bool upscaleSceneNow();
+private:
+	void stretchVirtualBackbuffer();
+	// After upscaleSceneNow() "the backbuffer" is the window itself until the frame is presented.
+	GLuint backbufferFBO() const { return (m_vbActive && !m_vbUpscaled && !m_vbBypass) ? m_vbFBO : 0; }
+	// The viewport to apply: the device's, except that one larger than the virtual backbuffer
+	// (the engine still knows the window's size) covers the whole virtual backbuffer instead.
+	const D3DVIEWPORT8 &effectiveViewport(WebGLDevice *dev);
+	// GeneralsX @performance Android port 01/10/2026 A rectangle in the current target's pixels (the
+	// engine's, top-left origin) as GL wants it (bottom-left origin), scaled down to the virtual
+	// backbuffer's render size while that is the target. Every glViewport and glScissor goes
+	// through here; the shaders keep working in the engine's pixels (uViewportPos).
+	void targetRect(const D3DVIEWPORT8 &vp, GLint *x, GLint *y, GLsizei *w, GLsizei *h) const;
+	bool m_vbActive = false;
+	bool m_vbGsr = false;
+	bool m_vbUpscaled = false; // this frame's scene is already in the window (upscaleSceneNow)
+	// GeneralsX @feature Android port 02/10/2026 A frame with no 3D scene in it (loading screens,
+	// videos, menus over no battle) is drawn straight into the window at full resolution: there is
+	// no scene to upscale, and stretched whole its text came out pixelated (owner report, loading
+	// screen). Decided per frame from the frame before: m_vbSceneSeen is set by upscaleSceneNow().
+	bool m_vbBypass = false;
+	bool m_vbSceneSeen = false;
+	int m_vbW = 0, m_vbH = 0;   // what the engine sees (its backbuffer)
+	int m_vbRW = 0, m_vbRH = 0; // what is rendered: the texture stretched at present
+	int m_winW = 0, m_winH = 0;
+	GLuint m_vbFBO = 0, m_vbTex = 0, m_vbDepth = 0;
+	D3DVIEWPORT8 m_vbFullVp = {};
+	GLuint m_presentPlainProg = 0, m_presentGsrProg = 0, m_presentVAO = 0;
+	GLint m_presentPlainTex = -1, m_presentGsrTex = -1, m_presentGsrInfo = -1;
+	bool m_presentGsrTried = false;
 	void applyFixedState(WebGLDevice *dev);
 	void applyUniforms(WebGLDevice *dev, ProgramInfo *prog, unsigned fvf);
 	void ensureVBUploaded(WebGLVertexBuffer *vb);
@@ -289,6 +382,7 @@ private:
 		DWORD cullMode, colorWrite;
 		DWORD stencilEnable, stencilFunc, stencilRef, stencilMask;
 		DWORD stencilFail, stencilZFail, stencilPass, stencilWriteMask;
+		DWORD twoSided, stencilBackPass; // d3d8gles_SetTwoSidedStencil(), not a D3D8 state
 		int vpX, vpY, vpW, vpH;
 		float vpMinZ, vpMaxZ;
 
@@ -298,6 +392,8 @@ private:
 	};
 	bool m_haveFixedStateKey = false;
 	FixedStateKey m_lastFixedStateKey{};
+	DWORD m_lastSentSrcBlend = 0, m_lastSentDestBlend = 0; // glBlendFunc as last sent (applyFixedState)
+	GLint m_lastSentViewport[4] = {0, 0, 0, 0};                // glViewport as last sent (it depends on the RT's height and scale)
 	GLuint m_lastProgram = 0;
 	int m_perfStateCacheHits = 0;
 	int m_perfStateCacheMisses = 0;
@@ -465,6 +561,7 @@ private:
 	float m_yFlip = 1.0f; // +1 backbuffer (flip), -1 FBO (no flip)
 	GLuint m_depthRB = 0; // shared depth-stencil renderbuffer for FBOs
 	int m_depthRBW = 0, m_depthRBH = 0;
+	unsigned m_depthRBGeneration = 0; // bumped whenever m_depthRB is recreated
 
 	// GeneralsX @build Android port GLES experiment 08/30/2026 Camera
 	// (view+proj) uniform buffer -- see kViewProjUBOBinding's comment in
@@ -481,6 +578,115 @@ private:
 	std::vector<uint8_t> m_rtReadback;
 	GLuint m_upVBO = 0;
 	GLuint m_upIBO = 0;
+
+	// GeneralsX @performance Android port 27/09/2026 Techniques other D3D->GL translators rely
+	// on (Valve's ToGL, WineD3D, ANGLE), each switchable off from the game folder so a
+	// regression on one device can be isolated from a log without a new build: the file
+	// gx_gles_noopt.txt disables every one of them when empty, or only the ones it names
+	// (basevertex, upring, progcache, dxt565). See loadOptimizationSwitches() in the .cpp.
+	struct OptimizationSwitches {
+		// Off by default: on an Adreno 8xx (ES 3.2 core entry point) it broke stencil shadow
+		// volumes into long streaks and made UI widgets flicker out, confirmed by switching it
+		// alone off with gx_gles_noopt.txt. The likely mechanism is the driver's cached index
+		// range going stale under the unsynchronized dynamic-buffer writes (see
+		// LESSON-gles-dynamic-buffer-stalls.md). Opt in with gx_gles_basevertex.txt to test
+		// it on another GPU.
+		bool baseVertex = false;  // glDrawElementsBaseVertex instead of re-pointing attributes
+		bool baseVertexOff = false; // gx_gles_noopt.txt turned it off: overrides the per-GPU default
+		bool upRing = true;       // one streaming ring buffer for the *UP draws
+		bool programCache = true; // linked program binaries kept on disk between launches
+		bool dxt565 = true;       // DXT1 decoded to 16 bpp, not 32, where S3TC is missing
+		bool persistent = true;   // dynamic VBs persistently mapped (EXT_buffer_storage)
+		// Dynamic IBs too: off by default. With them mapped, the old Mali phone flickered on every
+		// dynamic draw (UI, units, buildings, effects) while static-buffer terrain did not. The
+		// driver scans an index buffer for the draw's index range and caches the answer until a
+		// GL call modifies the buffer; a memcpy into a persistent mapping is not such a call, and
+		// the dynamic IBs refill the same offsets every frame. Opt in with
+		// gx_gles_persistentib.txt to test another GPU.
+		bool persistentIB = false;
+		// GL calls and the swap on a render thread (gles_thread.h), overlapping the driver's work
+		// with the engine building the next frame.
+		bool thread = true;
+	};
+	OptimizationSwitches m_opt;
+	void loadOptimizationSwitches();
+
+	typedef void (GL_APIENTRY *PFN_DrawElementsBaseVertex)(GLenum mode, GLsizei count, GLenum type,
+		const void *indices, GLint basevertex);
+	PFN_DrawElementsBaseVertex m_glDrawElementsBaseVertex = nullptr;
+	typedef void (GL_APIENTRY *PFN_BufferStorage)(GLenum target, GLsizeiptr size, const void *data, GLbitfield flags);
+	typedef GLsync (GL_APIENTRY *PFN_FenceSync)(GLenum condition, GLbitfield flags);
+	typedef GLenum (GL_APIENTRY *PFN_ClientWaitSync)(GLsync sync, GLbitfield flags, GLuint64 timeout);
+	typedef void (GL_APIENTRY *PFN_DeleteSync)(GLsync sync);
+	PFN_BufferStorage m_glBufferStorage = nullptr;
+	PFN_FenceSync m_glFenceSync = nullptr;
+	PFN_ClientWaitSync m_glClientWaitSync = nullptr;
+	PFN_DeleteSync m_glDeleteSync = nullptr;
+	typedef void (GL_APIENTRY *PFN_StencilOpSeparate)(GLenum face, GLenum sfail, GLenum dpfail, GLenum dppass);
+public:
+	PFN_StencilOpSeparate m_glStencilOpSeparate = nullptr;
+private:
+	bool m_persistentOK = false;
+	// GeneralsX @performance Android port 29/09/2026 Index stream for dynamic index buffers: each
+	// indexed draw's indices are copied into the next unused bytes of one persistently mapped
+	// buffer, and a full buffer is replaced by a new GL buffer object. See streamIndices().
+	static const size_t kIndexStreamBytes = 4u << 20;
+	GLuint m_indexStream = 0;
+	unsigned char *m_indexStreamPtr = nullptr;
+	size_t m_indexStreamOffset = 0;
+	bool m_indexStreamFailed = false;
+	int m_perfIndexStreamRenewals = 0;
+	int m_perfWorldUploads = 0, m_perfWorldSkips = 0; // world matrix sent vs. already in the program
+	int m_perfSyncUploads = 0; // appends from plain locks, uploaded with glBufferSubData
+	int m_perfRangeUnderstated = 0; // indexed draws whose indices reach past minIndex+numVertices
+	bool streamIndices(const void *src, size_t bytes, GLuint *name, size_t *offset);
+	int m_perfPersistentSwitches = 0;
+	int m_perfPersistentWaits = 0;
+	int m_perfPersistentCopies = 0;
+	int m_perfBaseVertexDraws = 0;
+
+	// Streaming ring for DrawPrimitiveUP/DrawIndexedPrimitiveUP: appended to with an
+	// unsynchronized map, orphaned only when it wraps -- the D3D "dynamic buffer" pattern
+	// ToGL and WineD3D use, instead of two glBufferData respecifications per draw.
+	static const size_t kUpRingVBBytes = 4u << 20;
+	static const size_t kUpRingIBBytes = 1u << 20;
+	GLuint m_upRingVB = 0;
+	GLuint m_upRingIB = 0;
+	size_t m_upRingVBOffset = 0;
+	size_t m_upRingIBOffset = 0;
+	// Returns the byte offset the data landed at, or (size_t)-1 when it cannot go through
+	// the ring (larger than the ring itself); the caller then takes the one-off path.
+	size_t streamToRing(GLuint buffer, size_t capacity, size_t *offset,
+	                    const void *data, size_t bytes, size_t align);
+	int m_perfUpRingDraws = 0;
+	int m_perfUpRingWraps = 0;
+	double m_perfUpRingBytes = 0.0;
+
+	// Program binaries on disk (glGetProgramBinary/glProgramBinary, core in GLES 3.0): a
+	// shader variant is compiled once per install instead of once per launch, which is
+	// where the first-appearance hitches of an effect come from.
+	typedef void (GL_APIENTRY *PFN_GetProgramBinary)(GLuint program, GLsizei bufSize, GLsizei *length,
+		GLenum *binaryFormat, void *binary);
+	typedef void (GL_APIENTRY *PFN_ProgramBinary)(GLuint program, GLenum binaryFormat,
+		const void *binary, GLsizei length);
+	typedef void (GL_APIENTRY *PFN_ProgramParameteri)(GLuint program, GLenum pname, GLint value);
+	PFN_GetProgramBinary m_glGetProgramBinary = nullptr;
+	PFN_ProgramBinary m_glProgramBinary = nullptr;
+	PFN_ProgramParameteri m_glProgramParameteri = nullptr;
+	std::string m_programCacheDir;
+	uint64_t m_driverHash = 0;
+	GLuint loadCachedProgram(uint64_t sourceHash);
+	void saveCachedProgram(uint64_t sourceHash, GLuint program);
+	int m_perfProgramCacheLoads = 0;
+	int m_perfProgramCacheSaves = 0;
+
+	// Render-target readbacks (glReadPixels, a full GPU drain each): counted and timed so a
+	// log says whether this is a per-frame cost before anything replaces it.
+	int m_perfRTReadbacks = 0;
+	double m_perfRTReadbackUs = 0.0;
+
+	int m_perfDxt16Levels = 0;
+	double m_perfDxt16SavedBytes = 0.0;
 
 	// Program cache: key -> program.
 	static const int kMaxPrograms = 256;

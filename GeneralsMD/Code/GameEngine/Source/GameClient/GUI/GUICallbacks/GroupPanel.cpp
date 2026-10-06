@@ -76,11 +76,13 @@
 
 #include "PreRTS.h"
 
+#include "Common/GXSafeArea.h"
 #include "Common/MessageStream.h"
 #include "Common/NameKeyGenerator.h"
 #include "Common/Player.h"
 #include "Common/PlayerList.h"
 #include "GameClient/Color.h"
+#include "GameClient/Display.h"
 #include "GameClient/GadgetPushButton.h"
 #include "GameClient/GameWindow.h"
 #include "GameClient/GameWindowManager.h"
@@ -275,6 +277,10 @@ void GroupPanelCalibrateFollowOffset(Int barScreenX, Int barScreenY)
 	s_followOffsetX = handleX - barScreenX;
 	s_followOffsetY = handleY - barScreenY;
 	s_followOffsetCalibrated = TRUE;
+	// GeneralsX @feature Android port 02/10/2026 Where the row's handle and the control bar are when
+	// the offset is taken, to check the interface scale moved both (GXUiScale.h).
+	fprintf(stderr, "[GX-UISCALE] group panel handle at %d,%d, control bar at %d,%d\n",
+		handleX, handleY, barScreenX, barScreenY);
 }
 
 void GroupPanelFollowControlBar(Int barScreenX, Int barScreenY, Bool visible)
@@ -291,7 +297,10 @@ void GroupPanelFollowControlBar(Int barScreenX, Int barScreenY, Bool visible)
 		return;
 	}
 
-	Int targetX = barScreenX + s_followOffsetX;
+	// GeneralsX @tweak Android port 02/10/2026 Clear of the display cutout: at the bar's left edge
+	// the camera hole covered the handle and the "0" button (owner's photo). The launcher's safe
+	// inset (GXSafeArea.h) plus a little.
+	Int targetX = barScreenX + s_followOffsetX + GXSafeArea::leftPx() + TheDisplay->getWidth() / 100;
 	Int targetY = barScreenY + s_followOffsetY;
 
 	Int curX, curY;

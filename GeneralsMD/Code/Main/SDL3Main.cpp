@@ -1381,15 +1381,28 @@ int main(int argc, char* argv[])
 						FILE *fp = fopen(optionsPath, "r");
 						if (fp) {
 							char line[256];
+							bool savedResolution = false;
 							while (fgets(line, sizeof(line), fp)) {
 								int savedX = 0, savedY = 0;
-								if (sscanf(line, " Resolution = %d %d", &savedX, &savedY) == 2 &&
+								if (!savedResolution && sscanf(line, " Resolution = %d %d", &savedX, &savedY) == 2 &&
 								    savedX > 0 && savedY > 0) {
 									xres = savedX & ~1;
 									yres = savedY;
+									savedResolution = true;
 									fprintf(stderr, "INFO: using saved Resolution %dx%d from Options.ini instead of window size %dx%d\n",
 									        xres, yres, winW, winH);
-									break;
+								}
+								char upscaler[32] = {};
+								if (sscanf(line, " GXUpscaler = %31s", upscaler) == 1)
+									setenv("GX_UPSCALER", upscaler, 1);
+								char upscale[32] = {};
+								if (sscanf(line, " GXUpscale = %31s", upscale) == 1)
+									setenv("GX_UPSCALE", upscale, 1);
+								int uiScale = 0;
+								if (sscanf(line, " GXUiScale = %d", &uiScale) == 1 && uiScale > 0) {
+									char uiScaleVal[16];
+									snprintf(uiScaleVal, sizeof(uiScaleVal), "%d", uiScale);
+									setenv("GX_UI_SCALE", uiScaleVal, 1);
 								}
 							}
 							fclose(fp);

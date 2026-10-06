@@ -478,8 +478,7 @@ void ScoreScreenUpdate( WindowLayout * layout, void *userData)
 		{
 			g_bNeedToTakeDoneEOGScreenshot = false;
 
-			// GeneralsX @bugfix Android port 07/11/2026 - our CaptureScreenshotForProbe doesn't yet support the URI-correlation param upstream added
-			NGMP_OnlineServicesManager::GetInstance()->CaptureScreenshotForProbe(EScreenshotType::SCREENSHOT_TYPE_SCORESCREEN); // pass no URI here, wait until we have one received from server
+			NGMP_OnlineServicesManager::GetInstance()->CaptureScreenshotForProbe(EScreenshotType::SCREENSHOT_TYPE_SCORESCREEN, std::string()); // pass no URI here, wait until we have one received from server
 		}
 	}
 
@@ -1241,7 +1240,7 @@ void initInternetMultiPlayer(void)
 				strMatchURL.format(L"\nView match data, participants, replays, anti-cheat data: https://www.playgenerals.online/viewmatch?match=%" PRIu64, lobby.match_id);
 #endif
 
-				buttonContinue->winSetText(UnicodeString(L"VIEW MATCH ONLINE"));
+				buttonContinue->winSetText(TheGameText->fetch("GX:ViewMatchOnline"));
 
 				GadgetListBoxAddEntryText(listboxAcademyWindowScoreScreen, strMatchID, GameSpyColor[GSCOLOR_DEFAULT], -1);
 				GadgetListBoxAddEntryText(listboxAcademyWindowScoreScreen, strMatchURL, GameSpyColor[GSCOLOR_DEFAULT], -1);

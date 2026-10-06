@@ -35,6 +35,10 @@
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
+#include <mutex>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #ifndef _WIN32
 // GeneralsX @bugfix felipebraz 23/03/2026 Asset root fallback path for loose file lookups.
@@ -51,8 +55,157 @@ StdLocalFileSystem::StdLocalFileSystem() : LocalFileSystem()
 StdLocalFileSystem::~StdLocalFileSystem() {
 }
 
+#ifndef _WIN32
+// GeneralsX @performance Android port 28/09/2026 Remember which relative names are not loose
+// files. FileSystem::openFile() asks the local file system before the .big archives for every
+// file, and on a case-sensitive system a miss is not one failed open: it is a stat of the name,
+// a stat under the asset root, then a component-by-component case-insensitive search that lists
+// directories -- twice, once from the asset root and once from the working directory. On
+// Android those directories are in shared storage, behind FUSE, where each of those calls is
+// slow, and nearly every asset lives in a .big, so the search always fails. Device logs showed
+// it as the bulk of a sound's first-play cost (8-15 ms, up to 85 ms, for a .wav whose decode is
+// well under a millisecond), repeated for every sound the cache had evicted.
+//
+// Only read lookups of RELATIVE names are remembered -- the install directory, which the game
+// never writes to while running. Its user files (saves, replays, options, downloaded maps) are
+// addressed by absolute paths and are never cached. Any write through this file system clears
+// the whole set anyway, as a backstop.
+static std::mutex s_missingMutex;
+static std::unordered_set<std::string> s_missingRelative;
+
+// GeneralsX @performance Android port 28/09/2026 ...and list each directory once. The negative
+// set above only helps from a name's second lookup on; the first one still paid the full
+// search, and a battle's opening seconds are nothing but first lookups (logs-9: 10-15 ms of
+// directory listing per new sound, most of a miss). The case-insensitive search needs exactly
+// one thing per directory -- its entry names -- so keep them. A lookup is then a walk through
+// in-memory tables with no system call at all, except the one listing per directory ever
+// visited. Guarded by s_missingMutex and cleared with it.
+struct ListedDirectory
+{
+	std::unordered_set<std::string> exact;                  ///< entry names as on disk
+	std::unordered_map<std::string, std::string> folded;    ///< lowercased name -> name on disk
+};
+static std::unordered_map<std::string, ListedDirectory> s_listedDirectories;
+
+static std::string foldCase(const std::string &name)
+{
+	std::string folded(name);
+	std::transform(folded.begin(), folded.end(), folded.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+	return folded;
+}
+
+static const ListedDirectory &listDirectory(const std::filesystem::path &dir)
+{
+	std::unordered_map<std::string, ListedDirectory>::iterator it = s_listedDirectories.find(dir.string());
+	if (it != s_listedDirectories.end()) {
+		return it->second;
+	}
+	ListedDirectory &listed = s_listedDirectories[dir.string()];
+	std::error_code ec;
+	for (std::filesystem::directory_iterator entry(dir, ec), end; !ec && entry != end; entry.increment(ec)) {
+		const std::string name = entry->path().filename().string();
+		listed.exact.insert(name);
+		listed.folded.emplace(foldCase(name), name);
+	}
+	return listed;
+}
+
+// The same answer the case-insensitive search in resolveFilenameFromWindowsPath() gives for a
+// read -- an exact-case entry first, else the first entry that matches ignoring case -- taken
+// from the listings. FALSE when a component is missing, or for "." and ".." components, which
+// are left to the full search.
+static bool findInListings(const std::filesystem::path &base, const std::filesystem::path &relative, std::filesystem::path &found)
+{
+	std::filesystem::path current = base;
+	for (const auto &part : relative) {
+		const std::string name = part.string();
+		if (name.empty() || name == "." || name == "..") {
+			return false;
+		}
+		const ListedDirectory &listed = listDirectory(current);
+		if (listed.exact.find(name) != listed.exact.end()) {
+			current /= name;
+			continue;
+		}
+		std::unordered_map<std::string, std::string>::const_iterator match = listed.folded.find(foldCase(name));
+		if (match == listed.folded.end()) {
+			return false;
+		}
+		current /= match->second;
+	}
+	found = current;
+	return true;
+}
+
+static void forgetMissingFiles()
+{
+	std::lock_guard<std::mutex> lock(s_missingMutex);
+	s_missingRelative.clear();
+	s_listedDirectories.clear();
+}
+#endif
+
 //DECLARE_PERF_TIMER(StdLocalFileSystem_openFile)
+static std::filesystem::path resolveFilenameFromWindowsPath(const Char *filename, Int access);
+
 static std::filesystem::path fixFilenameFromWindowsPath(const Char *filename, Int access)
+{
+#ifndef _WIN32
+	if (access & File::WRITE) {
+		forgetMissingFiles();
+		return resolveFilenameFromWindowsPath(filename, access);
+	}
+
+	const bool relative = filename[0] != '/' && filename[0] != '\\';
+	if (relative) {
+		std::lock_guard<std::mutex> lock(s_missingMutex);
+		if (s_missingRelative.find(filename) != s_missingRelative.end()) {
+			return std::filesystem::path();
+		}
+
+		// The working directory first, as the full search does, then the asset root.
+		std::string slashed(filename);
+		std::replace(slashed.begin(), slashed.end(), '\\', '/');
+		const std::filesystem::path relativePath(slashed);
+		bool usable = true;
+		for (const auto &part : relativePath) {
+			const std::string name = part.string();
+			if (name.empty() || name == "." || name == "..") {
+				usable = false;
+				break;
+			}
+		}
+		if (usable) {
+			std::error_code ec;
+			const std::filesystem::path cwd = std::filesystem::current_path(ec);
+			std::filesystem::path found;
+			if (!ec && findInListings(cwd, relativePath, found)) {
+				return found;
+			}
+			if (!s_assetFallbackPath.empty() && findInListings(s_assetFallbackPath, relativePath, found)) {
+				return found;
+			}
+			s_missingRelative.insert(filename);
+			return std::filesystem::path();
+		}
+	}
+
+	std::filesystem::path resolved = resolveFilenameFromWindowsPath(filename, access);
+	if (relative) {
+		std::error_code ec;
+		if (resolved.empty() || !std::filesystem::exists(resolved, ec)) {
+			std::lock_guard<std::mutex> lock(s_missingMutex);
+			s_missingRelative.insert(filename);
+			return std::filesystem::path();
+		}
+	}
+	return resolved;
+#else
+	return resolveFilenameFromWindowsPath(filename, access);
+#endif
+}
+
+static std::filesystem::path resolveFilenameFromWindowsPath(const Char *filename, Int access)
 {
 	std::string fixedFilename(filename);
 
@@ -403,6 +556,7 @@ Bool StdLocalFileSystem::createDirectory(AsciiString directory)
 	std::string fixedDirectory(directory.str());
 
 #ifndef _WIN32
+	forgetMissingFiles();
 	// Replace backslashes with forward slashes on unix
 	std::replace(fixedDirectory.begin(), fixedDirectory.end(), '\\', '/');
 #endif

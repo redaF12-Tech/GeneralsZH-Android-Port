@@ -53,6 +53,19 @@ extern "C" void d3d8gles_resize(int w, int h);
 // NOT itself link sdl3lib -- can share one implementation instead of each
 // re-reading render_backend.cfg/the env vars themselves.
 extern "C" bool d3d8gles_ShouldUseVulkanBackend();
+// GeneralsX @feature Android port 01/10/2026 Render below the window's resolution: a virtual
+// backbuffer the engine sees as w x h, rendered at renderW x renderH and stretched to the window at
+// present with Snapdragon GSR 1 (gsr != 0) or bilinear. renderW x renderH below w x h is the
+// upscaler's quality mode: the game keeps its resolution and only the pixels drawn get fewer.
+// w or h <= 0 turns it off. Returns 1 when active; 0 under DXVK or when it could not be set up (the
+// caller then keeps its own pillarbox). See gles_pipeline.cpp.
+extern "C" int d3d8gles_SetVirtualBackbuffer(int w, int h, int renderW, int renderH, int gsr);
+// GeneralsX @feature Android port 01/10/2026 The 3D scene of this frame is done: upscale it to the
+// window now, and let the rest of the frame (the interface, the cursor) draw straight into the window
+// at full resolution, as PC games do with FSR. Only when the upscaler renders below the game's
+// resolution and the game's resolution is the window's; otherwise the whole frame is stretched at
+// present as before. Returns 1 when the split happened.
+extern "C" int d3d8gles_UpscaleSceneNow();
 
 // GeneralsX @perf Android port 09/05/2026 Draw-call breakdown by subsystem.
 // Engine code tags the passes it can identify cheaply so the per-frame perf log
@@ -90,3 +103,6 @@ enum {
 };
 extern "C" void d3d8gles_AddUiTiming(int bucket, double microseconds);
 extern "C" bool d3d8gles_ShouldUseANGLE();
+// Vsync off while the engine's frame-rate limit is above the display refresh rate (game speed
+// raised past what the screen shows); applied at the next present. See gles_pipeline.cpp.
+extern "C" void d3d8gles_SetPresentUncapped(bool uncapped);

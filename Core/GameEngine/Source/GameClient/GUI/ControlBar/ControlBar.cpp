@@ -62,6 +62,7 @@
 #include "GameLogic/ScriptEngine.h"
 
 #include "GameClient/AnimateWindowManager.h"
+#include "GameClient/GXUiScale.h"
 #include "GameClient/ControlBar.h"
 #include "GameClient/ControlBarScheme.h"
 #include "GameClient/Drawable.h"
@@ -1597,9 +1598,21 @@ void ControlBar::update()
 	// same reason the point is stored instead of a pointer: the state lives on a window
 	// that gets rebuilt underneath the finger, and hit-testing the point again each frame
 	// survives that.
+	//
+	// GeneralsX @bugfix Android port 28/09/2026 Disabled buttons too. A command the player
+	// cannot use yet (a building whose prerequisite is missing) or has already used (a
+	// purchased upgrade) is a DISABLED button, and the default hit test does not descend into
+	// disabled windows: it returned the command panel behind the button, the flag was never
+	// asserted and the description vanished after a second. So when the enabled-only hit
+	// lands on a container, descend from THAT window again with ignoreEnabled. Not a global
+	// ignoreEnabled hit test: that one also finds disabled top-level windows, among them this
+	// description popup itself, so the popup was hit through, deleted, found missing, shown
+	// again -- the flickering title and, on disabled buttons, no description at all.
 	if (m_touchHoldActive && TheInGameUI && !TheInGameUI->areTooltipsDisabled() && TheWindowManager)
 	{
 		GameWindow *held = TheWindowManager->getWindowUnderCursor(m_touchHoldPoint.x, m_touchHoldPoint.y);
+		if (held != nullptr && !BitIsSet(held->winGetStyle(), GWS_PUSH_BUTTON))
+			held = held->winPointInChild(m_touchHoldPoint.x, m_touchHoldPoint.y, TRUE);
 		if (held != nullptr && BitIsSet(held->winGetStyle(), GWS_PUSH_BUTTON))
 		{
 			showBuildTooltipLayout(held);
@@ -4089,7 +4102,9 @@ void ControlBar::setFullViewportHeight()
 
 void ControlBar::setScaledViewportHeight()
 {
-	TheTacticalView->setHeight(TheDisplay->getHeight() * TheGlobalData->m_viewportHeightScale);
+	// GeneralsX @feature Android port 01/10/2026 The battlefield ends where the control bar starts,
+	// and a bar made taller by the interface scale starts higher (GXUiScale.h).
+	TheTacticalView->setHeight((Int)GXUiScale::forLayout("ControlBar.wnd").mapY(TheDisplay->getHeight() * TheGlobalData->m_viewportHeightScale));
 }
 
 // GeneralsX @bugfix w1semannn 07/06/2026 Fix tooltip height clipping with Unicode fonts (Issue #153)

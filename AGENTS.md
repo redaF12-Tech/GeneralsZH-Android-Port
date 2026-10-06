@@ -88,6 +88,10 @@ Work and push on the diagnostics branch (`claude/network-diagnostics`), never di
 `main`: `main` only accumulates confirmed results, and is fast-forwarded to the branch when the
 repository owner says so.
 
+If `GITVERSE_TOKEN` and `GITVERSE_REPO` are set, also mirror the APK to GitVerse for testers who
+cannot reach GitHub: `./scripts/build/android/publish-apk-gitverse.sh apk/<name>.apk` (one commit on
+the `apk` branch as a `.zip` holding the APK, replaced each time; prints the direct link). Give both links.
+
 Keep only the current build in `apk/`: `git rm` the previous APK when adding a new one. Every
 APK is ~60 MB of permanent git history.
 
@@ -208,6 +212,27 @@ cmake --build build/macos-vulkan --target z_generals
   `docs/WORKDIR/lessons/LESSON-gles-dynamic-buffer-stalls.md` — it also documents the
   per-subsystem draw and UI-time counters (`[d3d8gles] perf-draws/frame by source:`,
   `[d3d8gles] perf-ui ms/frame:`) that attribute a frame's cost from a device log.
+- **Flicker on Mali only, on dynamic draws only, after touching buffer uploads**: the Mali driver
+  caches a scanned index range per buffer until a GL call modifies the buffer; a `memcpy` into a
+  persistent mapping is not one. Never persistently map index data that is refilled in place --
+  stream it into never-reused bytes. Read `docs/WORKDIR/lessons/LESSON-gles-persistent-buffers-mali.md`,
+  which also lists every perf counter now in the log and the order that found each cost.
+
+- **Interface size / bigger buttons**: no resolution or render trick makes a button bigger --
+  every `.wnd` is stretched to the whole screen. `GXUiScale` scales chosen layouts as they are
+  parsed, and hand-placed windows (control bar scheme, group panel) must use the same transform.
+  Test overlaps against the windows on the retail `.wnd`, never against a bounding box. Read
+  `docs/WORKDIR/lessons/LESSON-interface-scale-layouts.md` before touching a layout rule.
+- **Upscaler, shadows, periodic hitches on GLES**: the upscaler renders the *scene* below the
+  screen's resolution and draws everything after it 1:1 (GLES/ANGLE only); stencil shadow volumes
+  must stay two-pass (one pass wraps a -1 into columns under aircraft); a hitch with a fixed period
+  was a sysfs read on the engine's thread. Read
+  `docs/WORKDIR/lessons/LESSON-gles-upscaler-and-frame-pacing.md`.
+
+- **Launcher strings ship in every language**: a new or changed string in
+  `android/app/src/main/res/values/strings.xml` goes into every `values-*/strings.xml`
+  (ar, b+isv, de, es, fa, fr, ko, pl, pt-rBR, ru, uk, zh) in the same commit -- not only
+  English and Russian. Check: every locale has the same set of string names as `values/`.
 
 ## Testing & Validation
 ### Smoke test

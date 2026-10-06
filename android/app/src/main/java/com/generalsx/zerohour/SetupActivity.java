@@ -383,6 +383,11 @@ public class SetupActivity extends Activity {
         switch (tab) {
             case TAB_GRAPHICS:
                 buildSimRateSection(page);
+                // GeneralsX @tweak Android port 02/10/2026 The upscaler lives in the GLES translator
+                // (plain GLES and GLES on ANGLE); under Vulkan it does nothing, so it is not offered.
+                if (!RENDER_BACKEND_VULKAN.equals(getRenderBackendChoice())) {
+                    buildRenderScaleSection(page);
+                }
                 buildRenderBackendSection(page);
                 // Custom Vulkan driver / dxvk.conf only matter when Vulkan is
                 // the selected backend -- the GLES/GLES+ANGLE paths never
@@ -398,6 +403,7 @@ public class SetupActivity extends Activity {
                 buildAppearanceSection(page);
                 buildLanguageSection(page);
                 buildUiScaleSection(page);
+                buildInterfaceScaleSection(page);
                 break;
             case TAB_TOOLS:
                 buildLogsSection(page);
@@ -431,6 +437,9 @@ public class SetupActivity extends Activity {
         dxvkConfigEdit = null;
         uiScaleSlider = null;
         uiScaleLabel = null;
+        upscaleStatus = null;
+        interfaceScaleSlider = null;
+        interfaceScaleLabel = null;
         java.util.Arrays.fill(diagnosticSwitches, null);
     }
 
@@ -683,6 +692,10 @@ public class SetupActivity extends Activity {
             runOnUiThread(() -> {
                 updateCheckRunning = false;
                 refreshUpdatesStatus();
+                // The support card is read from the support.json this check may just have replaced.
+                if (r.supportUpdated && currentTab == TAB_HELP && contentHost != null) {
+                    showTab(TAB_HELP);
+                }
                 if (!r.ok) {
                     if (userAsked) {
                         toast(r.offline
@@ -718,6 +731,8 @@ public class SetupActivity extends Activity {
         // surface tint, so the version badge follows the picked accent too.
         UiKit.chip(about, R.drawable.ic_gzh_check, versionLabel(), 0, 0);
 
+        buildSupportSection(page);
+
         LinearLayout help = UiKit.card(page);
         UiKit.sectionHeader(help, R.drawable.ic_gzh_doc,
             getString(R.string.setup_card_how_it_works), false);
@@ -750,6 +765,70 @@ public class SetupActivity extends Activity {
             // Same "no browser" handling as the GeneralsOnline sign-in flow:
             // nothing else on the device can open an https link.
             Toast.makeText(this, getString(R.string.online_toast_no_browser, e.getMessage()), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    // GeneralsX @feature Android port 03/10/2026 README "Support the project", in the launcher.
+    // On the Help page, next to the version, rather than on Home: Home is for getting into the game,
+    // and nothing here should stand between a player and the Play button. Text, languages and
+    // entries all come from the published support.json (SupportLinks), none from this APK.
+    private void buildSupportSection(LinearLayout page) {
+        SupportLinks support = SupportLinks.load(this);
+        if (support == null) {
+            return;
+        }
+        LinearLayout card = UiKit.card(page);
+        UiKit.sectionHeader(card, R.drawable.ic_gzh_heart, support.title, false);
+        if (!support.body.isEmpty()) {
+            UiKit.supporting(card, support.body);
+        }
+        for (SupportLinks.Entry e : support.entries) {
+            if (e.isLink()) {
+                UiKit.listRow(card, R.drawable.ic_gzh_globe, e.label,
+                    e.value, () -> openSupportLink(e.value));
+            } else {
+                final CharSequence idle = support.copyHint.isEmpty()
+                    ? e.value : e.value + "\n" + support.copyHint;
+                final UiKit.Row[] row = new UiKit.Row[1];
+                row[0] = UiKit.listRow(card, R.drawable.ic_gzh_copy, e.label, idle,
+                    () -> copySupportAddress(row[0], idle, e.label, e.value, support.copied));
+            }
+        }
+        if (!support.warning.isEmpty()) {
+            UiKit.helpText(card, support.warning);
+        }
+    }
+
+    // GeneralsX @bugfix Android port 03/10/2026 The copy was silent: Android 13+ was trusted to
+    // confirm it, and several vendor builds show nothing. The row itself now says so for a moment
+    // (with a tick of haptics), and the toast is shown on every version.
+    private void copySupportAddress(UiKit.Row row, CharSequence idle, String label, String value,
+                                    String copiedText) {
+        android.content.ClipboardManager clipboard =
+            (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+        if (clipboard == null) {
+            return;
+        }
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText(label, value));
+        String done = copiedText.isEmpty() ? value : copiedText.replace("%s", label);
+        row.root.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY);
+        row.supporting.setText(value + "\n\u2713 " + done);
+        row.supporting.setTextColor(UiKit.color(this, R.color.gzh_primary));
+        row.root.removeCallbacks((Runnable) row.root.getTag());
+        Runnable restore = () -> {
+            row.supporting.setText(idle);
+            row.supporting.setTextColor(UiKit.color(this, R.color.gzh_on_surface_variant));
+        };
+        row.root.setTag(restore);
+        row.root.postDelayed(restore, 2500);
+        toast(done);
+    }
+
+    private void openSupportLink(String url) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (android.content.ActivityNotFoundException e) {
+            toast(url);
         }
     }
 
@@ -1352,6 +1431,173 @@ public class SetupActivity extends Activity {
             });
 
         UiKit.helpText(content, getString(R.string.setup_text_size_help));
+    }
+
+    // GeneralsX @feature Android port 01/10/2026 Interface size. The game stretches every layout over
+    // the whole screen, so on a wide phone the control bar is as wide as the screen but low, and its
+    // buttons are small to touch; a lower game resolution does not change that (see the removed
+    // "Interface Size" note above). This one is applied by the engine to the layouts themselves
+    // (GXUiScale.h): the control bar with the radar grows up from the bottom, the generals' power
+    // bar, chat, the event messages, the player list, the in-game menu and its dialogs, and the main
+    // menu's buttons grow from where they sit, each only as far as the screen allows. Saved as
+    // GXUiScale (percent) in Options.ini, read by SDL3Main.cpp at startup.
+    private Slider interfaceScaleSlider;
+    private TextView interfaceScaleLabel;
+
+    private void buildInterfaceScaleSection(LinearLayout root) {
+        LinearLayout content = UiKit.card(root);
+        interfaceScaleLabel = UiKit.sectionHeader(content, R.drawable.ic_gzh_sliders,
+            getString(R.string.setup_card_interface_scale), true);
+
+        int startPercent = readInterfaceScalePercent();
+        interfaceScaleSlider = new Slider(this);
+        interfaceScaleSlider.setValueFrom(100f);
+        interfaceScaleSlider.setValueTo(200f);
+        interfaceScaleSlider.setStepSize(10f);
+        interfaceScaleSlider.setValue(startPercent);
+        interfaceScaleSlider.setLabelBehavior(LabelFormatter.LABEL_GONE);
+        interfaceScaleSlider.setTrackActiveTintList(UiKit.tint(this, R.color.gzh_primary));
+        interfaceScaleSlider.setTrackInactiveTintList(UiKit.tint(this, R.color.gzh_surface_container_highest));
+        interfaceScaleSlider.setThumbTintList(UiKit.tint(this, R.color.gzh_primary));
+        interfaceScaleSlider.setHaloTintList(UiKit.tint(this, R.color.gzh_ripple_primary));
+        updateInterfaceScaleLabel(startPercent);
+        interfaceScaleSlider.addOnChangeListener((slider, value, fromUser) -> updateInterfaceScaleLabel((int) value));
+        LinearLayout.LayoutParams sliderLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        sliderLp.topMargin = UiKit.dim(this, R.dimen.gzh_item_gap_tight);
+        content.addView(interfaceScaleSlider, sliderLp);
+
+        UiKit.button(content, UiKit.BTN_PRIMARY, R.drawable.ic_gzh_check,
+            getString(R.string.setup_button_apply_interface_scale), () -> {
+                writeInterfaceScalePercent((int) interfaceScaleSlider.getValue());
+                Toast.makeText(this, R.string.setup_toast_render_scale_saved, Toast.LENGTH_LONG).show();
+            });
+
+        UiKit.helpText(content, getString(R.string.setup_interface_scale_help));
+    }
+
+    private void updateInterfaceScaleLabel(int percent) {
+        if (interfaceScaleLabel != null) {
+            interfaceScaleLabel.setText(getString(R.string.setup_interface_scale_label, percent));
+        }
+    }
+
+    private int readInterfaceScalePercent() {
+        String val = readKeyValueFile(optionsIniFile()).get("GXUiScale");
+        if (val != null) {
+            try {
+                return Math.max(100, Math.min(200, Integer.parseInt(val.trim())));
+            } catch (NumberFormatException ignored) {
+                // Fall through to the unscaled interface.
+            }
+        }
+        return 100;
+    }
+
+    private void writeInterfaceScalePercent(int percent) {
+        File file = optionsIniFile();
+        // Seeded from DefaultOptions.ini when new, for the same reason as writeUiScalePercent().
+        java.util.LinkedHashMap<String, String> prefs;
+        if (!file.isFile()) {
+            prefs = new java.util.LinkedHashMap<>(readKeyValueFile(defaultOptionsIniFile()));
+        } else {
+            prefs = new java.util.LinkedHashMap<>(readKeyValueFile(file));
+        }
+        prefs.put("GXUiScale", String.valueOf(percent));
+        writeKeyValueFile(file, prefs);
+    }
+
+    // GeneralsX @feature Android port 01/10/2026 Upscaling the way a PC game offers FSR: the game keeps
+    // the screen's own resolution (and the game's Options keep showing it), and a mode picks how much
+    // smaller the GPU actually renders before Snapdragon GSR 1 stretches the frame back to the
+    // screen. The modes and their scales are FSR 1's. On the old Mali test phone the GPU sets the
+    // frame time in heavy battles (logs-42), and its work scales with the pixel count; 75% with GSR
+    // took a battle from 44 to 57 fps (logs-47). Saved as GXUpscale in Options.ini, read by
+    // SDL3Main.cpp at startup and applied by the native GLES backend (DX8Wrapper::Pillarbox_Setup).
+    // The first version was a percentage slider that lowered the game's Resolution itself -- the
+    // same thing as picking a smaller resolution in the game's Options -- and is migrated here.
+    private static final String[] UPSCALE_MODES = { "off", "ultra", "quality", "balanced", "performance" };
+    private static final int[] UPSCALE_PERCENT = { 100, 77, 67, 59, 50 };
+    private TextView upscaleStatus;
+
+    private void buildRenderScaleSection(LinearLayout root) {
+        LinearLayout content = UiKit.card(root);
+        UiKit.sectionHeader(content, R.drawable.ic_gzh_display, getString(R.string.setup_card_upscale), false);
+
+        int current = readUpscaleMode();
+        CharSequence[] labels = {
+            getString(R.string.setup_upscale_off_short),
+            getString(R.string.setup_upscale_ultra_short),
+            getString(R.string.setup_upscale_quality_short),
+            getString(R.string.setup_upscale_balanced_short),
+            getString(R.string.setup_upscale_performance_short),
+        };
+        UiKit.segmented(content, labels, current, index -> {
+            writeUpscaleMode(index);
+            updateUpscaleStatus(index);
+            Toast.makeText(this, R.string.setup_toast_render_scale_saved, Toast.LENGTH_LONG).show();
+        });
+        upscaleStatus = UiKit.supporting(content, "");
+        updateUpscaleStatus(current);
+
+        UiKit.helpText(content, getString(R.string.setup_upscale_help));
+    }
+
+    // The screen's real (landscape) pixel size: the game's resolution with the upscaler on.
+    private int[] screenSize() {
+        android.util.DisplayMetrics dm = new android.util.DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getRealMetrics(dm);
+        return new int[] { Math.max(dm.widthPixels, dm.heightPixels) & ~1, Math.min(dm.widthPixels, dm.heightPixels) };
+    }
+
+    private void updateUpscaleStatus(int index) {
+        if (upscaleStatus == null) {
+            return;
+        }
+        int[] full = screenSize();
+        if (index <= 0) {
+            upscaleStatus.setText(getString(R.string.setup_upscale_status_off, full[0], full[1]));
+            return;
+        }
+        int[] names = { 0, R.string.setup_upscale_ultra, R.string.setup_upscale_quality,
+            R.string.setup_upscale_balanced, R.string.setup_upscale_performance };
+        int percent = UPSCALE_PERCENT[index];
+        upscaleStatus.setText(getString(R.string.setup_upscale_status, getString(names[index]),
+            (full[0] * percent / 100) & ~1, (full[1] * percent / 100) & ~1, full[0], full[1]));
+    }
+
+    private int readUpscaleMode() {
+        String val = readKeyValueFile(optionsIniFile()).get("GXUpscale");
+        if (val != null) {
+            for (int i = 0; i < UPSCALE_MODES.length; i++) {
+                if (UPSCALE_MODES[i].equals(val.trim())) {
+                    return i;
+                }
+            }
+        }
+        return 0;
+    }
+
+    private void writeUpscaleMode(int index) {
+        File file = optionsIniFile();
+        // Seeded from DefaultOptions.ini when new, for the same reason as writeUiScalePercent().
+        java.util.LinkedHashMap<String, String> prefs;
+        if (!file.isFile()) {
+            prefs = new java.util.LinkedHashMap<>(readKeyValueFile(defaultOptionsIniFile()));
+        } else {
+            prefs = new java.util.LinkedHashMap<>(readKeyValueFile(file));
+        }
+        prefs.put("GXUpscale", UPSCALE_MODES[Math.max(0, Math.min(UPSCALE_MODES.length - 1, index))]);
+        // The previous slider's keys. It lowered Resolution itself; that goes back to the screen's
+        // size (from the screen's full size, not the window's: Android hands the game a window
+        // without the display cutout first, logs-44), so the game runs at the screen's resolution
+        // again and only the upscaler renders below it.
+        if (prefs.remove("GXRenderScale") != null) {
+            int[] full = screenSize();
+            prefs.put("Resolution", full[0] + " " + full[1]);
+        }
+        prefs.remove("GXUpscaler");
+        writeKeyValueFile(file, prefs);
     }
 
     private void updateUiScaleLabel(int percent) {

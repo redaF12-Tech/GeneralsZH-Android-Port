@@ -49,6 +49,8 @@
 #include "statistics.h"
 #include <wwprofile.h>
 #include <algorithm>
+#include <cmath>
+#include <cstring>
 #include <list>
 #if defined(__ANDROID__)
 // GeneralsX @perf Android port 09/05/2026 - d3d8gles_SetDrawCategory()
@@ -79,13 +81,38 @@ struct TempIndexStruct
 	ShortVectorIStruct tri;
 	unsigned short idx;
 	float z;
+	int slab;	// GeneralsX: depth slab, see SORT_SLAB_DEPTH
 };
 
-bool operator <(const TempIndexStruct &l, const TempIndexStruct &r) { return l.z < r.z; }
-bool operator <=(const TempIndexStruct &l, const TempIndexStruct &r) { return l.z <= r.z; }
-bool operator >(const TempIndexStruct &l, const TempIndexStruct &r) { return l.z > r.z; }
-bool operator >=(const TempIndexStruct &l, const TempIndexStruct &r) { return l.z >= r.z; }
-bool operator ==(const TempIndexStruct &l, const TempIndexStruct &r) { return l.z == r.z; }
+// GeneralsX @performance Android port 29/09/2026 Sort translucent triangles by depth SLAB, then by
+// node, then by depth -- not by depth alone. Sorting every triangle by its own depth interleaves
+// overlapping effects triangle by triangle, and the pool draws one call per run of a node, so a
+// battle's smoke, fire and explosions became hundreds of tiny draws: a device log of the main
+// menu's background battle on High showed 850-1190 particle draws per frame costing 21-28 ms,
+// the frame at ~14 fps. Within a slab the triangles are grouped by node, so each effect in it is
+// one draw; slabs still go back to front. Only triangles of DIFFERENT effects closer in depth
+// than SORT_SLAB_DEPTH can swap order -- invisible for additive effects (fire, explosions, where
+// order does not matter) and at most a slight change where two alpha-blended effects overlap
+// within that distance. Triangles of one effect keep their exact depth order.
+static const float SORT_SLAB_DEPTH = 4.0f;
+
+static inline int Sort_Slab(float z)
+{
+	return (z == z) ? (int)floorf(z * (1.0f / SORT_SLAB_DEPTH)) : 0;	// NaN goes to slab 0
+}
+
+static inline bool Sort_Less(const TempIndexStruct &l, const TempIndexStruct &r)
+{
+	if (l.slab != r.slab) return l.slab < r.slab;
+	if (l.idx != r.idx) return l.idx < r.idx;
+	return l.z < r.z;
+}
+
+bool operator <(const TempIndexStruct &l, const TempIndexStruct &r) { return Sort_Less(l, r); }
+bool operator <=(const TempIndexStruct &l, const TempIndexStruct &r) { return !Sort_Less(r, l); }
+bool operator >(const TempIndexStruct &l, const TempIndexStruct &r) { return Sort_Less(r, l); }
+bool operator >=(const TempIndexStruct &l, const TempIndexStruct &r) { return !Sort_Less(l, r); }
+bool operator ==(const TempIndexStruct &l, const TempIndexStruct &r) { return !Sort_Less(l, r) && !Sort_Less(r, l); }
 // ----------------------------------------------------------------------------
 static
 void InsertionSort(TempIndexStruct *begin, TempIndexStruct *end)
@@ -415,6 +442,33 @@ static void Apply_Render_State(RenderStateStruct& render_state)
 
 }
 
+// GeneralsX @performance Android port 28/09/2026 Would Apply_Render_State(b) change anything after
+// Apply_Render_State(a)? Compares exactly what that function sets: shader, material, the textures
+// of every stage it touches, world and view transforms, and the lights when the material is lit.
+static bool Same_Render_State(const RenderStateStruct& a, const RenderStateStruct& b)
+{
+	if (a.shader.Get_Bits() != b.shader.Get_Bits() || a.material != b.material)
+		return false;
+	for (int i=0;i<DX8Wrapper::Get_Current_Caps()->Get_Max_Textures_Per_Pass();++i)
+	{
+		if (a.Textures[i] != b.Textures[i])
+			return false;
+	}
+	if (memcmp(&a.world, &b.world, sizeof(a.world)) != 0 || memcmp(&a.view, &b.view, sizeof(a.view)) != 0)
+		return false;
+	if (a.material != nullptr && a.material->Get_Lighting())
+	{
+		for (int i=0;i<4;++i)
+		{
+			if (a.LightEnable[i] != b.LightEnable[i])
+				return false;
+			if (a.LightEnable[i] && memcmp(&a.Lights[i], &b.Lights[i], sizeof(a.Lights[i])) != 0)
+				return false;
+		}
+	}
+	return true;
+}
+
 // ----------------------------------------------------------------------------
 
 void SortingRendererClass::Flush_Sorting_Pool()
@@ -487,6 +541,7 @@ void SortingRendererClass::Flush_Sorting_Pool()
 					tis_ptr->tri.k = idx3 + vertex_array_offset;
 					tis_ptr->idx = node_id;
 					tis_ptr->z = (v1->z + v2->z + v3->z)/3.0f;
+					tis_ptr->slab = Sort_Slab(tis_ptr->z);
 					DEBUG_ASSERTCRASH((! _isnan(tis_ptr->z) && _finite(tis_ptr->z)), ("Triangle has invalid center"));
 				}
 			} else {
@@ -510,6 +565,7 @@ void SortingRendererClass::Flush_Sorting_Pool()
 					tis_ptr->z = (mtx[0][2]*(v1->x + v2->x + v3->x) +
 												mtx[1][2]*(v1->y + v2->y + v3->y) +
 												mtx[2][2]*(v1->z + v2->z + v3->z))/3.0f + mtx[3][2];
+					tis_ptr->slab = Sort_Slab(tis_ptr->z);
 					DEBUG_ASSERTCRASH((! _isnan(tis_ptr->z) && _finite(tis_ptr->z)), ("Triangle has invalid center"));
 				}
 			}
@@ -552,23 +608,46 @@ void SortingRendererClass::Flush_Sorting_Pool()
 
 		DX8Wrapper::Apply_Render_State_Changes();
 
+		// GeneralsX @performance Android port 28/09/2026 One draw per run of triangles that share
+		// a render state, not per run of the same NODE. Depth sorting interleaves the triangles of
+		// overlapping nodes, and every change of node used to end the draw -- but in a battle most
+		// neighbouring nodes are the same effect from different emitters (the smoke of two burning
+		// tanks: same shader, material, texture, identity transforms), and the node change changed
+		// nothing but the draw count. Device logs put particles at ~300 draws/frame costing 5-8 ms
+		// of driver time on Mali, 4-5x a model draw each. The pooled index buffer already holds the
+		// triangles in sorted order with absolute vertex indices, so a run spanning several nodes
+		// is the same triangles in the same order under the same state: the picture is identical,
+		// only the vertex range handed to the draw is the union of the nodes' ranges.
 		unsigned count_to_render=1;
 		unsigned start_index=0;
 		unsigned node_id=tis[chunkOffset].idx;
+		unsigned run_min_vertex=overlapping_nodes[node_id]->min_vertex_index;
+		unsigned run_end_vertex=run_min_vertex+overlapping_nodes[node_id]->vertex_count;
 		for (unsigned i=chunkOffset + 1;i<chunkEnd;++i) {
 			if (node_id!=tis[i].idx) {
+				SortingNodeStruct* next=overlapping_nodes[tis[i].idx];
+				if (Same_Render_State(overlapping_nodes[node_id]->sorting_state, next->sorting_state)) {
+					node_id=tis[i].idx;
+					run_min_vertex=std::min(run_min_vertex, (unsigned)next->min_vertex_index);
+					run_end_vertex=std::max(run_end_vertex, (unsigned)next->min_vertex_index+next->vertex_count);
+					count_to_render++;
+					continue;
+				}
+
 				SortingNodeStruct* state=overlapping_nodes[node_id];
 				Apply_Render_State(state->sorting_state);
 
 				DX8Wrapper::Draw_Triangles(
 					start_index*3,
 					count_to_render,
-					state->min_vertex_index,
-					state->vertex_count);
+					run_min_vertex,
+					run_end_vertex-run_min_vertex);
 
 				count_to_render=0;
 				start_index=i - chunkOffset;
 				node_id=tis[i].idx;
+				run_min_vertex=next->min_vertex_index;
+				run_end_vertex=run_min_vertex+next->vertex_count;
 			}
 			count_to_render++;	//keep track of number of polygons of same kind
 		}
@@ -581,8 +660,8 @@ void SortingRendererClass::Flush_Sorting_Pool()
 			DX8Wrapper::Draw_Triangles(
 				start_index*3,
 				count_to_render,
-				state->min_vertex_index,
-				state->vertex_count);
+				run_min_vertex,
+				run_end_vertex-run_min_vertex);
 		}
 
 		chunkOffset += chunkCount;

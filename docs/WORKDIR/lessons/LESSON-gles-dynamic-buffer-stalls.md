@@ -175,3 +175,23 @@ only (`866ef372a`, `W3DSmudge.cpp`), Vulkan/DXVK untouched.
 - `docs/port/PORTING_PATTERNS.md` §4 — portability bug taxonomy.
 - `Core/Libraries/Source/d3d8gles/src/gles_pipeline.cpp` — `ensureVBUploaded` /
   `ensureIBUploaded` carry the full reasoning inline, next to the code.
+
+## Addendum 27/09/2026 — the next round, and how to read it
+
+Techniques from other D3D->GL translators (ToGL, WineD3D, ANGLE) were applied in one build at the
+owner's request, each with an off switch and a counter so a weak-device log can still separate
+them: base-vertex draws, a streaming ring for the *UP draws, program binaries on disk, DXT1 at
+16 bpp without S3TC, sparse `glGetError`. Read `[d3d8gles] optimizations:` (what is active on the
+device) and `[d3d8gles] perf-opt:` (what each did per window). If a device regresses, put
+`gx_gles_noopt.txt` in the game folder -- empty for all off, or naming `basevertex`, `upring`,
+`progcache`, `dxt565` -- and compare, one name at a time. The unsynchronized ring is safe for the
+same reason the lesson above demands be written down: a *UP draw's data is referenced by that
+draw only.
+
+**Result of that round (28/09/2026):** base-vertex draws broke rendering on Adreno 8xx (stencil
+shadow volumes streaked, UI widgets flickered out) and were switched off by default; the A/B
+through gx_gles_noopt.txt named them in one test without a rebuild, which is exactly what the
+switches were for. Suspected, not proven: a driver-side cached index range that unsynchronized
+writes to the dynamic buffers never invalidate -- so **an optimization that changes how the
+driver reads a buffer the engine writes without synchronization needs a device test before it
+ships, however standard it is elsewhere.**
